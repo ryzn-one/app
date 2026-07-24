@@ -1,0 +1,15 @@
+body { margin: 0; background: #E9E8E4; }
+* { -webkit-font-smoothing: antialiased; }
+        input::placeholder, textarea::placeholder { color: #A5A39D; }
+        .app-scroll::-webkit-scrollbar { display: none; }
+        .sheet-up { animation: sheetUp .28s ease; }
+        @keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+        .badge-pop { animation: badgePop .55s cubic-bezier(.2,1.4,.4,1); }
+        @keyframes badgePop { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+        .msg-in { animation: msgIn .25s ease; }
+        @keyframes msgIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+        .dot { animation: bounce 1s infinite; display: inline-block; }
+        @keyframes bounce { 0%,60%,100% { transform: none; } 30% { transform: translateY(-4px); } }
+        .pulse { animation: pulse 1.4s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+        @media (prefers-reduced-motion: reduce) { .sheet-up,.badge-pop,.msg-in,.dot,.pulse { animation: none; } }
