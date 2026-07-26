@@ -8,5 +8,7 @@ const dist = join(root, "dist");
 mkdirSync(dist, { recursive: true });
 copyFileSync(join(root, "site", "index.html"), join(dist, "index.html"));
 copyFileSync(join(root, "site", "mentor-invite.html"), join(dist, "mentor-invite.html"));
+copyFileSync(join(root, "site", "privacy.html"), join(dist, "privacy.html"));
+copyFileSync(join(root, "site", "terms.html"), join(dist, "terms.html"));
 
 console.log("Assembled site + /app into dist/");

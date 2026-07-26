@@ -2,7 +2,13 @@ node_modules
 dist
 .env
 .env.local
+app/.env
+app/.env.local
 app/node_modules
 app/dist
 
 .vercel
+
+# Mentor invitation codes — credentials, never commit.
+*.local.md
+invites.local.*

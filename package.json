@@ -2,9 +2,20 @@
   "name": "ryzn-web",
   "private": true,
   "version": "0.9.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "npm --prefix app run dev",
     "build": "npm --prefix app install && npm --prefix app run build && node scripts/assemble.mjs",
-    "preview": "npx --yes serve dist"
+    "preview": "npx --yes serve dist",
+    "db:setup": "node --env-file=.env.local scripts/db-setup.mjs",
+    "db:invites": "node --env-file=.env.local scripts/db-setup.mjs --seed-invites=20",
+    "invites:status": "node --env-file=.env.local scripts/invites-status.mjs"
+  },
+  "dependencies": {
+    "better-auth": "^1.6.25",
+    "mongodb": "^6.12.0"
   }
 }

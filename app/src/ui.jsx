@@ -36,16 +36,23 @@ export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, r
     {name.split(" ").map(w => w[0]).slice(0, 2).join("")}
   </div>
 );
-export const Field = ({ label, type = "text", placeholder, value, onChange, right }) => (
+export const Field = ({ label, type = "text", placeholder, value, onChange, right, error, ...inputProps }) => (
   <div style={{ marginTop: 14 }}>
     <Label>{label}</Label>
-    <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, marginTop: 7, padding: "0 12px" }}>
-      <input type={type} placeholder={placeholder} value={value} onChange={onChange}
+    <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${error ? C.coral : C.line}`, borderRadius: 12, marginTop: 7, padding: "0 12px" }}>
+      <input type={type} placeholder={placeholder} value={value} onChange={onChange} {...inputProps}
         style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "13px 2px", fontFamily: F.sans, fontSize: 15, color: C.ink, minWidth: 0 }} />
       {right}
     </div>
+    {error && <div style={{ fontSize: 12, color: C.coral, marginTop: 6 }}>{error}</div>}
   </div>
 );
+export const FormError = ({ children }) => children ? (
+  <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
+    <span style={{ color: C.coral, fontWeight: 700, lineHeight: 1.3 }}>!</span>
+    <span>{children}</span>
+  </div>
+) : null;
 export const XPPill = ({ xp, unit = "XP" }) => (
   <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, background: C.ink, color: "#B7AFF2", padding: "6px 10px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
     <Zap size={11} color="#B7AFF2" /> {xp} {unit}
