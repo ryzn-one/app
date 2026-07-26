@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import RyznComplete from "./RyznApp.jsx";
+import RyznTeams from "./teams/RyznTeams.jsx";
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { err: null }; }
@@ -20,10 +21,21 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+/* Routes: /app/ = consumer · /app/#/teams = Ryzn for Teams */
+function Router() {
+  const [hash, setHash] = useState(window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return hash.startsWith("#/teams") ? <RyznTeams /> : <RyznComplete />;
+}
+
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <RyznComplete />
+      <Router />
     </ErrorBoundary>
   </React.StrictMode>
 );
