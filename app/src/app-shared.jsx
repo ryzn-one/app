@@ -167,6 +167,9 @@ export const SettingsScreen = ({ back, role, toast, onLogout }) => {
           <span style={{ fontSize: 14, fontWeight: 700, color: C.coral }}>Log out</span>
         </Card>
         <div style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", marginTop: 6 }}>RYZN · RYZN.ONE · RISE NOW.</div>
+        <div style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", marginTop: 4 }}>
+          BUILT BY <a href="https://runbos.ai" target="_blank" rel="noopener noreferrer" style={{ color: C.ink, fontWeight: 700, textDecoration: "none" }}>BOS</a>
+        </div>
       </div>
     </div>
   );
