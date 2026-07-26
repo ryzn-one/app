@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { useIsDesktop } from "./useIsDesktop.js";
 import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
@@ -17,7 +18,9 @@ import {
 
 /* ————————————————— APP: MENTOR ————————————————— */
 
-export const MentorDash = ({ u, openOverlay, addsLeft }) => (
+export const MentorDash = ({ u, openOverlay, addsLeft }) => {
+  const isDesktop = useIsDesktop();
+  return (
   <div style={{ padding: "18px 20px 20px" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
@@ -46,7 +49,7 @@ export const MentorDash = ({ u, openOverlay, addsLeft }) => (
         {Object.values(STATUS).map(s => <span key={s.label} style={{ fontFamily: F.mono, fontSize: 8.5, color: s.c, display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, background: s.c, display: "inline-block" }} />{s.label.toUpperCase()}</span>)}
       </div>
     </div>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr 1fr", gap: 10 }}>
       {u.cohort.map(m => {
         const st = STATUS[m.status];
         return (
@@ -69,7 +72,8 @@ export const MentorDash = ({ u, openOverlay, addsLeft }) => (
       )}
     </div>
   </div>
-);
+  );
+};
 
 export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   const [noteMode, setNoteMode] = useState("text");

@@ -15,6 +15,12 @@ export const Card = ({ style, children, onClick }) => (
 export const Label = ({ children, color = C.gray, style }) => (
   <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color, ...style }}>{children}</div>
 );
+export const FormError = ({ children }) => children ? (
+  <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
+    <span style={{ color: C.coral, fontWeight: 700, lineHeight: 1.3 }}>!</span>
+    <span>{children}</span>
+  </div>
+) : null;
 export const Btn = ({ children, kind = "primary", onClick, style, small, disabled }) => {
   const kinds = {
     primary: { background: disabled ? "#C9C6E8" : C.purple, color: C.white },
@@ -36,23 +42,16 @@ export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, r
     {name.split(" ").map(w => w[0]).slice(0, 2).join("")}
   </div>
 );
-export const Field = ({ label, type = "text", placeholder, value, onChange, right, error, ...inputProps }) => (
+export const Field = ({ label, type = "text", placeholder, value, onChange, right }) => (
   <div style={{ marginTop: 14 }}>
     <Label>{label}</Label>
-    <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${error ? C.coral : C.line}`, borderRadius: 12, marginTop: 7, padding: "0 12px" }}>
-      <input type={type} placeholder={placeholder} value={value} onChange={onChange} {...inputProps}
+    <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, marginTop: 7, padding: "0 12px" }}>
+      <input type={type} placeholder={placeholder} value={value} onChange={onChange}
         style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "13px 2px", fontFamily: F.sans, fontSize: 15, color: C.ink, minWidth: 0 }} />
       {right}
     </div>
-    {error && <div style={{ fontSize: 12, color: C.coral, marginTop: 6 }}>{error}</div>}
   </div>
 );
-export const FormError = ({ children }) => children ? (
-  <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
-    <span style={{ color: C.coral, fontWeight: 700, lineHeight: 1.3 }}>!</span>
-    <span>{children}</span>
-  </div>
-) : null;
 export const XPPill = ({ xp, unit = "XP" }) => (
   <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, background: C.ink, color: "#B7AFF2", padding: "6px 10px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
     <Zap size={11} color="#B7AFF2" /> {xp} {unit}
@@ -155,19 +154,70 @@ export const HeaderRow = ({ title, onBack, right }) => (
 export const Glyph = ({ color = C.purple, size = 46 }) => (
   <svg width={size} height={size}><polygon points={`${size / 2},2 ${size - 2},${size / 2} ${size / 2},${size - 2} 2,${size / 2}`} fill={color} /></svg>
 );
-export const StatusBar = ({ dark = true }) => {
-  const color = dark ? C.ink : C.white;
-  return (
-    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 46, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", zIndex: 90, pointerEvents: "none", fontFamily: F.sans, fontWeight: 600, fontSize: 15, color, letterSpacing: -0.2 }}>
-      <span>9:41</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="6.5" width="3" height="4.5" rx="0.6" fill={color} /><rect x="4.5" y="4.5" width="3" height="6.5" rx="0.6" fill={color} /><rect x="9" y="2.3" width="3" height="8.7" rx="0.6" fill={color} /><rect x="13.5" y="0" width="3" height="11" rx="0.6" fill={color} /></svg>
-        <svg width="15" height="11" viewBox="0 0 15 11"><path d="M7.5 9.4a1.15 1.15 0 100 2.3 1.15 1.15 0 000-2.3z" fill={color} /><path d="M4.2 6.9a4.6 4.6 0 016.6 0l-1.25 1.2a2.8 2.8 0 00-4.1 0L4.2 6.9z" fill={color} /><path d="M1.5 4.3a8.3 8.3 0 0112 0l-1.25 1.25a6.5 6.5 0 00-9.5 0L1.5 4.3z" fill={color} /></svg>
-        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.6" y="0.6" width="20.3" height="10.8" rx="2.8" stroke={color} strokeOpacity="0.4" fill="none" /><rect x="2.1" y="2.1" width="17.3" height="7.8" rx="1.6" fill={color} /><rect x="21.6" y="4" width="1.6" height="4" rx="0.8" fill={color} fillOpacity="0.4" /></svg>
+export const ModalShell = ({ children, onClose }) => (
+  <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <div onClick={e => e.stopPropagation()} style={{
+      width: "min(94vw, 640px)", height: "min(78vh, 760px)", minHeight: 420,
+      background: C.surface, borderRadius: 24, position: "relative",
+      display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
+    }}>
+      <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 5, width: 32, height: 32, borderRadius: 16, border: "none", background: "rgba(26,26,26,.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <X size={16} color={C.ink} />
+      </button>
+      <div style={{ flex: 1, overflow: "hidden", borderRadius: 24 }}>
+        <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>{children}</div>
       </div>
     </div>
-  );
-};
+  </div>
+);
+
+export const AuthCardShell = ({ children }) => (
+  <div style={{
+    position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 24,
+    background: "radial-gradient(120% 100% at 50% -10%, #F2F1EE 0%, #E9E8E4 45%, #DEDCD6 100%)",
+  }}>
+    <div style={{
+      width: "min(94vw, 440px)", height: "min(82vh, 760px)", minHeight: 420,
+      background: C.surface, borderRadius: 28, overflow: "hidden", position: "relative",
+      boxShadow: "0 40px 90px rgba(15,10,35,.18), 0 0 0 1px rgba(0,0,0,.04)",
+    }}>
+      {children}
+    </div>
+  </div>
+);
+
+export const Sidebar = ({ nav, tab, overlay, onSelect, role, onSettings, onLogout }) => (
+  <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.line}`, background: C.white, display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ padding: "26px 22px 20px" }}>
+      <div style={{ color: C.purple, fontSize: 22, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
+    </div>
+    <div style={{ flex: 1, padding: "0 12px", display: "flex", flexDirection: "column", gap: 2 }}>
+      {nav.map(([id, Icon, label]) => {
+        const active = tab === id && !overlay;
+        return (
+          <button key={id} onClick={() => onSelect(id)} style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 12,
+            border: "none", cursor: "pointer", textAlign: "left", fontFamily: F.sans, fontWeight: 600, fontSize: 14,
+            background: active ? C.purpleTint : "transparent", color: active ? C.purple : C.ink, width: "100%",
+          }}>
+            <Icon size={18} color={active ? C.purple : C.gray} strokeWidth={active ? 2.4 : 2} />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+    <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
+      <Monogram name={role === "mentee" ? "Alex Reyes" : "Jordan Clarke"} size={36} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{role === "mentee" ? "Alex Reyes" : "Jordan Clarke"}</div>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
+      </div>
+      <button onClick={onSettings} title="Settings" style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><Settings size={16} color={C.gray} /></button>
+      <button onClick={onLogout} title="Log out" style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><LogOut size={16} color={C.gray} /></button>
+    </div>
+  </div>
+);
+
 export const TypingDots = () => (
   <div style={{ display: "flex", gap: 4, padding: "12px 14px", background: C.white, border: `1px solid ${C.line}`, borderRadius: "14px 14px 14px 4px", width: "fit-content" }}>
     {[0, 1, 2].map(i => <span key={i} className="dot" style={{ width: 6, height: 6, borderRadius: 3, background: "#B3AEE6", animationDelay: `${i * 0.15}s` }} />)}

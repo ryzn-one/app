@@ -18,9 +18,9 @@ import { useTurnstile } from "./lib/turnstile.js";
    Set VITE_API_MODE=live to switch. See src/lib/auth-client.js.
 */
 
-export const Splash = ({ onEnter }) => (
-  <div onClick={onEnter} style={{
-    position: "absolute", inset: 0, zIndex: 60, cursor: "pointer", overflow: "hidden",
+export const Splash = ({ onEnter, isDesktop }) => (
+  <div onClick={isDesktop ? undefined : onEnter} style={{
+    position: "absolute", inset: 0, zIndex: 60, cursor: isDesktop ? "default" : "pointer", overflow: "hidden",
     background: `radial-gradient(120% 90% at 50% 8%, #7A6FE0 0%, ${C.purple} 42%, ${C.deep} 100%)`,
   }}>
     <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.09) 1px, transparent 1px)", backgroundSize: "18px 18px", opacity: 0.5 }} />
@@ -31,10 +31,49 @@ export const Splash = ({ onEnter }) => (
       </div>
       <div style={{ color: C.white, fontSize: 52, fontWeight: 700, letterSpacing: -2 }}>RYZN</div>
       <div style={{ color: "#E4E1FA", fontSize: 15.5, marginTop: 6, fontWeight: 500 }}>Rise now.</div>
+      {isDesktop && (
+        <button onClick={onEnter} style={{
+          marginTop: 30, display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer",
+          background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.28)", borderRadius: 12,
+          padding: "12px 22px", color: C.white, fontFamily: F.sans, fontWeight: 600, fontSize: 14.5,
+        }}>Enter Ryzn <ChevronRight size={16} /></button>
+      )}
     </div>
-    <div className="splash-in" style={{ position: "absolute", bottom: 54, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, animationDelay: ".15s" }}>
-      <div style={{ width: 30, height: 2, borderRadius: 2, background: "rgba(255,255,255,.4)" }} />
-      <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 2, color: "#C9C3F2" }}>TAP TO BEGIN · RYZN.ONE</div>
+    {!isDesktop && (
+      <div className="splash-in" style={{ position: "absolute", bottom: 54, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, animationDelay: ".15s" }}>
+        <div style={{ width: 30, height: 2, borderRadius: 2, background: "rgba(255,255,255,.4)" }} />
+        <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 2, color: "#C9C3F2" }}>TAP TO BEGIN · RYZN.ONE</div>
+      </div>
+    )}
+  </div>
+);
+
+export const RoleSelect = ({ onPick }) => (
+  <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
+      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 18, lineHeight: 1.2 }}>Who’s rising today?</div>
+      <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>Pick a path — mentees and mentors get two different experiences from here on.</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 26 }}>
+        {[
+          { role: "mentee", title: "I’m a mentee", sub: "Get matched with a vetted mentor and a 12-week program.", icon: Zap, color: C.purple, tint: C.purpleTint },
+          { role: "mentor", title: "I’m a mentor", sub: "Join the Roster — invitation only, build public Impact.", icon: Award, color: C.teal, tint: C.tealTint },
+        ].map(({ role, title, sub, icon: Icon, color, tint }) => (
+          <button key={role} onClick={() => onPick(role)} style={{
+            display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer",
+            border: `1.5px solid ${C.line}`, borderRadius: 16, padding: 16, background: C.white, fontFamily: F.sans,
+          }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: tint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon size={20} color={color} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{title}</div>
+              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>
+            </div>
+            <ChevronRight size={18} color={C.gray} />
+          </button>
+        ))}
+      </div>
     </div>
   </div>
 );

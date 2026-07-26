@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { useIsDesktop } from "./useIsDesktop.js";
 import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
@@ -323,6 +324,33 @@ export const SwipeDeck = ({ deck, renderCard, stampRight, stampLeft, canRight, o
 };
 
 
+export const CardGrid = ({ deck, renderCard, stampRight, stampLeft, canRight, onDecide, onUndo, canUndo, emptyView, onTap }) => {
+  const roundBtn = (size, bg, color, borderColor) => ({ width: size, height: size, borderRadius: size / 2, border: borderColor ? `1.5px solid ${borderColor}` : "none", background: bg, color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 14px rgba(26,26,26,.10)" });
+  if (deck.length === 0) return <div style={{ flex: 1, minHeight: 0, padding: "10px 24px 24px" }}>{emptyView}</div>;
+  return (
+    <div className="app-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 24px 24px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+        <button onClick={onUndo} disabled={!canUndo} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: `1px solid ${canUndo ? C.line : "transparent"}`, borderRadius: 10, padding: "6px 12px", cursor: canUndo ? "pointer" : "default", color: canUndo ? C.gray : "#C9C6C0", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5 }}>
+          <RotateCcw size={13} /> Undo last
+        </button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))", gap: 20 }}>
+        {deck.map((item, i) => (
+          <div key={item.name || i} style={{ height: 420, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div onClick={() => onTap && onTap(item)} style={{ flex: 1, minHeight: 0, cursor: onTap ? "pointer" : "default" }}>
+              {renderCard(item)}
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14 }}>
+              <button onClick={() => onDecide(item, "left")} style={roundBtn(44, C.white, C.coral, C.coral)} title={stampLeft}><X size={18} /></button>
+              <button onClick={() => onDecide(item, canRight ? "right" : "blocked")} style={roundBtn(44, canRight ? C.purple : "#C9C6E8", C.white)} title={stampRight}><Check size={20} strokeWidth={3} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const DetailShell = ({ title, right, close, footer, children }) => (
   <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column" }}>
     <HeaderRow title={title} onBack={close} right={right} />
@@ -439,6 +467,7 @@ export const MenteeDetailSheet = ({ m, close, footer }) => (
 );
 
 export const MatchesScreen = ({ xp, addXp, toast, onEnterApp }) => {
+  const isDesktop = useIsDesktop();
   const [decided, setDecided] = useState({});
   const [history, setHistory] = useState([]);
   const [filters, setFilters] = useState({ tier: "Any", focus: "Any", match: "Any" });
@@ -528,7 +557,9 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp }) => {
         </div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5 }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {3 - openReqs} REQUEST{3 - openReqs === 1 ? "" : "S"} FREE · FIRST +25 XP</div>
       </div>
-      <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={openReqs < 3} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />
+      {isDesktop
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={openReqs < 3} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={openReqs < 3} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />}
       {acceptedEntry && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
           <Btn onClick={() => onEnterApp(acceptedEntry[0])}>Enter Ryzn · Week 1 with {acceptedEntry[0].split(" ")[0]} starts Monday</Btn>
@@ -553,6 +584,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp }) => {
 };
 
 export const RequestsScreen = ({ xp, addXp, toast, onEnterApp }) => {
+  const isDesktop = useIsDesktop();
   const [decided, setDecided] = useState({});
   const [history, setHistory] = useState([]);
   const [filters, setFilters] = useState({ track: "Any", focus: "Any", match: "Any" });
@@ -643,7 +675,9 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp }) => {
           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, fontWeight: 700 }}>{taken}/{cap} SEATS · +30 IMPACT EACH</span>
         </div>
       </div>
-      <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />
+      {isDesktop
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />}
       {taken >= 1 && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
           <Btn onClick={() => onEnterApp(acceptedNames)}>Open mentor dashboard · cohort {taken}/{cap}</Btn>

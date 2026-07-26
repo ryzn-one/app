@@ -7,14 +7,15 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, StatusBar } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell } from "./ui.jsx";
+import { useIsDesktop } from "./useIsDesktop.js";
 import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
   EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
   EVENT, MENTOR_CONTENT, MENTOR_FEED_SEED
 } from "./data.js";
-import { Splash, Welcome, Register, Login, Forgot } from "./auth.jsx";
+import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
 import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MentorPublicView, MenteeProfile } from "./app-mentee.jsx";
@@ -23,10 +24,10 @@ import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } f
 
 /* ————————————————— ROOT SHELL ————————————————— */
 
-const DEMO = true; // flip to false to hide prototype chrome (role switcher, stage tracker, caption)
+const DEMO = false; // flip to true to show internal QA chrome (role switcher, stage tracker, caption)
 
-export const JOURNEY_STAGES = ["splash", "welcome", "auth", "chat", "unlock", "matches", "app"];
-export const STAGE_LABEL = { splash: "Splash", welcome: "Welcome", auth: "Auth", chat: "AI Setup", unlock: "Unlock", matches: "Match", app: "App" };
+export const JOURNEY_STAGES = ["splash", "role", "welcome", "auth", "chat", "unlock", "matches", "app"];
+export const STAGE_LABEL = { splash: "Splash", role: "Role", welcome: "Welcome", auth: "Auth", chat: "AI Setup", unlock: "Unlock", matches: "Match", app: "App" };
 
 export const makeMenteeBadges = (earned, fresh) => BADGE_DEFS.map(b => {
   const out = { ...b, earned: earned[b.id] || null };
@@ -153,6 +154,7 @@ export default function RyznComplete() {
   /* — journey content — */
   const journeyContent = () => {
     switch (stage) {
+      case "role": return <RoleSelect onPick={(r) => { setRole(r); setStage("welcome"); }} />;
       case "welcome": return <Welcome role={role} go={setStage} />;
       case "register": return <Register role={role} go={setStage} onDone={() => { addXp(10); setStage("chat"); }} />;
       case "login": return <Login role={role} go={setStage} onDone={enterAsReturning} />;
@@ -165,9 +167,9 @@ export default function RyznComplete() {
     }
   };
 
-  /* — app content — */
-  const appContent = () => {
-    if (!user) return null;
+  /* — overlay content (rendered inline on mobile, in a modal on desktop) — */
+  const overlayContent = () => {
+    if (!user || !overlay) return null;
     if (overlay === "notifs") return <NotifsScreen role={role} u={user} back={() => setOverlay(null)} navTo={navTo} />;
     if (overlay === "settings") return <SettingsScreen role={role} back={() => setOverlay(null)} toast={toast} onLogout={logout} />;
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
@@ -179,10 +181,16 @@ export default function RyznComplete() {
         ? [{ who: "them", text: "Welcome aboard, Alex. Read your three goals — strong start. I’m here before Monday if anything comes up." }]
         : [{ who: "them", text: "Your headline rewrite was sharp. Bring the cold open Tuesday." }, { who: "me", text: "Will do — drafting it today." }]}
       reply={user.fresh ? "Love that energy. Bring it Monday." : "Good. Specific beats vague — see you Tuesday."} />;
-    if (overlay && overlay.dm) return <DMScreen name={overlay.dm} sub="YOUR MENTEE · STAGE 1 COMPLETE ✓" back={() => setOverlay(overlay.from || null)} placeholder={`Message ${overlay.dm.split(" ")[0]}…`}
+    if (overlay.dm) return <DMScreen name={overlay.dm} sub="YOUR MENTEE · STAGE 1 COMPLETE ✓" back={() => setOverlay(overlay.from || null)} placeholder={`Message ${overlay.dm.split(" ")[0]}…`}
       seed={[{ who: "them", text: `Hi Jordan — excited to get started. First goal: “${(MENTEE_POOL.find(m => m.name === overlay.dm) || {}).goal || "make these 12 weeks count"}.”` }]}
       reply="Will do — thank you!" />;
-    if (overlay && overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dm: m.name, from: { mentee: m } })} />;
+    if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dm: m.name, from: { mentee: m } })} />;
+    return null;
+  };
+
+  /* — current tab content (always the active tab, regardless of overlay) — */
+  const tabContent = () => {
+    if (!user) return null;
     if (role === "mentee") {
       switch (tab) {
         case "home": return <MenteeHome u={user} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={1 + extraMentors.length} toast={toast} />;
@@ -206,89 +214,101 @@ export default function RyznComplete() {
   const menteeNav = [["home", Home, "Home"], ["exercises", Zap, "Exercises"], ["badges", Award, "Badges"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
   const mentorNav = [["home", LayoutGrid, "Cohort"], ["sessions", Calendar, "Sessions"], ["board", TrendingUp, "Ranking"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
   const nav = role === "mentee" ? menteeNav : mentorNav;
+  const isDesktop = useIsDesktop();
 
   const stageGroup = phase === "app" ? "app" : ["register", "login", "forgot"].includes(stage) ? "auth" : stage;
   const fullScreenOverlay = Boolean(overlay === "dm" || (overlay && overlay.dm));
   const chatLike = phase === "journey" && ["chat", "matches"].includes(stage);
-  const lightStatus = (phase === "journey" && (stage === "splash" || stage === "unlock")) || (phase === "app" && showMidway);
+  const useAuthCard = isDesktop && phase === "journey" && ["role", "welcome", "register", "login", "forgot"].includes(stage);
+
+  const overlayEl = overlayContent();
 
   return (
-    <div style={{
-      minHeight: "100vh", fontFamily: F.sans, color: C.ink, display: "flex", flexDirection: "column",
-      alignItems: "center", padding: "26px 12px 40px",
-      background: "radial-gradient(120% 100% at 50% -10%, #F2F1EE 0%, #E9E8E4 45%, #DEDCD6 100%)",
-    }}>
+    <div className="full-h" style={{ fontFamily: F.sans, color: C.ink, overflow: "hidden" }}>
 
-
-      {DEMO && <>
-      {/* demo controls */}
-      <div style={{ display: "flex", gap: 6, background: C.white, border: `1px solid ${C.line}`, borderRadius: 14, padding: 5, marginBottom: 10 }}>
-        {[["mentee", "Mentee · Alex"], ["mentor", "Mentor · Jordan"]].map(([r, l]) => (
-          <button key={r} onClick={() => restart(r)} style={{ border: "none", cursor: "pointer", borderRadius: 10, padding: "8px 16px", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: role === r ? C.ink : "transparent", color: role === r ? C.white : C.gray }}>{l}</button>
-        ))}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, flexWrap: "wrap", justifyContent: "center" }}>
-        {JOURNEY_STAGES.map((s, i) => (
-          <React.Fragment key={s}>
-            <span style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: stageGroup === s ? C.purple : "#A5A39D", fontWeight: stageGroup === s ? 700 : 400, textTransform: "uppercase" }}>{STAGE_LABEL[s]}</span>
-            {i < JOURNEY_STAGES.length - 1 && <span style={{ width: 10, height: 1, background: "#C9C6C0" }} />}
-          </React.Fragment>
-        ))}
-      </div>
-
-      </>}
-
-      {/* phone */}
-      <div style={{
-        width: 384, maxWidth: "100%", padding: "14px 12px", background: "linear-gradient(160deg, #38383d, #0b0b0d 60%)",
-        borderRadius: 48, boxShadow: "0 34px 74px rgba(15,10,35,.28), 0 2px 0 rgba(255,255,255,.06) inset, 0 0 0 1px rgba(0,0,0,.4)",
-        position: "relative",
-      }}>
-        <div style={{ height: 780, background: C.surface, borderRadius: 36, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
-          <StatusBar dark={!lightStatus} />
-          <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", width: 100, height: 24, background: "#0b0b0d", borderRadius: 13, zIndex: 92 }} />
-
-          {phase === "journey" && stage === "splash" && <Splash onEnter={() => setStage("welcome")} />}
-          {phase === "journey" && stage === "unlock" && <UnlockScreen role={role} onNext={() => setStage("matches")} toast={toast} />}
-          {phase === "app" && showMidway && <MidwayUnlock onClose={() => setShowMidway(false)} toast={toast} />}
-
-          {phase === "journey" ? (
-            <div style={{ flex: 1, overflow: "hidden" }}>
-              <div className="app-scroll" style={{ height: "100%", overflowY: chatLike ? "hidden" : "auto", paddingTop: 46 }}>{journeyContent()}</div>
-            </div>
-          ) : (
-            <>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                <div className="app-scroll" style={{ height: "100%", overflowY: fullScreenOverlay ? "hidden" : "auto", paddingTop: 46 }}>{appContent()}</div>
-              </div>
-              {!fullScreenOverlay && (
-                <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px 22px" }}>
-                  {nav.map(([id, Icon, label]) => {
-                    const active = tab === id && !overlay;
-                    return (
-                      <button key={id} onClick={() => { setOverlay(null); setTab(id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0" }}>
-                        <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
-                        <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {phase === "app" && badgeModal && <BadgeModal badge={badgeModal.b} index={badgeModal.i} close={() => setBadgeModal(null)} toast={toast} />}
-          {toastMsg && (
-            <div className="sheet-up" style={{ position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 70, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
-              <Zap size={12} /> {toastMsg}
-            </div>
-          )}
-
-          <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", width: 120, height: 4, borderRadius: 3, background: lightStatus ? "rgba(255,255,255,.65)" : "rgba(26,26,26,.28)", zIndex: 93, pointerEvents: "none" }} />
+      {DEMO && (
+        <div style={{ position: "fixed", top: 8, left: "50%", transform: "translateX(-50%)", zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", gap: 6, background: C.white, border: `1px solid ${C.line}`, borderRadius: 14, padding: 5, boxShadow: "0 8px 20px rgba(26,26,26,.12)" }}>
+            {[["mentee", "Mentee · Alex"], ["mentor", "Mentor · Jordan"]].map(([r, l]) => (
+              <button key={r} onClick={() => restart(r)} style={{ border: "none", cursor: "pointer", borderRadius: 10, padding: "8px 16px", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: role === r ? C.ink : "transparent", color: role === r ? C.white : C.gray }}>{l}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 10, padding: "6px 10px" }}>
+            {JOURNEY_STAGES.map((s, i) => (
+              <React.Fragment key={s}>
+                <span style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: stageGroup === s ? C.purple : "#A5A39D", fontWeight: stageGroup === s ? 700 : 400, textTransform: "uppercase" }}>{STAGE_LABEL[s]}</span>
+                {i < JOURNEY_STAGES.length - 1 && <span style={{ width: 10, height: 1, background: "#C9C6C0" }} />}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {DEMO && <div style={{ fontFamily: F.mono, fontSize: 10, color: "#A5A39D", marginTop: 16, letterSpacing: 1, textAlign: "center" }}>RYZN COMPLETE · SWIPE TO MATCH · ADD MENTORS/MENTEES IN-APP (MAX 3) · STAGE 1 EARNS DIRECT CONNECT</div>}
+      {phase === "journey" && (
+        <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
+          {stage === "splash" && <Splash onEnter={() => setStage("role")} isDesktop={isDesktop} />}
+          {stage === "unlock" && <UnlockScreen role={role} onNext={() => setStage("matches")} toast={toast} />}
+          {useAuthCard ? (
+            <AuthCardShell>
+              <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>{journeyContent()}</div>
+            </AuthCardShell>
+          ) : (
+            <div className="app-scroll" style={{
+              height: "100%", boxSizing: "border-box", overflowY: chatLike ? "hidden" : "auto",
+              paddingTop: isDesktop ? 0 : "env(safe-area-inset-top, 0px)",
+            }}>{journeyContent()}</div>
+          )}
+        </div>
+      )}
+
+      {phase === "app" && user && (
+        isDesktop ? (
+          <div style={{ display: "flex", height: "100%" }}>
+            <Sidebar nav={nav} tab={tab} overlay={overlay} role={role}
+              onSelect={(id) => { setOverlay(null); setTab(id); }}
+              onSettings={() => setOverlay("settings")} onLogout={logout} />
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
+                <div style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 40px" }}>{tabContent()}</div>
+              </div>
+            </div>
+            {overlayEl && <ModalShell onClose={() => setOverlay(null)}>{overlayEl}</ModalShell>}
+          </div>
+        ) : (
+          <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: 1, overflow: "hidden" }}>
+              <div className="app-scroll" style={{
+                height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
+                paddingTop: "env(safe-area-inset-top, 0px)",
+              }}>{overlayEl || tabContent()}</div>
+            </div>
+            {!fullScreenOverlay && (
+              <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}>
+                {nav.map(([id, Icon, label]) => {
+                  const active = tab === id && !overlay;
+                  return (
+                    <button key={id} onClick={() => { setOverlay(null); setTab(id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0" }}>
+                      <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
+                      <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {phase === "app" && badgeModal && <BadgeModal badge={badgeModal.b} index={badgeModal.i} close={() => setBadgeModal(null)} toast={toast} />}
+      {phase === "app" && showMidway && <MidwayUnlock onClose={() => setShowMidway(false)} toast={toast} />}
+
+      {toastMsg && (
+        <div className="sheet-up" style={{ position: "fixed", top: "calc(18px + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 90, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Zap size={12} /> {toastMsg}
+        </div>
+      )}
+
+      {DEMO && <div style={{ position: "fixed", bottom: 8, left: "50%", transform: "translateX(-50%)", zIndex: 200, fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 1, textAlign: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 8, padding: "5px 10px", maxWidth: "94vw" }}>RYZN COMPLETE · SWIPE TO MATCH · ADD MENTORS/MENTEES IN-APP (MAX 3) · STAGE 1 EARNS DIRECT CONNECT</div>}
     </div>
   );
 }

@@ -10,3 +10,5 @@ export const TIER_COLOR = { purple: C.purple, teal: C.teal, coral: C.coral, ambe
 
 
 export const DECK_COLORS = [C.purple, C.deep, C.ink, C.teal, C.coral];
+
+export const BREAKPOINT = 900;

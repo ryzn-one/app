@@ -1,5 +1,6 @@
-body { margin: 0; background: #E9E8E4; }
+html, body, #root { margin: 0; height: 100%; background: #E9E8E4; }
 * { -webkit-font-smoothing: antialiased; }
+.full-h { height: 100vh; height: 100dvh; }
         input::placeholder, textarea::placeholder { color: #A5A39D; }
         .app-scroll::-webkit-scrollbar { display: none; }
         .sheet-up { animation: sheetUp .28s ease; }

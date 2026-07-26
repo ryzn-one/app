@@ -14,11 +14,13 @@ import {
   EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
   EVENT, MENTOR_CONTENT, MENTOR_FEED_SEED
 } from "./data.js";
-import { SwipeDeck, MentorDetailSheet, MenteeDetailSheet } from "./chatmatch.jsx";
+import { SwipeDeck, CardGrid, MentorDetailSheet, MenteeDetailSheet } from "./chatmatch.jsx";
+import { useIsDesktop } from "./useIsDesktop.js";
 
 /* ————————————————— IN-APP ADD DECKS (MAX 3) ————————————————— */
 
 export const AddMentorScreen = ({ candidates, used, onAdd, back, toast }) => {
+  const isDesktop = useIsDesktop();
   const [decided, setDecided] = useState({});
   const [history, setHistory] = useState([]);
   const [detail, setDetail] = useState(null);
@@ -65,7 +67,9 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast }) => {
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <HeaderRow title="Add a support mentor" onBack={back} right={<Label color={seatsLeft > 0 ? C.purple : C.teal}>{used}/3 SEATS</Label>} />
       <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 20px 8px", letterSpacing: 0.5 }}>ONE ACTIVE ENGAGEMENT AT A TIME · NEW MENTORS JOIN AS SUPPORT · +15 XP</div>
-      <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
+      {isDesktop
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />}
 
       {detail && (
         <MentorDetailSheet m={detail} close={() => setDetail(null)} footer={
@@ -79,6 +83,7 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast }) => {
 };
 
 export const AddMenteeScreen = ({ candidates, addsUsed, onAdd, back, toast }) => {
+  const isDesktop = useIsDesktop();
   const [decided, setDecided] = useState({});
   const [history, setHistory] = useState([]);
   const deck = candidates.filter(m => !decided[m.name]);
@@ -126,7 +131,9 @@ export const AddMenteeScreen = ({ candidates, addsUsed, onAdd, back, toast }) =>
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <HeaderRow title="Add mentees" onBack={back} right={<Label color={addsLeft > 0 ? C.purple : C.teal}>{addsUsed}/3 ADDS</Label>} />
       <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 20px 8px", letterSpacing: 0.5 }}>✓ ACCEPT · ✕ PASS · +30 IMPACT EACH · {addsLeft} ADD{addsLeft === 1 ? "" : "S"} LEFT THIS CYCLE</div>
-      <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={addsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
+      {isDesktop
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={addsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={addsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />}
       {detail && (
         <MenteeDetailSheet m={detail} close={() => setDetail(null)} footer={
           <Btn disabled={addsLeft <= 0 || !!decided[detail.name]} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>
