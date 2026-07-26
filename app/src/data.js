@@ -1,4 +1,6 @@
 /* ————— Data ————— */
+import { C } from "./theme.js";
+
 export const BADGE_DEFS = [
   { id: "goal", name: "Goal Setter", tier: "purple", when: "Day 1", req: "Complete intake and set 3 program goals", code: "RYZ-2026-00441", unlocks: "First session scheduling" },
   { id: "first", name: "First Session", tier: "purple", when: "Week 1", req: "Complete your opening session", code: "RYZ-2026-00512", unlocks: "Weekly exercise track" },
