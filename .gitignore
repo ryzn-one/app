@@ -2,3 +2,7 @@ node_modules
 dist
 .env
 .env.local
+app/node_modules
+app/dist
+
+.vercel

@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ryzn - Rise now. Mentorship that proves itself.</title>
+<meta name="description" content="A 12-week mentorship program matching students with a hand-picked roster of professionals. Verifiable badges, real outcomes. Invitation-only for mentors.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --purple:#5B4FCF; --deep:#2D2580; --ink:#1A1A1A; --white:#fff;
+    --teal:#0F6E56; --coral:#D85A30; --amber:#BA7517; --gray:#5F5E5A;
+    --purple-t:#EEF0FC; --teal-t:#E1F5EE; --coral-t:#FAECE7; --amber-t:#F7EEDD;
+    --surface:#F5F5F3; --line:#E8E7E3;
+    --sans:'Space Grotesk',system-ui,sans-serif; --mono:'Space Mono','Courier New',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--ink);background:var(--surface)}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 28px}
+  .mono{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--purple)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--sans);font-weight:600;font-size:15px;padding:15px 26px;border-radius:12px;border:none;cursor:pointer;transition:transform .12s ease, background .15s}
+  .btn:active{transform:scale(.98)}
+  .btn-solid{background:var(--purple);color:#fff}
+  .btn-solid:hover{background:var(--deep)}
+  .btn-ink{background:var(--ink);color:#fff}
+  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+  .btn-ghost:hover{background:var(--ink);color:#fff}
+
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:0;z-index:50;background:rgba(245,245,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .nav-in{display:flex;align-items:center;gap:34px;height:68px}
+  .logo{font-weight:700;font-size:23px;letter-spacing:-.04em;color:var(--purple)}
+  .nav-links{display:flex;gap:26px;font-size:14px;font-weight:600;color:var(--gray)}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{margin-left:auto;display:flex;gap:10px}
+  .nav-cta .btn{padding:10px 18px;font-size:13.5px}
+
+  /* ---------- hero ---------- */
+  .hero{padding:74px 0 60px;position:relative;overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  .toggle{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:14px;padding:5px;margin:20px 0 26px}
+  .toggle button{font-family:var(--sans);font-weight:600;font-size:14px;padding:10px 20px;border:none;border-radius:10px;background:transparent;color:var(--gray);cursor:pointer;transition:all .15s}
+  .toggle button.on{background:var(--ink);color:#fff}
+  h1{font-size:clamp(38px,5.4vw,62px);line-height:1.04;letter-spacing:-.035em;font-weight:700}
+  h1 .accent{color:var(--purple)}
+  .hero-sub{font-size:17.5px;line-height:1.6;color:var(--gray);margin:20px 0 28px;max-width:520px}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .hero-note{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#A5A39D;margin-top:18px}
+  [data-aud]{display:none}
+  body[data-mode="mentee"] [data-aud="mentee"]{display:block}
+  body[data-mode="mentor"] [data-aud="mentor"]{display:block}
+  body[data-mode="mentee"] span[data-aud="mentee"], body[data-mode="mentee"] div.hero-ctas[data-aud="mentee"]{display:flex}
+  body[data-mode="mentor"] span[data-aud="mentor"], body[data-mode="mentor"] div.hero-ctas[data-aud="mentor"]{display:flex}
+
+  /* hero mock cards */
+  .mock{position:relative;height:520px}
+  .mcard{position:absolute;background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 18px 44px rgba(26,26,26,.10)}
+  .mcard .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}
+  .m-streak{top:16px;left:0;width:300px;transform:rotate(-2.5deg)}
+  .flamewrap{display:flex;align-items:center;gap:14px;margin-top:12px}
+  .ring{width:84px;height:84px;flex-shrink:0}
+  .flame-num{font-size:34px;font-weight:700;line-height:1}
+  .flame-sub{font-size:12.5px;color:var(--gray);font-weight:600}
+  .bar{height:6px;background:#E6E5E1;margin-top:12px}
+  .bar i{display:block;height:100%;background:var(--teal);width:34%}
+  .m-badge{top:210px;right:8px;width:250px;transform:rotate(2deg)}
+  .btile{width:64px;height:64px;border:1.5px solid var(--purple);display:flex;align-items:center;justify-content:center;background:#fff;position:relative}
+  .btile::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;background:var(--purple)}
+  .m-badge .row{display:flex;gap:14px;align-items:center;margin-top:12px}
+  .m-match{bottom:6px;left:26px;width:290px;transform:rotate(-1.2deg)}
+  .m-match .head{height:96px;background:var(--deep);display:flex;align-items:center;justify-content:center;color:#fff;font-size:40px;font-weight:700;letter-spacing:-.04em;border-radius:12px 12px 0 0;margin:-20px -20px 0;position:relative}
+  .m-match .pct{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:11px;font-weight:700;background:rgba(26,26,26,.45);padding:5px 9px}
+  .m-imp{bottom:150px;right:0;width:240px;background:var(--ink);color:#fff;border:none;transform:rotate(1.8deg)}
+  .m-imp .big{font-size:46px;font-weight:700;color:#B7AFF2;letter-spacing:-.04em;line-height:1.05;margin-top:6px}
+  body[data-mode="mentee"] .m-imp{display:none}
+  body[data-mode="mentor"] .m-badge{display:none}
+
+  /* ---------- ticker ---------- */
+  .ticker{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff;overflow:hidden;padding:15px 0}
+  .ticker-in{display:flex;gap:48px;white-space:nowrap;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:#A5A39D;animation:slide 36s linear infinite;width:max-content}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* ---------- stats ---------- */
+  .stats{background:var(--ink);color:#fff;padding:70px 0}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:34px}
+  .stat b{display:block;font-size:clamp(34px,4vw,52px);font-weight:700;letter-spacing:-.03em;color:#B7AFF2}
+  .stat span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8B8985;display:block;margin-top:8px;line-height:1.7}
+
+  /* ---------- sections ---------- */
+  section{padding:88px 0}
+  .sec-head{max-width:640px;margin-bottom:44px}
+  h2{font-size:clamp(28px,3.6vw,42px);letter-spacing:-.03em;line-height:1.1;margin-top:12px}
+  .sec-head p{color:var(--gray);font-size:16px;line-height:1.6;margin-top:14px}
+
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .step{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;position:relative}
+  .step .num{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--purple)}
+  .step h3{font-size:17px;margin:34px 0 8px;letter-spacing:-.01em}
+  .step p{font-size:13.5px;color:var(--gray);line-height:1.55}
+  .step .gl{position:absolute;top:20px;right:20px}
+  .xp{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;background:var(--teal-t);color:var(--teal);padding:4px 9px;margin-top:12px}
+
+  /* badges strip */
+  .badges-sec{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .badge-row{display:grid;grid-template-columns:repeat(8,1fr);gap:12px}
+  .bd{text-align:left}
+  .bd .tile{width:100%;aspect-ratio:1;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;background:var(--surface);position:relative;transition:border-color .15s}
+  .bd.earn .tile{border-color:var(--c);background:#fff}
+  .bd.earn .tile::after{content:"";position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--c)}
+  .bd b{display:block;font-size:12.5px;margin-top:9px}
+  .bd span{font-family:var(--mono);font-size:9px;color:#A5A39D;letter-spacing:.1em}
+  .verify-note{display:flex;align-items:center;gap:10px;margin-top:30px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--gray)}
+  /* mentor split */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+  .impact-card{background:var(--ink);color:#fff;border-radius:20px;padding:28px;position:relative}
+  .impact-card .big{font-size:72px;font-weight:700;letter-spacing:-.05em;color:#B7AFF2;line-height:1}
+  .crown{width:64px;height:64px;background:var(--purple);display:flex;align-items:center;justify-content:center;position:absolute;top:28px;right:28px}
+  .tierbar{height:6px;background:#3a3a3a;margin-top:20px}
+  .tierbar i{display:block;height:100%;width:68%;background:var(--purple)}
+  .tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:22px}
+  .tier{border:1px solid var(--line);border-radius:14px;background:#fff;padding:14px;text-align:center}
+  .tier .sq{width:26px;height:26px;margin:0 auto 10px;transform:rotate(45deg)}
+  .tier b{font-size:13.5px;display:block}
+  .tier span{font-family:var(--mono);font-size:9px;color:#A5A39D;letter-spacing:.1em}
+  .feat-list{margin-top:26px;display:grid;gap:16px}
+  .feat{display:flex;gap:14px}
+  .feat .dm{width:10px;height:10px;background:var(--purple);transform:rotate(45deg);margin-top:6px;flex-shrink:0}
+  .feat b{font-size:15.5px}
+  .feat p{font-size:13.5px;color:var(--gray);line-height:1.55;margin-top:3px}
+
+  /* meets */
+  .meets{background:var(--coral);color:#fff}
+  .meets .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center}
+  .meets h2{color:#fff}
+  .meets p{color:#F6D3C4}
+  .count{font-family:var(--mono);display:flex;gap:26px;margin-top:26px}
+  .count b{font-size:44px;font-weight:700;display:block;letter-spacing:-.03em}
+  .count span{font-size:9.5px;letter-spacing:.16em}
+  .meets-card{background:rgba(26,26,26,.22);border-radius:18px;padding:24px;font-family:var(--mono);font-size:12px;line-height:2.1;letter-spacing:.08em}
+
+  /* quotes */
+  .quotes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .q{background:#fff;border:1px solid var(--line);border-radius:18px;padding:26px}
+  .q p{font-size:16.5px;line-height:1.6;letter-spacing:-.01em}
+  .q .who{display:flex;align-items:center;gap:12px;margin-top:20px}
+  .mg{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+  .q .who b{font-size:14px;display:block}
+  .q .who span{font-family:var(--mono);font-size:9.5px;color:#A5A39D;letter-spacing:.1em}
+
+  /* dual cta */
+  .dual{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .panel{border-radius:22px;padding:44px 38px;color:#fff;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+  .panel.mentee{background:var(--purple)}
+  .panel.mentor{background:var(--ink)}
+  .panel h3{font-size:27px;letter-spacing:-.025em;line-height:1.15}
+  .panel p{font-size:14.5px;line-height:1.6;opacity:.85}
+  .panel .btn{background:#fff;color:var(--ink);margin-top:6px}
+  .panel .tag{font-family:var(--mono);font-size:10px;letter-spacing:.16em}
+  .panel.mentee .tag{color:#DDD9F6}.panel.mentor .tag{color:#B7AFF2}
+
+  footer{border-top:1px solid var(--line);padding:44px 0 60px;background:#fff}
+  .foot{display:flex;align-items:flex-start;justify-content:space-between;gap:30px;flex-wrap:wrap}
+  .foot .mono{font-size:10px;color:#A5A39D}
+  .foot-links{display:flex;gap:22px;font-size:13.5px;font-weight:600;color:var(--gray)}
+
+  @media(max-width:920px){
+    .hero-grid,.split,.meets .wrap,.quotes,.dual{grid-template-columns:1fr}
+    .mock{height:470px;margin-top:10px}
+    .stats-grid{grid-template-columns:repeat(2,1fr)}
+    .steps{grid-template-columns:repeat(2,1fr)}
+    .badge-row{grid-template-columns:repeat(4,1fr);row-gap:22px}
+    .nav-links{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){.ticker-in{animation:none}}
+</style>
+</head>
+<body data-mode="mentee">
+
+<nav>
+  <div class="wrap nav-in">
+    <a class="logo" href="#top">RYZN</a>
+    <div class="nav-links">
+      <a href="#how">Program</a><a href="#badges">Badges</a><a href="#mentors">Mentors</a><a href="#meets">Meets</a>
+    </div>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/app/">Sign in</a>
+      <a class="btn btn-solid" href="/app/">Apply</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="kicker">Cohort 8 · Toronto · Applications open</span>
+      <div class="toggle" role="tablist" aria-label="Choose your path">
+        <button class="on" data-set="mentee" role="tab" aria-selected="true">I’m a student</button>
+        <button data-set="mentor" role="tab" aria-selected="false">I’m a professional</button>
+      </div>
+
+      <div data-aud="mentee">
+        <h1>You don’t need to figure this out <span class="accent">alone.</span></h1>
+        <p class="hero-sub">A hand-picked roster of professionals, a 12-week program, and verifiable proof you can put on a resume. Two minutes of setup earns your first XP.</p>
+      </div>
+      <div data-aud="mentor">
+        <h1>Your experience is someone’s <span class="accent">shortcut.</span></h1>
+        <p class="hero-sub">Twenty founding seats. A public Impact Score that grows with every mentee outcome. One active engagement at a time - because authenticity is the product. Invitation only.</p>
+      </div>
+
+      <div class="hero-ctas" data-aud="mentee">
+        <a class="btn btn-solid" href="/app/">Apply to Cohort 8</a>
+        <a class="btn btn-ghost" href="#how">How it works</a>
+      </div>
+      <div class="hero-ctas" data-aud="mentor">
+        <a class="btn btn-ink" href="/app/">Enter your invitation</a>
+        <a class="btn btn-ghost" href="#mentors">See the tiers</a>
+      </div>
+
+      <div class="hero-note" data-aud="mentee">FREE FOR STUDENTS · HIGH SCHOOL + UNIVERSITY TRACKS</div>
+      <div class="hero-note" data-aud="mentor">ROSTER VETTED · BACKGROUND-CHECKED · 92% GRADUATION RATE</div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="mcard m-streak">
+        <div class="lab">Week 6 of the Program</div>
+        <div class="flamewrap">
+          <svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="#E2E0F5" stroke-width="9"/><circle cx="42" cy="42" r="35" fill="none" stroke="#5B4FCF" stroke-width="9" stroke-dasharray="220" stroke-dashoffset="110" transform="rotate(-90 42 42)"/><text x="42" y="47" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="17" fill="#1A1A1A">50%</text></svg>
+          <div>
+            <div class="flame-num">🔥 34</div>
+            <div class="flame-sub">day streak · #4 in cohort</div>
+          </div>
+        </div>
+        <div class="bar"><i></i></div>
+        <div class="lab" style="margin-top:8px">34/100 → 100-DAY STREAK</div>
+      </div>
+
+      <div class="mcard m-badge">
+        <div class="lab">Badge unlocked · Week 6</div>
+        <div class="row">
+          <div class="btile"><svg width="30" height="30"><polygon points="15,2 28,15 15,28 2,15" fill="#5B4FCF"/></svg></div>
+          <div><b style="font-size:17px">Midway.</b><div class="lab" style="margin-top:5px">RYZ-2026-00734 · VERIFIED</div></div>
+        </div>
+      </div>
+
+      <div class="mcard m-imp">
+        <div class="lab" style="color:#9C93E8">Impact Score</div>
+        <div class="big">847</div>
+        <div class="lab" style="color:#8B8985;margin-top:8px">▲ 63 THIS QUARTER · RANK #12 OF 214</div>
+        <div class="tierbar"><i></i></div>
+        <div class="lab" style="color:#8B8985;margin-top:6px">PATHFINDER → ARCHITECT</div>
+      </div>
+
+      <div class="mcard m-match">
+        <div class="head">JC<span class="pct">96% MATCH</span></div>
+        <div style="padding-top:14px"><b style="font-size:16px">Jordan Clarke</b>
+          <div class="lab" style="margin-top:4px">VP OF PRODUCT · PATHFINDER · 11 GRADUATED</div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <span style="flex:1;text-align:center;border:1.5px solid #D85A30;color:#D85A30;border-radius:10px;padding:8px 0;font-weight:600;font-size:13px">Pass</span>
+            <span style="flex:1.4;text-align:center;background:#5B4FCF;color:#fff;border-radius:10px;padding:8px 0;font-weight:600;font-size:13px">Request ✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-in" id="tick"></div></div>
+<section class="stats">
+  <div class="wrap stats-grid">
+    <div class="stat"><b data-count="92" data-suffix="%">0%</b><span>Program graduation rate</span></div>
+    <div class="stat"><b data-count="2140" data-comma="1">0</b><span>Average XP per cohort</span></div>
+    <div class="stat"><b data-count="8">0</b><span>Verifiable badges · QR + LinkedIn</span></div>
+    <div class="stat"><b data-count="56" data-prefix="$" data-suffix="K">$0K</b><span>Lifetime earnings lift linked to mentorship*</span></div>
+  </div>
+  <div class="wrap" style="margin-top:26px"><span class="mono" style="font-size:9px;color:#5F5E5A">*ASPIRATIONAL TARGET BASED ON PUBLISHED MENTORSHIP OUTCOME RESEARCH · COHORT DATA PUBLISHED QUARTERLY</span></div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">The Program · 12 weeks</span>
+      <h2>Every step earns something you can prove.</h2>
+      <p>No lectures, no lurking. A daily exercise, a weekly session, and a badge architecture that turns showing up into evidence.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="num">01</span>
+        <svg class="gl" width="26" height="26"><polygon points="13,1 25,13 13,25 1,13" fill="#5B4FCF"/></svg>
+        <h3>Two-minute AI setup</h3>
+        <p>Ryzn AI asks five questions - interests, skills, people you actually follow, one real goal. Every answer earns XP before you even start.</p>
+        <span class="xp">⚡ +200 XP · GOAL SETTER BADGE</span>
+      </div>
+      <div class="step">
+        <span class="num">02</span>
+        <svg class="gl" width="26" height="26"><rect x="4" y="4" width="18" height="18" fill="#0F6E56"/></svg>
+        <h3>Swipe your top 5</h3>
+        <p>Matched mentors, dating-app simple, professionally deep. Tap any card for their full record: achievements, companies, talks, resources.</p>
+        <span class="xp">⚡ FIRST REQUEST +25 XP</span>
+      </div>
+      <div class="step">
+        <span class="num">03</span>
+        <svg class="gl" width="26" height="26"><circle cx="13" cy="13" r="11" fill="#D85A30"/></svg>
+        <h3>Earn Direct Connect</h3>
+        <p>Messaging your mentor is earned, not given: finish Stage 1 and the line opens instantly. It proves you’re serious - and mentors know it.</p>
+        <span class="xp">⚡ STAGE 1 · DAY ONE</span>
+      </div>
+      <div class="step">
+        <span class="num">04</span>
+        <svg class="gl" width="26" height="26"><polygon points="1,25 13,1 25,25 13,16" fill="#BA7517"/></svg>
+        <h3>Twelve weeks to proof</h3>
+        <p>Streaks, milestone exercises, cohort leaderboards, and a Mentor Meets ticket at Week 8. Graduate Placement Ready - verifiably.</p>
+        <span class="xp">⚡ 8 BADGES · QR VERIFIED</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="badges-sec" id="badges">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Badge architecture</span>
+      <h2>Flat, geometric, and impossible to fake.</h2>
+      <p>Each badge carries a verification code and a QR that resolves at ryzn.one. Share them to LinkedIn the second they unlock.</p>
+    </div>
+    <div class="badge-row">
+      <div class="bd earn" style="--c:#5B4FCF"><div class="tile"><svg width="26" height="26"><polygon points="13,1 25,25 1,25" fill="#5B4FCF"/></svg></div><b>Goal Setter</b><span>DAY 1</span></div>
+      <div class="bd earn" style="--c:#5B4FCF"><div class="tile"><svg width="26" height="26"><rect x="4" y="4" width="18" height="18" fill="#5B4FCF"/></svg></div><b>First Session</b><span>WEEK 1</span></div>
+      <div class="bd earn" style="--c:#0F6E56"><div class="tile"><svg width="26" height="26"><circle cx="13" cy="13" r="10" fill="#0F6E56"/></svg></div><b>Momentum</b><span>WEEK 4</span></div>
+      <div class="bd earn" style="--c:#5B4FCF"><div class="tile"><svg width="26" height="26"><polygon points="13,1 25,13 13,25 1,13" fill="#5B4FCF"/></svg></div><b>Midway</b><span>WEEK 6</span></div>
+      <div class="bd" style="--c:#0F6E56"><div class="tile"><svg width="26" height="26" opacity=".35"><g fill="#5F5E5A"><rect x="3" y="15" width="5" height="8"/><rect x="10" y="9" width="5" height="14"/><rect x="17" y="3" width="5" height="20"/></g></svg></div><b>Mentor Approved</b><span>WEEK 8 · MEETS TICKET</span></div>
+      <div class="bd" style="--c:#5B4FCF"><div class="tile"><svg width="26" height="26" opacity=".35"><polygon points="1,25 13,1 25,25 13,16" fill="#5F5E5A"/></svg></div><b>Placement Ready</b><span>WEEK 12</span></div>
+      <div class="bd" style="--c:#0F6E56"><div class="tile"><svg width="26" height="26" opacity=".35"><g fill="#5F5E5A"><circle cx="8" cy="8" r="4.5"/><circle cx="18" cy="18" r="4.5"/></g></svg></div><b>100-Day Streak</b><span>ONGOING</span></div>
+      <div class="bd" style="--c:#D85A30"><div class="tile"><svg width="26" height="26" opacity=".35"><polygon points="13,2 16,10 24,10 17,15 20,24 13,18 6,24 9,15 2,10 10,10" fill="#5F5E5A"/></svg></div><b>Meets Alum</b><span>POST-EVENT</span></div>
+    </div>
+    <div class="verify-note">
+      <svg width="20" height="20"><rect width="20" height="20" fill="#1A1A1A"/><rect x="3" y="3" width="5" height="5" fill="#fff"/><rect x="12" y="3" width="5" height="5" fill="#fff"/><rect x="3" y="12" width="5" height="5" fill="#fff"/><rect x="13" y="13" width="3" height="3" fill="#fff"/></svg>
+      EVERY BADGE → RYZN.ONE/V/CODE · ONE-TAP LINKEDIN SHARE
+    </div>
+  </div>
+</section>
+
+<section id="mentors">
+  <div class="wrap split">
+    <div>
+      <span class="kicker">For professionals · Invitation only</span>
+      <h2>A movement worth your name - and a score that proves it.</h2>
+      <div class="feat-list">
+        <div class="feat"><span class="dm"></span><div><b>Public Impact Score</b><p>Grows with sessions held, milestones unlocked, and graduates placed. Quarterly leaderboard across the whole Roster.</p></div></div>
+        <div class="feat"><span class="dm"></span><div><b>One active engagement at a time</b><p>Depth beats volume. Mentees earn Direct Connect before they can message you - no drive-by networking.</p></div></div>
+        <div class="feat"><span class="dm"></span><div><b>Your profile, your feed</b><p>A greeting video, talks, resources, and posts - a LinkedIn-grade presence that a real pipeline of vetted students actually reads.</p></div></div>
+        <div class="feat"><span class="dm"></span><div><b>Mentor Meets, quarterly</b><p>Speak, judge, and recruit at the event your graduates unlock their way into.</p></div></div>
+      </div>
+      <div style="margin-top:28px"><a class="btn btn-ink" href="/app/">Enter your invitation</a></div>
+    </div>
+    <div>
+      <div class="impact-card">
+        <span class="mono" style="font-size:10px;color:#9C93E8">Impact Score</span>
+        <div class="big" data-count="847">0</div>
+        <span class="mono" style="font-size:9.5px;color:#8B8985;display:block;margin-top:10px">▲ 63 THIS QUARTER · RANK #12 OF 214</span>
+        <div class="crown"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.735H5.81a1 1 0 0 1-.957-.735L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/></svg></div>
+        <div class="tierbar"><i></i></div>
+      </div>
+      <div class="tiers">
+        <div class="tier"><div class="sq" style="background:#BA7517"></div><b>Scout</b><span>ENTRY</span></div>
+        <div class="tier"><div class="sq" style="background:#5B4FCF"></div><b>Pathfinder</b><span>400+</span></div>
+        <div class="tier"><div class="sq" style="background:#0F6E56"></div><b>Architect</b><span>1,000+</span></div>
+        <div class="tier"><div class="sq" style="background:#D85A30"></div><b>Legend</b><span>BY REVIEW</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="meets" id="meets">
+  <div class="wrap">
+    <div>
+      <span class="mono" style="font-size:10px;color:#F6D3C4;letter-spacing:.18em">MENTOR MEETS · QUARTERLY</span>
+      <h2>Toronto. September 26.<br>You earn your way in.</h2>
+      <p style="margin-top:14px;font-size:15.5px;line-height:1.6;max-width:460px">Evergreen Brick Works. Talks from Legend and Architect mentors, cohort awards, and the room your Mentor Approved badge unlocks at Week 8.</p>
+      <div class="count">
+        <div><b data-count="70">0</b><span>DAYS OUT</span></div>
+        <div><b data-count="142">0</b><span>ATTENDED VANCOUVER ’26</span></div>
+        <div><b>W8</b><span>TICKET UNLOCK</span></div>
+      </div>
+    </div>
+    <div class="meets-card">
+      SAT SEPT 26 2026 · DOORS 8:30 AM<br>
+      EVERGREEN BRICK WORKS · TORONTO<br>
+      SPEAKERS · MARCUS BELL (LEGEND)<br>
+      PRIYA RAMAN (ARCHITECT) · JORDAN CLARKE<br>
+      TKT · RYZ-TOR-#### · QR CHECK-IN
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Founding cohort voices</span>
+      <h2>Both sides rise.</h2>
+    </div>
+    <div class="quotes">
+      <div class="q">
+        <p>“I wrote three goals on day one and got a mentor who read them before we ever spoke. Six weeks in, I have a 34-day streak and a badge on my LinkedIn that recruiters can actually verify.”</p>
+        <div class="who"><div class="mg" style="background:#EEF0FC;color:#2D2580">AR</div><div><b>Alex Reyes</b><span>MENTEE · TORONTO METROPOLITAN · COHORT 7</span></div></div>
+      </div>
+      <div class="q">
+        <p>“One active mentee at a time means every session matters. My Impact Score isn’t vanity - it’s eleven graduates, and the leaderboard keeps me honest.”</p>
+        <div class="who"><div class="mg" style="background:#1A1A1A;color:#fff">JC</div><div><b>Jordan Clarke</b><span>MENTOR · VP OF PRODUCT · PATHFINDER</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cta" style="padding-top:20px">
+  <div class="wrap dual">
+    <div class="panel mentee">
+      <span class="tag">STUDENTS · HIGH SCHOOL + UNIVERSITY</span>
+      <h3>Cohort 8 starts Monday. Your streak starts today.</h3>
+      <p>Two minutes of setup, your top 5 mentors, and your first badge before dinner.</p>
+      <a class="btn" href="/app/">Apply to Cohort 8 →</a>
+    </div>
+    <div class="panel mentor">
+      <span class="tag">PROFESSIONALS · INVITATION ONLY</span>
+      <h3>Twenty seats. One Roster. Your name on it.</h3>
+      <p>Claim your code, build your profile, and take your first cohort this quarter.</p>
+      <a class="btn" href="/app/">Enter your invitation →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <div class="logo">RYZN</div>
+      <div class="mono" style="margin-top:8px">RISE NOW. · RYZN.ONE · BUILT IN TORONTO</div>
+    </div>
+    <div class="foot-links">
+      <a href="#how">Program</a><a href="#badges">Verify a badge</a><a href="#mentors">The Roster</a><a href="#meets">Mentor Meets</a><a href="#">Privacy</a><a href="#">Terms</a>
+    </div>
+    <div class="mono" style="max-width:280px;line-height:2">MENTORS ARE VETTED AND BACKGROUND-CHECKED. GUARDIAN CONSENT REQUIRED UNDER 18.</div>
+  </div>
+</footer>
+
+<script>
+  // audience toggle
+  const body = document.body;
+  document.querySelectorAll('.toggle button').forEach(b => {
+    b.addEventListener('click', () => {
+      body.dataset.mode = b.dataset.set;
+      document.querySelectorAll('.toggle button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
+    });
+  });
+
+  // ticker content (doubled for seamless loop)
+  const names = "TORONTO METROPOLITAN · UNIVERSITY OF TORONTO · MCMASTER · WESTERN · YORK · NORTHVIEW SECONDARY · EARL HAIG · - · MENTORS FROM · HARBOURLINE · NOVA HEALTH · BELL VENTURES · FIELDNOTE · NORTHBOUND BANK · ";
+  document.getElementById('tick').textContent = (names + names).trim();
+
+  // count-up on scroll
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  const animate = el => {
+    const target = +el.dataset.count, pre = el.dataset.prefix || "", suf = el.dataset.suffix || "", comma = el.dataset.comma;
+    const t0 = performance.now(), dur = 1400;
+    const tick = now => {
+      const p = Math.min(1, (now - t0) / dur);
+      let v = Math.round(target * ease(p));
+      if (comma) v = v.toLocaleString();
+      el.textContent = pre + v + suf;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  const seen = new WeakSet();
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting && !seen.has(e.target)) { seen.add(e.target); animate(e.target); }
+  }), { threshold: .5 });
+  document.querySelectorAll('[data-count]').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
