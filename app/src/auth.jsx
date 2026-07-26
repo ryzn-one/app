@@ -19,10 +19,23 @@ import { useTurnstile } from "./lib/turnstile.js";
 */
 
 export const Splash = ({ onEnter }) => (
-  <div onClick={onEnter} style={{ position: "absolute", inset: 0, background: C.purple, zIndex: 60, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-    <div style={{ color: C.white, fontSize: 58, fontWeight: 700, letterSpacing: -2 }}>RYZN</div>
-    <div style={{ color: "#DDD9F6", fontSize: 16, marginTop: 6, fontWeight: 500 }}>Rise now.</div>
-    <div style={{ position: "absolute", bottom: 46, fontFamily: F.mono, fontSize: 10, letterSpacing: 2, color: "#B7AFF2" }}>TAP TO BEGIN · RYZN.ONE</div>
+  <div onClick={onEnter} style={{
+    position: "absolute", inset: 0, zIndex: 60, cursor: "pointer", overflow: "hidden",
+    background: `radial-gradient(120% 90% at 50% 8%, #7A6FE0 0%, ${C.purple} 42%, ${C.deep} 100%)`,
+  }}>
+    <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.09) 1px, transparent 1px)", backgroundSize: "18px 18px", opacity: 0.5 }} />
+    <div style={{ position: "absolute", top: "-18%", left: "50%", transform: "translateX(-50%)", width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,.16), transparent 70%)" }} />
+    <div className="splash-in" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 68, height: 68, borderRadius: 20, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.22)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 18px 40px rgba(20,10,60,.35)", marginBottom: 22 }}>
+        <Glyph color={C.white} size={30} />
+      </div>
+      <div style={{ color: C.white, fontSize: 52, fontWeight: 700, letterSpacing: -2 }}>RYZN</div>
+      <div style={{ color: "#E4E1FA", fontSize: 15.5, marginTop: 6, fontWeight: 500 }}>Rise now.</div>
+    </div>
+    <div className="splash-in" style={{ position: "absolute", bottom: 54, left: 0, right: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, animationDelay: ".15s" }}>
+      <div style={{ width: 30, height: 2, borderRadius: 2, background: "rgba(255,255,255,.4)" }} />
+      <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 2, color: "#C9C3F2" }}>TAP TO BEGIN · RYZN.ONE</div>
+    </div>
   </div>
 );
 

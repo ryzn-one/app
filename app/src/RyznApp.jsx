@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, StatusBar } from "./ui.jsx";
 import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
@@ -210,10 +210,15 @@ export default function RyznComplete() {
   const stageGroup = phase === "app" ? "app" : ["register", "login", "forgot"].includes(stage) ? "auth" : stage;
   const fullScreenOverlay = Boolean(overlay === "dm" || (overlay && overlay.dm));
   const chatLike = phase === "journey" && ["chat", "matches"].includes(stage);
+  const lightStatus = (phase === "journey" && (stage === "splash" || stage === "unlock")) || (phase === "app" && showMidway);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#E9E8E4", fontFamily: F.sans, color: C.ink, display: "flex", flexDirection: "column", alignItems: "center", padding: "26px 12px 40px" }}>
-      
+    <div style={{
+      minHeight: "100vh", fontFamily: F.sans, color: C.ink, display: "flex", flexDirection: "column",
+      alignItems: "center", padding: "26px 12px 40px",
+      background: "radial-gradient(120% 100% at 50% -10%, #F2F1EE 0%, #E9E8E4 45%, #DEDCD6 100%)",
+    }}>
+
 
       {DEMO && <>
       {/* demo controls */}
@@ -234,42 +239,53 @@ export default function RyznComplete() {
       </>}
 
       {/* phone */}
-      <div style={{ width: 384, maxWidth: "100%", height: 780, background: C.surface, borderRadius: 34, border: `1px solid #D8D6D0`, boxShadow: "0 24px 60px rgba(26,26,26,.14)", overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
-        {phase === "journey" && stage === "splash" && <Splash onEnter={() => setStage("welcome")} />}
-        {phase === "journey" && stage === "unlock" && <UnlockScreen role={role} onNext={() => setStage("matches")} toast={toast} />}
-        {phase === "app" && showMidway && <MidwayUnlock onClose={() => setShowMidway(false)} toast={toast} />}
+      <div style={{
+        width: 384, maxWidth: "100%", padding: "14px 12px", background: "linear-gradient(160deg, #38383d, #0b0b0d 60%)",
+        borderRadius: 48, boxShadow: "0 34px 74px rgba(15,10,35,.28), 0 2px 0 rgba(255,255,255,.06) inset, 0 0 0 1px rgba(0,0,0,.4)",
+        position: "relative",
+      }}>
+        <div style={{ height: 780, background: C.surface, borderRadius: 36, overflow: "hidden", position: "relative", display: "flex", flexDirection: "column" }}>
+          <StatusBar dark={!lightStatus} />
+          <div style={{ position: "absolute", top: 10, left: "50%", transform: "translateX(-50%)", width: 100, height: 24, background: "#0b0b0d", borderRadius: 13, zIndex: 92 }} />
 
-        {phase === "journey" ? (
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <div className="app-scroll" style={{ height: "100%", overflowY: chatLike ? "hidden" : "auto" }}>{journeyContent()}</div>
-          </div>
-        ) : (
-          <>
+          {phase === "journey" && stage === "splash" && <Splash onEnter={() => setStage("welcome")} />}
+          {phase === "journey" && stage === "unlock" && <UnlockScreen role={role} onNext={() => setStage("matches")} toast={toast} />}
+          {phase === "app" && showMidway && <MidwayUnlock onClose={() => setShowMidway(false)} toast={toast} />}
+
+          {phase === "journey" ? (
             <div style={{ flex: 1, overflow: "hidden" }}>
-              <div className="app-scroll" style={{ height: "100%", overflowY: fullScreenOverlay ? "hidden" : "auto" }}>{appContent()}</div>
+              <div className="app-scroll" style={{ height: "100%", overflowY: chatLike ? "hidden" : "auto", paddingTop: 46 }}>{journeyContent()}</div>
             </div>
-            {!fullScreenOverlay && (
-              <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px 14px" }}>
-                {nav.map(([id, Icon, label]) => {
-                  const active = tab === id && !overlay;
-                  return (
-                    <button key={id} onClick={() => { setOverlay(null); setTab(id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0" }}>
-                      <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
-                      <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
-                    </button>
-                  );
-                })}
+          ) : (
+            <>
+              <div style={{ flex: 1, overflow: "hidden" }}>
+                <div className="app-scroll" style={{ height: "100%", overflowY: fullScreenOverlay ? "hidden" : "auto", paddingTop: 46 }}>{appContent()}</div>
               </div>
-            )}
-          </>
-        )}
+              {!fullScreenOverlay && (
+                <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px 22px" }}>
+                  {nav.map(([id, Icon, label]) => {
+                    const active = tab === id && !overlay;
+                    return (
+                      <button key={id} onClick={() => { setOverlay(null); setTab(id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0" }}>
+                        <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
+                        <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
 
-        {phase === "app" && badgeModal && <BadgeModal badge={badgeModal.b} index={badgeModal.i} close={() => setBadgeModal(null)} toast={toast} />}
-        {toastMsg && (
-          <div className="sheet-up" style={{ position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 70, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
-            <Zap size={12} /> {toastMsg}
-          </div>
-        )}
+          {phase === "app" && badgeModal && <BadgeModal badge={badgeModal.b} index={badgeModal.i} close={() => setBadgeModal(null)} toast={toast} />}
+          {toastMsg && (
+            <div className="sheet-up" style={{ position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 70, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <Zap size={12} /> {toastMsg}
+            </div>
+          )}
+
+          <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", width: 120, height: 4, borderRadius: 3, background: lightStatus ? "rgba(255,255,255,.65)" : "rgba(26,26,26,.28)", zIndex: 93, pointerEvents: "none" }} />
+        </div>
       </div>
 
       {DEMO && <div style={{ fontFamily: F.mono, fontSize: 10, color: "#A5A39D", marginTop: 16, letterSpacing: 1, textAlign: "center" }}>RYZN COMPLETE · SWIPE TO MATCH · ADD MENTORS/MENTEES IN-APP (MAX 3) · STAGE 1 EARNS DIRECT CONNECT</div>}

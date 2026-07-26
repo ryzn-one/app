@@ -155,6 +155,19 @@ export const HeaderRow = ({ title, onBack, right }) => (
 export const Glyph = ({ color = C.purple, size = 46 }) => (
   <svg width={size} height={size}><polygon points={`${size / 2},2 ${size - 2},${size / 2} ${size / 2},${size - 2} 2,${size / 2}`} fill={color} /></svg>
 );
+export const StatusBar = ({ dark = true }) => {
+  const color = dark ? C.ink : C.white;
+  return (
+    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 46, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", zIndex: 90, pointerEvents: "none", fontFamily: F.sans, fontWeight: 600, fontSize: 15, color, letterSpacing: -0.2 }}>
+      <span>9:41</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+        <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="6.5" width="3" height="4.5" rx="0.6" fill={color} /><rect x="4.5" y="4.5" width="3" height="6.5" rx="0.6" fill={color} /><rect x="9" y="2.3" width="3" height="8.7" rx="0.6" fill={color} /><rect x="13.5" y="0" width="3" height="11" rx="0.6" fill={color} /></svg>
+        <svg width="15" height="11" viewBox="0 0 15 11"><path d="M7.5 9.4a1.15 1.15 0 100 2.3 1.15 1.15 0 000-2.3z" fill={color} /><path d="M4.2 6.9a4.6 4.6 0 016.6 0l-1.25 1.2a2.8 2.8 0 00-4.1 0L4.2 6.9z" fill={color} /><path d="M1.5 4.3a8.3 8.3 0 0112 0l-1.25 1.25a6.5 6.5 0 00-9.5 0L1.5 4.3z" fill={color} /></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.6" y="0.6" width="20.3" height="10.8" rx="2.8" stroke={color} strokeOpacity="0.4" fill="none" /><rect x="2.1" y="2.1" width="17.3" height="7.8" rx="1.6" fill={color} /><rect x="21.6" y="4" width="1.6" height="4" rx="0.8" fill={color} fillOpacity="0.4" /></svg>
+      </div>
+    </div>
+  );
+};
 export const TypingDots = () => (
   <div style={{ display: "flex", gap: 4, padding: "12px 14px", background: C.white, border: `1px solid ${C.line}`, borderRadius: "14px 14px 14px 4px", width: "fit-content" }}>
     {[0, 1, 2].map(i => <span key={i} className="dot" style={{ width: 6, height: 6, borderRadius: 3, background: "#B3AEE6", animationDelay: `${i * 0.15}s` }} />)}
