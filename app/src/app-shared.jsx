@@ -12,7 +12,7 @@ import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
   EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, MENTOR_CONTENT, MENTOR_FEED_SEED
+  EVENT, FEED_SEED
 } from "./data.js";
 
 /* ————————————————— APP: SHARED ————————————————— */
@@ -87,13 +87,13 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
     ? (u.fresh ? [
         { icon: Check, c: C.teal, bg: C.tealTint, t: `${u.mentorName.split(" ")[0]} accepted your request`, d: "You’re matched. First session Monday 5:00 PM.", when: "Just now", to: "home" },
         { icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: "Verified and shareable. 7 more to go.", when: "Today", to: "badges" },
-        { icon: Play, c: C.purple, bg: C.purpleTint, t: "Jordan recorded a greeting for you", d: "1:24 video + starter resources on his profile. Watching earns +10 XP.", when: "Today", to: "mentorprofile" },
+        { icon: Play, c: C.purple, bg: C.purpleTint, t: "Jordan recorded a greeting for you", d: "1:24 video + starter resources in his Orbit. Watching earns +10 XP.", when: "Today", to: "orbit" },
         { icon: Flame, c: C.coral, bg: C.coralTint, t: "Streak: Day 1", d: "Today’s exercise takes 6 minutes. Keep it alive. Finishing it unlocks Direct Connect with Jordan.", when: "Today", to: "exercises" },
       ] : [
         { icon: Flame, c: C.coral, bg: C.coralTint, t: "Keep the streak alive", d: "No activity yet today. Today’s exercise takes 8 minutes.", when: "7:00 PM", to: "exercises" },
         { icon: MessageCircle, c: C.purple, bg: C.purpleTint, t: "Note from Jordan", d: "“Your headline rewrite was sharp. Bring the cold open Tuesday.”", when: "Yesterday", to: "dm" },
         { icon: Award, c: C.teal, bg: C.tealTint, t: "Badge unlocked: Momentum", d: "4 straight weeks. Priority replies from Jordan unlocked.", when: "Jul 6", to: "badges" },
-        { icon: Play, c: C.purple, bg: C.purpleTint, t: "New on Jordan’s feed", d: "“How I read a portfolio in 90 seconds” — 6:03 video. Review for +5 XP.", when: "Jul 13", to: "mentorprofile" },
+        { icon: Play, c: C.purple, bg: C.purpleTint, t: "New on Jordan’s feed", d: "“How I read a portfolio in 90 seconds” — 6:03 video. Review for +5 XP.", when: "Jul 13", to: "orbit" },
         { icon: Calendar, c: C.purple, bg: C.purpleTint, t: "Session in 24 hours", d: "Jordan Clarke · Tue Jul 21, 5:00 PM. Agenda is ready.", when: "Jul 20", to: "home" },
         { icon: TrendingUp, c: C.amber, bg: C.amberTint, t: "You moved up", d: "Now #4 in Cohort 7. R-0472 is 250 XP ahead.", when: "Jul 12", to: "cohort" },
       ])

@@ -211,12 +211,32 @@ export const EVENT = {
   ],
   past: [{ city: "Vancouver", when: "Apr ’26", n: 142 }, { city: "Montreal", when: "Jan ’26", n: 118 }],
 };
-export const MENTOR_CONTENT = [
-  { id: "greet", type: "video", title: "Hey — I’m Jordan. Start here.", mins: "1:24", views: 212, xp: 10 },
-  { id: "v1", type: "video", title: "3 questions that open any door", mins: "4:12", views: 238, xp: 5 },
-  { id: "r1", type: "resource", title: "Resume teardown checklist", kind: "PDF · 6 pages", views: 184, xp: 5 },
-  { id: "p1", type: "post", text: "Stop networking. Start asking better questions. Every warm intro this cohort landed started with curiosity, not a pitch.", views: 96, xp: 5, when: "2d" },
-  { id: "v2", type: "video", title: "How I read a portfolio in 90 seconds", mins: "6:03", views: 157, xp: 5 },
+/* ————— Orbit feed —————
+   The mentor's social layer. A mentor posts a status, a photo, a video or a
+   resource; every mentee in their Orbit reads it without spending a Direct
+   Connect message. Four kinds only — anything more and mentors stop posting.
+     status   text
+     photo    text + art seed
+     video    title + mins (+ optional text)
+     resource title + fileKind
+   `pinned` is the greeting: it always sits at the top of the Orbit. */
+export const FEED_SEED = [
+  { id: "greet", kind: "video", pinned: true, title: "Hey — I’m Jordan. Start here.",
+    text: "Ninety seconds on who I am, who I help, and how I want us to use these twelve weeks.",
+    mins: "1:24", when: "Pinned", views: 212, reactions: 34, xp: 10 },
+  { id: "p1", kind: "status",
+    text: "Stop networking. Start asking better questions. Every warm intro this cohort landed started with curiosity, not a pitch.",
+    when: "2h", views: 96, reactions: 21, xp: 5 },
+  { id: "v1", kind: "video", title: "3 questions that open any door", mins: "4:12",
+    text: "Recorded this after the Tuesday sessions — three of you asked the same thing.",
+    when: "1d", views: 238, reactions: 27, xp: 5 },
+  { id: "ph1", kind: "photo",
+    text: "Tonight’s whiteboard. The middle column is the only one that matters — that’s the part nobody writes down.",
+    when: "2d", views: 143, reactions: 18, xp: 5 },
+  { id: "r1", kind: "resource", title: "Resume teardown checklist", fileKind: "PDF · 6 pages",
+    text: "The same checklist I use on my own team’s resumes. Run yours through it before Friday.",
+    when: "4d", views: 184, reactions: 12, xp: 5 },
+  { id: "v2", kind: "video", title: "How I read a portfolio in 90 seconds", mins: "6:03",
+    when: "1w", views: 157, reactions: 9, xp: 5 },
 ];
-export const MENTOR_FEED_SEED = MENTOR_CONTENT.slice(1).map((x, i) => ({ ...x, reactions: [21, 14, 9, 11][i] || 8 }));
 

@@ -12,16 +12,18 @@ import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
   EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, MENTOR_CONTENT, MENTOR_FEED_SEED
+  EVENT, FEED_SEED
 } from "./data.js";
 
 /* ————————————————— APP: MENTEE ————————————————— */
 
-export const MenteeHome = ({ u, badges, go, openOverlay, todayDone, stage1, mentorSeats, toast }) => {
+export const MenteeHome = ({ u, badges, go, openOverlay, todayDone, stage1, mentorSeats, toast, feed = [], watched = {} }) => {
   const nextBadge = badges.find(b => !b.earned);
   const nextIdx = badges.indexOf(nextBadge);
   const todayEx = (u.fresh ? EXERCISES_FRESH : EXERCISES_RETURNING)[0];
   const msgUnlocked = stage1;
+  const latest = feed.find(p => !p.pinned);
+  const unread = feed.filter(p => (p.kind === "video" || p.kind === "resource") && !watched[p.id]).length;
   return (
     <div style={{ padding: "18px 20px 20px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -81,7 +83,7 @@ export const MenteeHome = ({ u, badges, go, openOverlay, todayDone, stage1, ment
         </Card>
       )}
 
-      <Card onClick={() => openOverlay("mentorprofile")} style={{ marginTop: 12 }}>
+      <Card onClick={() => openOverlay("orbit")} style={{ marginTop: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Monogram name={u.mentorName} size={48} bg={C.purple} color={C.white} />
           <div style={{ flex: 1 }}>
@@ -93,8 +95,27 @@ export const MenteeHome = ({ u, badges, go, openOverlay, todayDone, stage1, ment
             ? <Btn small kind="soft" onClick={(e) => { e.stopPropagation(); openOverlay("dm"); }}><MessageCircle size={14} /> Message</Btn>
             : <span style={{ fontFamily: F.mono, fontSize: 9, background: "#EFEEEA", color: C.gray, padding: "7px 10px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 5 }}><Lock size={10} /> STAGE 1</span>}
         </div>
-        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10 }}>{msgUnlocked ? "DIRECT CONNECT EARNED · TAP FOR PROFILE, GREETING + RESOURCES" : "FINISH STAGE 1 TO EARN DIRECT CONNECT · TAP FOR PROFILE + GREETING VIDEO"}</div>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10 }}>{msgUnlocked ? "DIRECT CONNECT EARNED · TAP FOR THEIR ORBIT" : "ORBIT IS OPEN NOW · FINISH STAGE 1 TO EARN DIRECT CONNECT"}</div>
       </Card>
+
+      {latest && (
+        <Card onClick={() => openOverlay("orbit")} style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Label color={C.purple}>Latest in {u.mentorName.split(" ")[0]}’s Orbit</Label>
+            {unread > 0 && <span style={{ fontFamily: F.mono, fontSize: 8.5, background: C.purple, color: C.white, padding: "3px 7px", fontWeight: 700 }}>{unread} NEW</span>}
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginTop: 10 }}>
+            <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {latest.kind === "video" ? <Play size={15} color={C.purple} /> : latest.kind === "resource" ? <FileText size={15} color={C.purple} /> : <MessageCircle size={15} color={C.purple} />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, color: C.ink, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{latest.title || latest.text}</div>
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{String(latest.when || "NOW").toUpperCase()} · TAP TO READ, REACT + EARN XP</div>
+            </div>
+            <ChevronRight size={16} color={C.gray} />
+          </div>
+        </Card>
+      )}
 
       {mentorSeats < 3 && (
         <Card onClick={() => openOverlay("addmentor")} style={{ marginTop: 12, border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
@@ -303,95 +324,6 @@ export const DMScreen = ({ name, sub, back, seed, reply, placeholder }) => {
   );
 };
 
-export const MentorPublicView = ({ u, stage1, back, watched, onWatch, openDm, go }) => {
-  const first = u.mentorName.split(" ")[0];
-  const greet = MENTOR_CONTENT[0];
-  const feed = MENTOR_CONTENT.slice(1);
-  const reviewed = feed.filter(f => watched[f.id]).length + (watched[greet.id] ? 1 : 0);
-  return (
-    <div>
-      <HeaderRow title="Your mentor" onBack={back} right={<Label color={C.teal}>{reviewed}/{feed.length + 1} REVIEWED</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <Monogram name={u.mentorName} size={58} bg={C.purple} color={C.white} radius={0} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 19, fontWeight: 700 }}>{u.mentorName}</div>
-              <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{u.mentorTitle}</div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {u.mentorTier.toUpperCase()} MENTOR</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
-            {[["847", "IMPACT"], ["11", "GRADUATED"], ["4", "COHORTS"]].map(([n, l]) => (
-              <div key={l}><div style={{ fontSize: 20, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
-            ))}
-          </div>
-        </Card>
-
-        <Card style={{ border: `1.5px solid ${C.purple}` }}>
-          <Label color={C.purple}>Greeting · recorded for new mentees</Label>
-          <div onClick={() => onWatch(greet.id, greet.xp)} style={{ marginTop: 10, background: C.ink, height: 148, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
-            <div style={{ width: 52, height: 52, borderRadius: 26, background: watched[greet.id] ? C.teal : C.purple, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {watched[greet.id] ? <Check size={22} color={C.white} strokeWidth={3} /> : <Play size={20} color={C.white} fill={C.white} />}
-            </div>
-            <span style={{ position: "absolute", bottom: 8, right: 10, fontFamily: F.mono, fontSize: 10, color: "#B5B3AE" }}>{greet.mins}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, gap: 8 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{greet.title}</div>
-            <span style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, color: watched[greet.id] ? C.teal : C.purple, whiteSpace: "nowrap" }}>{watched[greet.id] ? "WATCHED ✓" : `WATCH · +${greet.xp} XP`}</span>
-          </div>
-        </Card>
-
-        {stage1 ? (
-          <Card style={{ background: C.tealTint, border: "none" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 36, height: 36, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><MessageCircle size={16} color={C.white} /></div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: C.teal }}>Direct Connect · earned</div>
-                <div style={{ fontSize: 12, color: C.teal, opacity: 0.85 }}>Stage 1 complete. {first} replies within a day.</div>
-              </div>
-            </div>
-            <Btn style={{ marginTop: 12, background: C.teal }} onClick={openDm}><MessageCircle size={15} /> Message {first}</Btn>
-          </Card>
-        ) : (
-          <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 40, height: 40, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={16} color={C.gray} /></div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Direct Connect is earned, not given</div>
-                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Finish Stage 1 — today’s exercise — and messaging with {first} unlocks instantly. It shows you’re serious.</div>
-              </div>
-            </div>
-            <div style={{ marginTop: 12 }}><Bar pct={0} /></div>
-            <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>STAGE 1 · 0 OF 1 EXERCISES DONE</div>
-            <Btn kind="dark" style={{ marginTop: 12 }} onClick={go}>Do today’s exercise · 6 min</Btn>
-          </Card>
-        )}
-
-        <Label style={{ margin: "4px 2px 0" }}>From {first} · videos & resources · +5 XP each</Label>
-        {feed.map(item => {
-          const done = watched[item.id];
-          return (
-            <Card key={item.id}>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <div style={{ width: 40, height: 40, background: item.type === "video" ? C.purpleTint : item.type === "resource" ? C.amberTint : C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {item.type === "video" ? <Play size={16} color={C.purple} /> : item.type === "resource" ? <FileText size={16} color={C.amber} /> : <MessageCircle size={16} color={C.teal} />}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{item.title || `Note from ${first}`}</div>
-                  {item.text && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.5 }}>{item.text}</div>}
-                  <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{(item.mins || item.kind || `${item.when} ago`).toUpperCase()} · {item.views} MENTEE VIEWS</div>
-                </div>
-                <button onClick={() => onWatch(item.id, item.xp)} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", padding: "7px 10px", borderRadius: 10, background: done ? C.tealTint : C.purpleTint, color: done ? C.teal : C.purple, whiteSpace: "nowrap" }}>{done ? "✓ DONE" : `+${item.xp} XP`}</button>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 export const MenteeProfile = ({ u, badges, openBadge, openOverlay, extraMentors, onPromote, onDrop }) => (
   <div>
     <HeaderRow title="Profile" right={
@@ -428,7 +360,7 @@ export const MenteeProfile = ({ u, badges, openBadge, openOverlay, extraMentors,
           <Label color={1 + extraMentors.length >= 3 ? C.teal : C.purple}>{1 + extraMentors.length}/3 SEATS</Label>
         </div>
         <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", marginTop: 6, letterSpacing: 0.5 }}>ONE ACTIVE ENGAGEMENT AT A TIME — KEEPS IT AUTHENTIC. SUPPORTS STAY IN YOUR CORNER.</div>
-        <div onClick={() => openOverlay("mentorprofile")} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, cursor: "pointer" }}>
+        <div onClick={() => openOverlay("orbit")} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, cursor: "pointer" }}>
           <Monogram name={u.mentorName} size={40} bg={C.purple} color={C.white} />
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{u.mentorName}</div>

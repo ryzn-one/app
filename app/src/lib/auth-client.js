@@ -58,3 +58,11 @@ export async function api(path, { method = "GET", body } = {}) {
 export const validateInvite = (code) => api("/invites/validate", { method: "POST", body: { code } });
 export const redeemInvite = (code) => api("/invites/redeem", { method: "POST", body: { code } });
 export const fetchMe = () => api("/me");
+
+/* Founder console. Every one of these 403s unless the caller is an admin —
+   see lib/admin.js. */
+export const adminStats = () => api("/admin/stats");
+export const adminUsers = (params = {}) => api(`/admin/users?${new URLSearchParams(params)}`);
+export const adminInvites = () => api("/admin/invites");
+export const adminMintInvites = (body) => api("/admin/invites", { method: "POST", body });
+export const adminRevokeInvite = (code) => api("/admin/invites", { method: "PATCH", body: { code, action: "revoke" } });

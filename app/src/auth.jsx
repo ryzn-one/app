@@ -220,10 +220,25 @@ export const Register = ({ role, go, onDone }) => {
         <div style={{ flex: 1, height: 1, background: C.line }} /><Label>or</Label><div style={{ flex: 1, height: 1, background: C.line }} />
       </div>
       <Btn kind="ghost" onClick={google}><GoogleMark /> Continue with Google</Btn>
-      <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, margin: "16px 0 24px" }}>Already in? <span onClick={() => go("login")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Sign in</span></div>
+      <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, margin: "16px 0 0" }}>Already in? <span onClick={() => go("login")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Sign in</span></div>
+      <TeamsCrossSell />
     </div>
   );
 };
+
+/** Ryzn for Teams lives at #/teams in this same bundle — the Router in main.jsx
+    picks it up off the hash, so this is a plain hash change, not a page load. */
+export const TeamsCrossSell = ({ style }) => (
+  <div style={{ textAlign: "center", margin: "18px 0 26px", ...style }}>
+    <div style={{ height: 1, background: C.line, margin: "0 0 16px" }} />
+    <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5 }}>Want to build your own company orbit?</div>
+    <button onClick={() => { window.location.hash = "#/teams"; }} style={{
+      marginTop: 8, display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer",
+      background: C.purpleTint, border: "none", borderRadius: 11, padding: "9px 14px",
+      fontFamily: F.sans, fontWeight: 700, fontSize: 13, color: C.purple,
+    }}><Users size={14} /> Get Ryzn for Teams <ChevronRight size={14} /></button>
+  </div>
+);
 
 export const Login = ({ go, onDone, role }) => {
   const [show, setShow] = useState(false);

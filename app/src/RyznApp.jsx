@@ -4,7 +4,7 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search
+  X, SlidersHorizontal, RotateCcw, Search, Newspaper
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell } from "./ui.jsx";
@@ -13,14 +13,15 @@ import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
   EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, MENTOR_CONTENT, MENTOR_FEED_SEED
+  EVENT, FEED_SEED
 } from "./data.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
-import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MentorPublicView, MenteeProfile } from "./app-mentee.jsx";
+import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
 import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProfile } from "./app-mentor.jsx";
 import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
+import { MentorFeed, OrbitScreen } from "./feed.jsx";
 
 /* ————————————————— ROOT SHELL ————————————————— */
 
@@ -55,6 +56,7 @@ export default function RyznComplete() {
   const [showMidway, setShowMidway] = useState(false);
   const [justEarnedId, setJustEarnedId] = useState(null);
   const [watched, setWatched] = useState({});
+  const [reacted, setReacted] = useState({});           // mentee → posts they've hearted
   const [mentorFeed, setMentorFeed] = useState([]);
   const [greetingUp, setGreetingUp] = useState(false);
   const [extraMentors, setExtraMentors] = useState([]);
@@ -65,7 +67,7 @@ export default function RyznComplete() {
   const addUserXp = (n) => setUser(u => u && u.xp !== undefined ? { ...u, xp: u.xp + n } : u);
   const addUserImpact = (n) => setUser(u => u && u.impact !== undefined ? { ...u, impact: u.impact + n } : u);
 
-  const resetAppState = () => { setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false); setPickedUp(false); setMidwayEarned(false); setShowMidway(false); setJustEarnedId(null); setWatched({}); setExtraMentors([]); setMenteeAdds(0); };
+  const resetAppState = () => { setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false); setPickedUp(false); setMidwayEarned(false); setShowMidway(false); setJustEarnedId(null); setWatched({}); setReacted({}); setExtraMentors([]); setMenteeAdds(0); };
 
   const restart = (r = role) => { setRole(r); setPhase("journey"); setStage("splash"); setXp(0); setUser(null); resetAppState(); };
 
@@ -77,7 +79,7 @@ export default function RyznComplete() {
       mentorName: "Jordan Clarke", mentorTitle: "VP of Product, Harbourline", mentorTier: "Pathfinder",
       earned: { goal: "Jun 8", first: "Jun 12", momentum: "Jul 6" },
     });
-    else { setUser({ fresh: false, impact: 847, tier: "Pathfinder", mentorRank: 12, cohort: RETURNING_MENTEES.map(m => ({ ...m, stage1: true })) }); setMentorFeed(MENTOR_FEED_SEED); setGreetingUp(true); }
+    else { setUser({ fresh: false, impact: 847, tier: "Pathfinder", mentorRank: 12, cohort: RETURNING_MENTEES.map(m => ({ ...m, stage1: true })) }); setMentorFeed(FEED_SEED.filter(p => !p.pinned)); setGreetingUp(true); }
     setPhase("app");
   };
   const enterAsFreshMentee = (mentorFullName) => {
@@ -121,8 +123,18 @@ export default function RyznComplete() {
   /* — gamified content + connect — */
   const stage1 = role === "mentee" && user ? (user.fresh ? todayDone : true) : true;
   const watchContent = (id, xpGain) => { if (watched[id]) return; setWatched(w => ({ ...w, [id]: true })); addUserXp(xpGain); toast(`+${xpGain} XP · reviewed`); };
-  const publishPost = (type, t) => { setMentorFeed(f => [{ id: "u" + Date.now(), type, title: type === "post" ? undefined : t, text: type === "post" ? t : undefined, views: 0, reactions: 0, mins: type === "video" ? "0:00" : undefined, kind: type === "resource" ? "PDF" : undefined, isNew: true }, ...f]); addUserImpact(10); toast("+10 Impact · live on your feed"); };
-  const uploadGreeting = () => { if (greetingUp) return; setGreetingUp(true); addUserImpact(15); toast("+15 Impact · greeting live for new mentees"); };
+  const publishPost = ({ kind, text, title }) => {
+    setMentorFeed(f => [{
+      id: "u" + Date.now(), kind, text, title: title || undefined,
+      mins: kind === "video" ? "0:00" : undefined,
+      fileKind: kind === "resource" ? "FILE" : undefined,
+      when: "now", views: 0, reactions: 0, xp: 5, isNew: true,
+    }, ...f]);
+    addUserImpact(10);
+    toast(`+10 Impact · live in ${user?.cohort?.length || 0} mentee orbit${user?.cohort?.length === 1 ? "" : "s"}`);
+  };
+  const reactToPost = (id) => { if (reacted[id]) return; setReacted(r => ({ ...r, [id]: true })); toast("Reaction sent · your mentor sees it"); };
+  const uploadGreeting = () => { if (greetingUp) return; setGreetingUp(true); addUserImpact(15); toast("+15 Impact · greeting pinned to your Orbit"); };
   const addMentor = (name) => {
     setExtraMentors(a => (a.includes(name) || 1 + a.length >= 3) ? a : [...a, name]);
     addUserXp(15);
@@ -146,8 +158,7 @@ export default function RyznComplete() {
   /* — notification deep links — */
   const navTo = (to) => {
     setOverlay(null);
-    if (to === "cohort" || to === "dm" || to === "mentorprofile") setTimeout(() => setOverlay(to), 60);
-    else if (to === "sessions" || to === "board") setTab(to);
+    if (["cohort", "dm", "orbit", "board"].includes(to)) setTimeout(() => setOverlay(to), 60);
     else setTab(to);
   };
 
@@ -175,7 +186,8 @@ export default function RyznComplete() {
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
     if (overlay === "addmentor") return <AddMentorScreen candidates={MENTOR_MATCHES.filter(x => x.name !== user.mentorName && !extraMentors.includes(x.name))} used={1 + extraMentors.length} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={MENTEE_POOL.filter(x => !user.cohort.some(c => c.name === x.name))} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} />;
-    if (overlay === "mentorprofile") return <MentorPublicView u={user} stage1={stage1} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} />;
+    if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={FEED_SEED} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} />;
+    if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
     if (overlay === "dm") return <DMScreen name={user.mentorName} sub="DIRECT CONNECT · EARNED AT STAGE 1" back={() => setOverlay(null)} placeholder={`Message ${user.mentorName.split(" ")[0]}…`}
       seed={user.fresh
         ? [{ who: "them", text: "Welcome aboard, Alex. Read your three goals — strong start. I’m here before Monday if anything comes up." }]
@@ -193,7 +205,7 @@ export default function RyznComplete() {
     if (!user) return null;
     if (role === "mentee") {
       switch (tab) {
-        case "home": return <MenteeHome u={user} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={1 + extraMentors.length} toast={toast} />;
+        case "home": return <MenteeHome u={user} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={1 + extraMentors.length} toast={toast} feed={FEED_SEED} watched={watched} />;
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} pickedUp={pickedUp} onPickup={pickup} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} />;
@@ -203,16 +215,16 @@ export default function RyznComplete() {
     }
     switch (tab) {
       case "home": return <MentorDash u={user} openOverlay={setOverlay} addsLeft={3 - menteeAdds} />;
+      case "feed": return <MentorFeed u={user} name="Jordan Clarke" feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
       case "sessions": return <MentorSessions u={user} toast={(m) => { toast(m); if (m.startsWith("+15")) addUserImpact(15); }} />;
-      case "board": return <MentorBoard u={user} />;
       case "meets": return <MeetsScreen role={role} u={user} toast={toast} />;
-      case "profile": return <MentorProfile u={user} openOverlay={setOverlay} toast={toast} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
+      case "profile": return <MentorProfile u={user} openOverlay={setOverlay} toast={toast} feed={mentorFeed} go={setTab} greetingUp={greetingUp} />;
       default: return null;
     }
   };
 
   const menteeNav = [["home", Home, "Home"], ["exercises", Zap, "Exercises"], ["badges", Award, "Badges"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
-  const mentorNav = [["home", LayoutGrid, "Cohort"], ["sessions", Calendar, "Sessions"], ["board", TrendingUp, "Ranking"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
+  const mentorNav = [["home", LayoutGrid, "Cohort"], ["feed", Newspaper, "Feed"], ["sessions", Calendar, "Sessions"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
   const nav = role === "mentee" ? menteeNav : mentorNav;
   const isDesktop = useIsDesktop();
 

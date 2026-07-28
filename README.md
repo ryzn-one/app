@@ -7,6 +7,11 @@ Marketing site plus the Ryzn app, served from the same origin:
 | `/` | Landing page |
 | `/mentor-invite.html` | Mentor invitation page |
 | `/app/` | Vite + React app |
+| `/app/#/teams` | Ryzn for Teams (org console + seats) |
+| `/app/#/admin` | Founder console — analytics, invites, people |
+
+All three are the same bundle on the same origin. See `docs/BACKEND.md` for how
+the founder console is gated.
 
 ## Develop
 

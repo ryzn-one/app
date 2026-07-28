@@ -13,7 +13,7 @@ import {
   BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
   MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
   EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, MENTOR_CONTENT, MENTOR_FEED_SEED
+  EVENT, FEED_SEED
 } from "./data.js";
 
 /* ————————————————— APP: MENTOR ————————————————— */
@@ -29,12 +29,15 @@ export const MentorDash = ({ u, openOverlay, addsLeft }) => {
       </div>
       <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
     </div>
-    <Card style={{ marginTop: 16, background: C.ink, border: "none", color: C.white }}>
+    <Card onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <Label color="#9C93E8">Impact Score</Label>
           <div style={{ fontSize: 52, fontWeight: 700, letterSpacing: -2, color: "#B7AFF2", lineHeight: 1.05, marginTop: 4 }}>{u.impact}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 10, color: "#8B8985", marginTop: 4 }}>{u.fresh ? `▲ ${u.impact} THIS QUARTER · RANK #${u.mentorRank} OF 214` : "▲ 63 THIS QUARTER · RANK #12 OF 214"}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: "#8B8985", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+            {u.fresh ? `▲ ${u.impact} THIS QUARTER · RANK #${u.mentorRank} OF 214` : "▲ 63 THIS QUARTER · RANK #12 OF 214"}
+            <ChevronRight size={11} color="#8B8985" />
+          </div>
         </div>
         <div style={{ textAlign: "center" }}>
           <div style={{ width: 64, height: 64, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center" }}><Crown size={28} color={C.white} /></div>
@@ -202,13 +205,13 @@ export const MentorSessions = ({ u, toast }) => {
   );
 };
 
-export const MentorBoard = ({ u }) => {
+export const MentorBoard = ({ u, back }) => {
   const rows = u.fresh
     ? [...MENTOR_BOARD_TOP, { rank: 12, name: "Jordan Reeve", tier: "Pathfinder", score: 847 }, { gap: true }, { rank: u.mentorRank, name: "Jordan Clarke", tier: "Scout", score: u.impact, me: true }, { rank: u.mentorRank + 1, name: "Grace Liu", tier: "Scout", score: Math.max(40, u.impact - 60) }]
     : [...MENTOR_BOARD_TOP, { rank: 12, name: "Jordan Clarke", tier: "Pathfinder", score: 847, me: true }, { rank: 13, name: "Omar Farah", tier: "Pathfinder", score: 811 }, { rank: 14, name: "Grace Liu", tier: "Scout", score: 763 }];
   return (
     <div>
-      <HeaderRow title="Mentor leaderboard" right={<Label>Q3 2026</Label>} />
+      <HeaderRow title="Mentor leaderboard" onBack={back} right={<Label>Q3 2026</Label>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.line}` }}><Label>Quarterly ranking · by Impact Score</Label></div>
@@ -249,10 +252,8 @@ export const MentorBoard = ({ u }) => {
   );
 };
 
-export const MentorProfile = ({ u, openOverlay, toast, feed, publish, greetingUp, uploadGreeting }) => {
+export const MentorProfile = ({ u, openOverlay, toast, feed, go, greetingUp }) => {
   const [view, setView] = useState(u.fresh ? "studio" : "preview");
-  const [ptype, setPtype] = useState("video");
-  const [draft, setDraft] = useState("");
   const checklist = [
     ["Greeting video for new mentees", greetingUp, "+15 Impact"],
     ["Why-I-mentor statement", true, "done in setup"],
@@ -260,15 +261,13 @@ export const MentorProfile = ({ u, openOverlay, toast, feed, publish, greetingUp
     ["3+ pieces of content", feed.length >= 3, "3× more requests"],
   ];
   const strength = checklist.reduce((a, [, ok]) => a + (ok ? 25 : 0), 0);
-  const publishDraft = () => { const t = draft.trim(); if (!t) return; publish(ptype, t); setDraft(""); };
-  const meta = { video: [Play, C.purple, C.purpleTint], resource: [FileText, C.amber, C.amberTint], post: [MessageCircle, C.teal, C.tealTint] };
   return (
     <div>
       <HeaderRow title="Your profile" right={
         <button onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
-          {[["studio", "Content studio"], ["preview", "Public view"]].map(([id, l]) => (
+          {[["studio", "Profile strength"], ["preview", "Public view"]].map(([id, l]) => (
             <button key={id} onClick={() => setView(id)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray }}>{l}</button>
           ))}
         </div>
@@ -316,64 +315,18 @@ export const MentorProfile = ({ u, openOverlay, toast, feed, publish, greetingUp
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 12 }}>STRONG PROFILES GET 3× MORE MENTEE REQUESTS</div>
           </Card>
 
-          <Card style={{ border: greetingUp ? `1.5px solid ${C.teal}` : `1.5px dashed ${C.purple}` }}>
-            <Label color={greetingUp ? C.teal : C.purple}>Greeting video · first thing new mentees see</Label>
-            {greetingUp ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-                <div style={{ width: 64, height: 44, background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Play size={16} color={C.white} fill={C.white} /></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13.5 }}>Hey — I’m Jordan. Start here.</div>
-                  <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 2 }}>1:24 · 212 VIEWS · LIVE</div>
-                </div>
-                <span style={{ fontFamily: F.mono, fontSize: 9, background: C.tealTint, color: C.teal, padding: "5px 8px", fontWeight: 700 }}>LIVE ✓</span>
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>60–90 seconds. Who you are, who you help, one honest reason you’re here. Mentees who watch a greeting are twice as likely to finish Stage 1.</div>
-                <Btn style={{ marginTop: 12 }} onClick={uploadGreeting}><Upload size={15} /> Record or upload · +15 Impact</Btn>
-              </>
-            )}
-          </Card>
-
-          <Card>
+          <Card style={{ border: `1.5px solid ${feed.length ? C.teal : C.purple}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Label>New post</Label><Label color={C.teal}>+10 IMPACT EACH</Label>
+              <Label color={feed.length ? C.teal : C.purple}>Your feed · {feed.length} live</Label>
+              <Label color={C.teal}>+10 IMPACT EACH</Label>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              {[["video", Play, "Video"], ["resource", FileText, "Resource"], ["post", MessageCircle, "Post"]].map(([id, Icon, l]) => (
-                <button key={id} onClick={() => setPtype(id)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${ptype === id ? C.purple : C.line}`, background: ptype === id ? C.purpleTint : C.white, color: ptype === id ? C.purple : C.gray, fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Icon size={13} />{l}</button>
-              ))}
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
+              {greetingUp
+                ? "Everything you post lands in every mentee’s Orbit — no meeting required. Status, photo, video or resource."
+                : "Start with a greeting video, then post status, photos, videos and resources. It all lands in your mentees’ Orbit."}
             </div>
-            <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
-              placeholder={ptype === "video" ? "Video title — e.g. “How to ask for an intro”" : ptype === "resource" ? "Resource title — e.g. “Cover letter template”" : "Say the thing. Your cohort reads every word."}
-              style={{ width: "100%", marginTop: 10, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 13.5, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
-            <Btn style={{ marginTop: 10 }} disabled={!draft.trim()} onClick={publishDraft}>Publish to your feed</Btn>
+            <Btn style={{ marginTop: 12 }} onClick={() => go("feed")}><Upload size={15} /> {feed.length ? "Open your feed" : "Post your first update"}</Btn>
           </Card>
-
-          <Label style={{ margin: "4px 2px 0" }}>Your feed · {feed.length} live</Label>
-          {feed.length === 0 && (
-            <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Nothing published yet</div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4 }}>Your first post appears on your public profile the moment it’s live.</div>
-            </Card>
-          )}
-          {feed.map(item => {
-            const [Icon, c, bg] = meta[item.type] || meta.post;
-            return (
-              <Card key={item.id}>
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <div style={{ width: 38, height: 38, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={15} color={c} /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{item.title || item.text}</div>
-                      {item.isNew && <span style={{ fontFamily: F.mono, fontSize: 8, background: C.purple, color: C.white, padding: "3px 6px", fontWeight: 700 }}>NEW</span>}
-                    </div>
-                    <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{(item.mins || item.kind || "POST").toUpperCase()} · {item.views} VIEWS · {item.reactions} REACTIONS</div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
         </>)}
       </div>
     </div>

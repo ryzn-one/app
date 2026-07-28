@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import RyznComplete from "./RyznApp.jsx";
 import RyznTeams from "./teams/RyznTeams.jsx";
+import RyznAdmin from "./admin/RyznAdmin.jsx";
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { err: null }; }
@@ -21,7 +22,10 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-/* Routes: /app/ = consumer · /app/#/teams = Ryzn for Teams */
+/* Routes — one origin, one bundle, three surfaces:
+     /app/          consumer app
+     /app/#/teams   Ryzn for Teams (org console + seats)
+     /app/#/admin   Ryzn founder console */
 function Router() {
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
@@ -29,6 +33,7 @@ function Router() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+  if (hash.startsWith("#/admin")) return <RyznAdmin />;
   return hash.startsWith("#/teams") ? <RyznTeams /> : <RyznComplete />;
 }
 

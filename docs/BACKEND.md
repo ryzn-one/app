@@ -8,15 +8,45 @@ lib/db.js          pooled Mongo client (cached on globalThis — see note below)
 lib/auth.js        Better Auth config: email+password, Google, OTP reset
 lib/email.js       Resend sender; logs to console when no API key
 lib/http.js        json/fail helpers, withUser() guard, ageFrom()
+lib/admin.js       withAdmin() guard + invite code minting (founder console)
 lib/ratelimit.js   fixed-window limiter backed by Mongo
 
 api/auth/[...all].js   every Better Auth endpoint
 api/me.js              GET  — session + profile (bootstraps profile on first call)
 api/invites/validate.js POST — read-only code check (unauthenticated, rate-limited)
 api/invites/redeem.js   POST — atomic single-use claim; only path to role=mentor
+api/admin/stats.js     GET   — platform counts, 14-day signups, activation funnel
+api/admin/users.js     GET   — people table, search + role filter (read-only)
+api/admin/invites.js   GET/POST/PATCH — list, mint, revoke mentor codes
 
 scripts/db-setup.mjs   indexes + invite seeding (idempotent)
 ```
+
+## The founder console
+
+`/app/#/admin` renders `src/admin/RyznAdmin.jsx`: platform analytics, the invite
+Roster, and the people table. It is a page inside the same app — same origin,
+same session cookie, same deploy as `/app/` and `/app/#/teams`. Deliberately not
+a subdomain: a sibling host would not receive the `ryzn.one` session cookie
+without rescoping cookies for the whole platform.
+
+Access is decided **server-side on every `/api/admin/*` call** by `lib/admin.js`.
+Signing in on the console's own form proves identity only — it grants nothing.
+A caller passes if their account has `role: "admin"` **or** their email is listed
+in `ADMIN_EMAILS`. The env var is the bootstrap: nothing can set `role: "admin"`
+until an admin already exists.
+
+The console mints and revokes invite codes. It deliberately cannot edit users or
+assign the mentor role — that still happens only in `api/invites/redeem.js`, when
+a mentor claims a code themselves. Keep it that way.
+
+Like the rest of the app, the console honours `VITE_API_MODE`. Without
+`live` it renders clearly-labelled **SAMPLE DATA** and calls no endpoint, so the
+page is explorable with no database — and exposes nothing if someone finds the
+URL. Turn it on with real analytics by setting `VITE_API_MODE=live`.
+
+To turn it on for real: set `ADMIN_EMAILS` and `VITE_API_MODE=live` in the
+Vercel project. Nothing else — no domain, no DNS, no second project.
 
 ## Collections
 
