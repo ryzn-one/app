@@ -6,15 +6,23 @@ import { rateLimit } from "../../lib/ratelimit.js";
 /**
  * POST /api/invites/redeem  { code }   (authenticated)
  *
- * Promotes the caller to role="mentor". This is the only path to that role —
- * `role` is input:false in the Better Auth config, so it can never be set from
- * the client.
+ * Promotes the caller to the role recorded ON THE INVITE — "mentor" by default,
+ * or "admin" for codes minted as admin invites in the founder console. This is
+ * the only path to either role: `role` is input:false in the Better Auth config,
+ * so a client can never send one, and the role here comes from a document only
+ * an existing admin could have written.
  *
  * The claim is a single atomic findOneAndUpdate guarded on `redeemedBy: null`.
  * Two people racing the same code means exactly one matches the filter and
  * wins; the loser gets `already_used`. Doing this as read-then-write would let
  * both through.
  */
+
+// Whitelist, not passthrough: a malformed or hand-edited invite document must
+// never be able to name an arbitrary role.
+const GRANTABLE = new Set(["mentor", "admin"]);
+const roleOf = (invite) => (GRANTABLE.has(invite?.role) ? invite.role : "mentor");
+
 async function handler(request, user) {
   if (request.method !== "POST") return fail(405, "method_not_allowed", "Use POST.");
 
@@ -35,8 +43,12 @@ async function handler(request, user) {
   const invites = db.collection(collections.invites);
   const normalized = code.trim().toUpperCase();
 
-  if (user.role === "mentor") {
-    return json({ ok: true, alreadyMentor: true });
+  // Read-only peek, purely to avoid burning a single-use code on someone who
+  // already holds what it grants. The claim below is still the atomic one.
+  const peek = await invites.findOne({ code: normalized }, { projection: { role: 1 } });
+  const grants = roleOf(peek);
+  if (user.role === grants) {
+    return json({ ok: true, already: true, role: grants });
   }
 
   const claimed = await invites.findOneAndUpdate(
@@ -60,29 +72,37 @@ async function handler(request, user) {
     return fail(410, "expired", "That invitation has expired.");
   }
 
+  // Re-read the role off the claimed document rather than trusting the peek —
+  // the peek and the claim are two round trips, and only this one is atomic.
+  const granted = roleOf(claimed);
+
   await db.collection(collections.user).updateOne(
     { _id: new ObjectId(user.id) },
-    { $set: { role: "mentor", invitedBy: claimed.createdBy ?? null, updatedAt: new Date() } }
+    { $set: { role: granted, invitedBy: claimed.createdBy ?? null, updatedAt: new Date() } }
   );
 
-  // Reshape the profile for the mentor side of the app.
   await db.collection(collections.profiles).updateOne(
     { userId: user.id },
-    {
-      $set: {
-        role: "mentor",
-        impact: 0,
-        tier: "Scout",
-        cohort: [],
-        greetingUploaded: false,
-        updatedAt: new Date(),
-      },
-      $unset: { mentorUserId: "", supportMentorIds: "", earned: "", xp: "", rank: "", week: "", streak: "" },
-    },
+    granted === "mentor"
+      // Reshape the profile for the mentor side of the app.
+      ? {
+          $set: {
+            role: "mentor",
+            impact: 0,
+            tier: "Scout",
+            cohort: [],
+            greetingUploaded: false,
+            updatedAt: new Date(),
+          },
+          $unset: { mentorUserId: "", supportMentorIds: "", earned: "", xp: "", rank: "", week: "", streak: "" },
+        }
+      // Admins are staff, not participants — flag the role and leave the rest
+      // of their profile alone so they keep whatever they had.
+      : { $set: { role: granted, updatedAt: new Date() } },
     { upsert: true }
   );
 
-  return json({ ok: true, role: "mentor" });
+  return json({ ok: true, role: granted });
 }
 
 export default { fetch: withUser(handler) };

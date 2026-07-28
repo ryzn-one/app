@@ -7,7 +7,7 @@ import { C, F } from "../theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, Bar, Glyph } from "../ui.jsx";
 import { useIsDesktop } from "../useIsDesktop.js";
 import {
-  LIVE, signIn, signOut, messageFor,
+  LIVE, signIn, signOut, messageFor, redeemInvite,
   adminStats, adminUsers, adminInvites, adminMintInvites, adminRevokeInvite,
 } from "../lib/auth-client.js";
 import { buildInviteUrl, copyText } from "../teams/store.js";
@@ -80,10 +80,19 @@ const Chip = ({ children, c = C.purple, bg = C.purpleTint }) => (
 );
 
 /* ————— sign-in gate ————— */
+/** An admin invite code arriving as /app/#/admin?code=… — prefilled so the
+    recipient only has to sign in. */
+const codeFromHash = () => {
+  const q = (typeof window !== "undefined" ? window.location.hash : "").split("?")[1] || "";
+  return new URLSearchParams(q).get("code") || "";
+};
+
 function AdminGate({ onIn, error }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [show, setShow] = useState(false);
+  const [code, setCode] = useState(codeFromHash);
+  const [showCode, setShowCode] = useState(() => Boolean(codeFromHash()));
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -93,6 +102,9 @@ function AdminGate({ onIn, error }) {
     try {
       const { error: e } = await signIn.email({ email: email.trim(), password: pw });
       if (e) throw e;
+      // Redeeming is a separate authenticated call: sign-in proves who you are,
+      // the code is what promotes you. Server-side, atomic, single-use.
+      if (code.trim()) await redeemInvite(code.trim());
       onIn();
     } catch (e) {
       setErr(messageFor(e, "Couldn’t sign you in."));
@@ -100,7 +112,7 @@ function AdminGate({ onIn, error }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <div style={{ fontFamily: F.sans, color: C.ink, minHeight: "100vh", background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: "min(94vw, 400px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Glyph color={C.purple} size={30} />
@@ -117,6 +129,25 @@ function AdminGate({ onIn, error }) {
           <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)}
             right={<button onClick={() => setShow(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>{show ? <EyeOff size={16} color={C.gray} /> : <Eye size={16} color={C.gray} />}</button>} />
+
+          {showCode ? (
+            <div style={{ marginTop: 14 }}>
+              <Label color={C.amber}>Admin invite code</Label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.amberTint, border: `1px solid ${C.amber}`, borderRadius: 12, marginTop: 7, padding: 12 }}>
+                <Shield size={15} color={C.amber} />
+                <input value={code} onChange={e => setCode(e.target.value)} placeholder="RYZ-INV-…" autoComplete="off" spellCheck={false}
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: F.mono, fontSize: 13, color: C.ink, minWidth: 0, textTransform: "uppercase" }} />
+              </div>
+              <div style={{ fontSize: 11.5, color: C.gray, marginTop: 7, lineHeight: 1.5 }}>
+                Sign in with your normal Ryzn account — the code promotes it. One use only.
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowCode(true)} style={{ background: "none", border: "none", cursor: "pointer", padding: "12px 0 0", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: C.purple }}>
+              Have an admin invite code?
+            </button>
+          )}
+
           <FormError>{err || error}</FormError>
           <Btn style={{ marginTop: 18 }} disabled={busy} onClick={submit}><Shield size={15} /> {busy ? "Checking…" : "Enter the console"}</Btn>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", textAlign: "center", marginTop: 14, letterSpacing: 0.6 }}>
@@ -215,30 +246,50 @@ function Overview({ stats }) {
 
 /* ————— invites ————— */
 function Invites({ rows, onMint, onRevoke, toast }) {
+  const [role, setRole] = useState("mentor");
   const [count, setCount] = useState(5);
   const [days, setDays] = useState(90);
-  const [note, setNote] = useState("Founding cohort");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const isAdminCode = role === "admin";
 
   const mint = async () => {
     setBusy(true);
-    try { await onMint({ count: Number(count), expiresDays: Number(days), note }); }
+    try { await onMint({ role, count: Number(count), expiresDays: Number(days), note }); }
     finally { setBusy(false); }
   };
 
-  const linkFor = (code) => buildInviteUrl({ code, email: "", role: "Mentor", orgName: "Ryzn", adminName: "Bilal Shafi" });
+  // Mentor codes open the branded claim page. Admin codes go to the console's
+  // own sign-in, where the code field promotes an existing account.
+  const linkFor = (iv) => iv.role === "admin"
+    ? `${window.location.origin}/app/#/admin?code=${encodeURIComponent(iv.code)}`
+    : buildInviteUrl({ code: iv.code, email: "", role: "Mentor", orgName: "Ryzn", adminName: "Bilal Shafi" });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Label color={C.purple}>Mint mentor invites</Label>
-          <Label>SINGLE-USE · TIED TO ONE MENTOR</Label>
+          <Label color={isAdminCode ? C.amber : C.purple}>Mint invites</Label>
+          <Label>SINGLE-USE · ONE PERSON PER CODE</Label>
         </div>
+        <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4, marginTop: 10 }}>
+          {[["mentor", "Mentor"], ["admin", "Admin"]].map(([id, l]) => (
+            <button key={id} onClick={() => { setRole(id); setCount(id === "admin" ? 1 : 5); }} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: role === id ? C.white : "transparent", color: role === id ? C.ink : C.gray }}>{l}</button>
+          ))}
+        </div>
+        {isAdminCode && (
+          <div style={{ background: C.amberTint, borderRadius: 12, padding: "11px 12px", marginTop: 10, display: "flex", gap: 9 }}>
+            <Shield size={15} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
+              An admin code hands over this whole console. Send it to one person, directly — never in a shared channel.
+              They sign in at <span style={{ fontFamily: F.mono, fontSize: 11.5 }}>/app/#/admin</span> with their own Ryzn account and paste it.
+            </div>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 12 }}>
           <div>
             <Label>How many</Label>
-            <input type="number" min={1} max={50} value={count} onChange={e => setCount(e.target.value)}
+            <input type="number" min={1} max={isAdminCode ? 5 : 50} value={count} onChange={e => setCount(e.target.value)}
               style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.mono, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
           </div>
           <div>
@@ -248,13 +299,17 @@ function Invites({ rows, onMint, onRevoke, toast }) {
           </div>
           <div style={{ gridColumn: "span 2", minWidth: 0 }}>
             <Label>Note</Label>
-            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Founding cohort"
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder={isAdminCode ? "Founder access" : "Founding cohort"}
               style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
           </div>
         </div>
-        <Btn style={{ marginTop: 12 }} disabled={busy} onClick={mint}><Plus size={15} /> {busy ? "Minting…" : `Mint ${count} code${Number(count) === 1 ? "" : "s"}`}</Btn>
+        <Btn style={{ marginTop: 12, ...(isAdminCode ? { background: C.amber } : null) }} disabled={busy} onClick={mint}>
+          <Plus size={15} /> {busy ? "Minting…" : `Mint ${count} ${role} code${Number(count) === 1 ? "" : "s"}`}
+        </Btn>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10, lineHeight: 1.7 }}>
-          EACH CODE OPENS /MENTOR-INVITE.HTML WITH IT PRE-FILLED. CLAIMING IT IS THE ONLY WAY TO BECOME A MENTOR.
+          {isAdminCode
+            ? "CLAIMING AN ADMIN CODE IS THE ONLY WAY TO JOIN THIS CONSOLE WITHOUT TOUCHING SERVER CONFIG."
+            : "EACH CODE OPENS /MENTOR-INVITE.HTML WITH IT PRE-FILLED. CLAIMING IT IS THE ONLY WAY TO BECOME A MENTOR."}
         </div>
       </Card>
 
@@ -268,10 +323,11 @@ function Invites({ rows, onMint, onRevoke, toast }) {
           <div key={iv.code} style={{ padding: "12px 16px", borderBottom: i < rows.length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontFamily: F.mono, fontSize: 11.5, fontWeight: 700, flex: 1, minWidth: 170 }}>{iv.code}</span>
+              {iv.role === "admin" && <Chip c={C.amber} bg={C.amberTint}>ADMIN</Chip>}
               <Chip c={STATE_COLOR[iv.state]} bg={iv.state === "claimed" ? C.tealTint : iv.state === "revoked" ? C.coralTint : iv.state === "expired" ? C.surface : C.purpleTint}>{iv.state.toUpperCase()}</Chip>
-              <button onClick={() => copyText(linkFor(iv.code)).then(() => toast("Invite link copied"))} title="Copy invite link"
+              <button onClick={() => copyText(linkFor(iv)).then(() => toast(iv.role === "admin" ? "Admin link copied — send it directly" : "Invite link copied"))} title="Copy invite link"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Copy size={13} color={C.gray} /></button>
-              <button onClick={() => window.open(linkFor(iv.code), "_blank", "noopener")} title="Open invite page"
+              <button onClick={() => window.open(linkFor(iv), "_blank", "noopener")} title="Open invite page"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><ExternalLink size={13} color={C.gray} /></button>
               {iv.state === "open" && (
                 <button onClick={() => onRevoke(iv.code)} title="Revoke"
@@ -386,18 +442,18 @@ export default function RyznAdmin() {
       (!needle || u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)));
   }, [people, q, role]);
 
-  const mint = async ({ count, expiresDays, note }) => {
+  const mint = async ({ role: kind, count, expiresDays, note }) => {
     if (!LIVE) {
       const made = Array.from({ length: count }, (_, i) => ({
         code: `RYZ-INV-2026-SAMPLE${String(i + 1).padStart(2, "0")}`,
-        state: "open", note, createdAt: new Date(), expiresAt: new Date(Date.now() + expiresDays * 864e5), claimedBy: null,
+        state: "open", role: kind, note, createdAt: new Date(), expiresAt: new Date(Date.now() + expiresDays * 864e5), claimedBy: null,
       }));
       setInvites(v => [...made, ...v]);
-      toast(`${count} sample code${count === 1 ? "" : "s"} minted`);
+      toast(`${count} sample ${kind} code${count === 1 ? "" : "s"} minted`);
       return;
     }
     try {
-      const { created } = await adminMintInvites({ count, expiresDays, note });
+      const { created } = await adminMintInvites({ role: kind, count, expiresDays, note });
       const { invites: fresh } = await adminInvites();
       setInvites(fresh);
       copyText(created.join("\n"));
@@ -459,16 +515,24 @@ export default function RyznAdmin() {
     settings: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Card>
-          <Label color={C.amber}>Who can open this console</Label>
+          <Label color={C.amber}>Adding another admin</Label>
           <div style={{ fontSize: 13.5, lineHeight: 1.6, marginTop: 8 }}>
-            Two gates, checked server-side on every <span style={{ fontFamily: F.mono, fontSize: 12 }}>/api/admin/*</span> call:
+            Go to <b>Invites → Admin</b>, mint one code, send it to them directly. They sign in here with their own
+            Ryzn account, paste the code, and they’re in. No config, no redeploy, no waiting on anyone.
+          </div>
+          <Btn kind="soft" style={{ marginTop: 14 }} onClick={() => setNav("invites")}><Send size={15} /> Mint an admin code</Btn>
+        </Card>
+        <Card>
+          <Label>How access is actually decided</Label>
+          <div style={{ fontSize: 13.5, lineHeight: 1.6, marginTop: 8 }}>
+            Checked server-side on every <span style={{ fontFamily: F.mono, fontSize: 12 }}>/api/admin/*</span> call. A caller passes if:
           </div>
           <ul style={{ margin: "10px 0 0 18px", padding: 0, fontSize: 13.5, lineHeight: 1.7, color: C.gray }}>
-            <li>an account with <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>role: "admin"</span>, or</li>
-            <li>an email listed in the <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>ADMIN_EMAILS</span> environment variable.</li>
+            <li>their account has <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>role: "admin"</span> — set by claiming an admin code, or</li>
+            <li>their email is in <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>ADMIN_EMAILS</span> — the break-glass path, for when nobody can get in.</li>
           </ul>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 12, lineHeight: 1.6 }}>
-            Signing in here does not grant access — it only proves who you are. Anyone else lands on a 403.
+            Signing in does not grant access — it only proves who you are. Everyone else gets a 403.
           </div>
         </Card>
         <Card>
