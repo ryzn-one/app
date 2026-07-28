@@ -8,26 +8,24 @@ import {
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
-import {
-  BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
-  MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
-  EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, FEED_SEED
-} from "./data.js";
+import { BADGE_DEFS } from "./data.js";
 
 /* ————————————————— APP: SHARED ————————————————— */
 
-export const MeetsScreen = ({ role, u, toast }) => (
+/* Mentor Meets. The whole screen used to describe an event that has not been
+   scheduled: a dated Toronto venue with a live countdown, a three-person
+   speaker lineup, a confirmed ticket with a QR and a seat number, and two past
+   events with attendance figures. None of it existed. What remains is the
+   badge-gated eligibility rule, which is real program design. */
+export const MeetsScreen = ({ role, u, name, toast }) => (
   <div>
     <HeaderRow title="Mentor Meets" right={<Label color={C.coral}>QUARTERLY</Label>} />
     <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ background: C.coral, border: "none", color: C.white, padding: 20 }}>
         <Label color="#F6D3C4">Next event</Label>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>{EVENT.city}</div>
-        <div style={{ fontSize: 13.5, marginTop: 2, opacity: 0.9 }}>{EVENT.date} · {EVENT.venue}</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 16 }}>
-          <span style={{ fontFamily: F.mono, fontSize: 34, fontWeight: 700 }}>{EVENT.days}</span>
-          <span style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 1.5 }}>DAYS OUT · LIMITED SEATS</span>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>Not scheduled yet</div>
+        <div style={{ fontSize: 13.5, marginTop: 6, opacity: 0.92, lineHeight: 1.5 }}>
+          Meets run quarterly, in person, once the founding cohort is underway. Date and city land here — and in your inbox — as soon as they're set.
         </div>
       </Card>
       {role === "mentee" ? (
@@ -35,76 +33,39 @@ export const MeetsScreen = ({ role, u, toast }) => (
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={18} color={C.gray} /></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Your ticket is locked — for now</div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Unlocks with <b>Mentor Approved</b> at Week 8. You’re in Week {u.week}. {8 - u.week} week{8 - u.week === 1 ? "" : "s"} of showing up is all it takes.</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Tickets unlock at Week 8</div>
+              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Eligibility comes with the <b>Mentor Approved</b> badge. You’re in Week {u.week} of 12.</div>
             </div>
           </div>
-          <div style={{ marginTop: 12 }}><Bar pct={u.week / 8} color={C.coral} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>WEEK {u.week} OF 8 · ON TRACK</div>
+          <div style={{ marginTop: 12 }}><Bar pct={Math.min(1, (u.week || 1) / 8)} color={C.coral} /></div>
+          <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>WEEK {u.week} OF 8</div>
         </Card>
       ) : (
-        <Card style={{ border: `1.5px solid ${C.teal}` }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <QR seed="jclarke-meets-toronto" size={84} />
-            <div style={{ flex: 1 }}>
-              <span style={{ fontFamily: F.mono, fontSize: 9.5, background: C.tealTint, color: C.teal, padding: "4px 8px" }}>{u.fresh ? "CONFIRMED · MENTOR" : "CONFIRMED · SPEAKER"}</span>
-              <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>Jordan Clarke</div>
-              <div style={{ fontFamily: F.mono, fontSize: 10.5, color: C.gray, marginTop: 3 }}>TKT RYZ-TOR-0087<br />DOORS 8:30 AM</div>
-            </div>
+        <Card>
+          <Label color={C.teal}>Your place</Label>
+          <div style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.5 }}>
+            Every mentor on the Roster has a seat at Meets. {name ? `We'll confirm yours, ${name.split(" ")[0]}, ` : "Yours will be confirmed "}once a date is set.
           </div>
         </Card>
       )}
-      <Card>
-        <Label>Speaker lineup · Toronto</Label>
-        {EVENT.speakers.map(s => (
-          <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-            <Monogram name={s.name} size={38} bg={C.coralTint} color={C.coral} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{s.name}</div>
-              <div style={{ fontSize: 12, color: C.gray }}>{s.role}</div>
-            </div>
-            <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.purple, letterSpacing: 0.8 }}>{s.tier.toUpperCase()}</span>
-          </div>
-        ))}
-      </Card>
-      <Card>
-        <Label>Past events</Label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-          {EVENT.past.map(p => (
-            <div key={p.city} onClick={() => toast(`${p.city} gallery — ${p.n} photos`)} style={{ background: C.ink, color: C.white, padding: 14, aspectRatio: "1.5", display: "flex", flexDirection: "column", justifyContent: "flex-end", cursor: "pointer" }}>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>{p.city}</div>
-              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#B5B3AE", marginTop: 2 }}>{p.when.toUpperCase()} · {p.n} ATTENDED</div>
-            </div>
-          ))}
-        </div>
-      </Card>
     </div>
   </div>
 );
 
+/* Derived from state the client actually holds — a real match, a real badge, a
+   real cohort. There is no notification service yet, so nothing is invented to
+   fill the list: it previously shipped a six-item history including messages
+   quoted from a mentor who didn't exist and a session on a date nobody set. */
 export const NotifsScreen = ({ role, u, back, navTo }) => {
-  const items = role === "mentee"
-    ? (u.fresh ? [
-        { icon: Check, c: C.teal, bg: C.tealTint, t: `${u.mentorName.split(" ")[0]} accepted your request`, d: "You’re matched. First session Monday 5:00 PM.", when: "Just now", to: "home" },
-        { icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: "Verified and shareable. 7 more to go.", when: "Today", to: "badges" },
-        { icon: Play, c: C.purple, bg: C.purpleTint, t: "Jordan recorded a greeting for you", d: "1:24 video + starter resources in his Orbit. Watching earns +10 XP.", when: "Today", to: "orbit" },
-        { icon: Flame, c: C.coral, bg: C.coralTint, t: "Streak: Day 1", d: "Today’s exercise takes 6 minutes. Keep it alive. Finishing it unlocks Direct Connect with Jordan.", when: "Today", to: "exercises" },
-      ] : [
-        { icon: Flame, c: C.coral, bg: C.coralTint, t: "Keep the streak alive", d: "No activity yet today. Today’s exercise takes 8 minutes.", when: "7:00 PM", to: "exercises" },
-        { icon: MessageCircle, c: C.purple, bg: C.purpleTint, t: "Note from Jordan", d: "“Your headline rewrite was sharp. Bring the cold open Tuesday.”", when: "Yesterday", to: "dm" },
-        { icon: Award, c: C.teal, bg: C.tealTint, t: "Badge unlocked: Momentum", d: "4 straight weeks. Priority replies from Jordan unlocked.", when: "Jul 6", to: "badges" },
-        { icon: Play, c: C.purple, bg: C.purpleTint, t: "New on Jordan’s feed", d: "“How I read a portfolio in 90 seconds” — 6:03 video. Review for +5 XP.", when: "Jul 13", to: "orbit" },
-        { icon: Calendar, c: C.purple, bg: C.purpleTint, t: "Session in 24 hours", d: "Jordan Clarke · Tue Jul 21, 5:00 PM. Agenda is ready.", when: "Jul 20", to: "home" },
-        { icon: TrendingUp, c: C.amber, bg: C.amberTint, t: "You moved up", d: "Now #4 in Cohort 7. R-0472 is 250 XP ahead.", when: "Jul 12", to: "cohort" },
-      ])
-    : (u.fresh ? [
-        { icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} accepted. Intro sessions auto-scheduled for next week.`, when: "Just now", to: "sessions" },
-        { icon: Crown, c: C.amber, bg: C.amberTint, t: "Tier confirmed: Scout", d: `Impact Score live at ${u.impact}. Pathfinder at 400.`, when: "Today", to: "board" },
-      ] : [
-        { icon: Flame, c: C.coral, bg: C.coralTint, t: "Mia Tran is at risk", d: "5-day streak drop. A note from you doubles re-engagement odds.", when: "Today", to: "home" },
-        { icon: Calendar, c: C.purple, bg: C.purpleTint, t: "3 sessions this week", d: "Alex Tue, Mia Wed, Leo Thu. Agendas are ready.", when: "Today", to: "sessions" },
-        { icon: TrendingUp, c: C.amber, bg: C.amberTint, t: "Impact +15", d: "Alex completed a milestone exercise. Rank #12 holds.", when: "Jul 14", to: "board" },
-      ]);
+  const items = [];
+  if (role === "mentee") {
+    if (u.mentorName) items.push({ icon: Check, c: C.teal, bg: C.tealTint, t: `${u.mentorName.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" });
+    if (u.earned?.goal) items.push({ icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: `Verified and shareable. ${BADGE_DEFS.length - 1} more to go.`, when: u.earned.goal, to: "badges" });
+    items.push({ icon: Flame, c: C.coral, bg: C.coralTint, t: u.streak > 0 ? `Streak: day ${u.streak}` : "Start your streak", d: "Today’s exercise takes a few minutes. Finishing it earns XP and unlocks Direct Connect.", when: "Today", to: "exercises" });
+  } else {
+    if (u.cohort.length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Their opening sessions are ready to book.`, when: "Recent", to: "sessions" });
+    items.push({ icon: Crown, c: C.amber, bg: C.amberTint, t: `Tier: ${u.tier || "Scout"}`, d: `Impact Score live at ${u.impact}. Pathfinder at 400.`, when: "Today", to: "board" });
+  }
   return (
     <div>
       <HeaderRow title="Notifications" onBack={back} />
@@ -127,7 +88,7 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
   );
 };
 
-export const SettingsScreen = ({ back, role, toast, onLogout }) => {
+export const SettingsScreen = ({ back, role, toast, onLogout, user }) => {
   const [prefs, setPrefs] = useState({ streak: true, notes: true, sessions: true, board: false });
   const Toggle = ({ k }) => (
     <button onClick={() => setPrefs(p => ({ ...p, [k]: !p[k] }))} style={{ width: 42, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: prefs[k] ? C.purple : "#D8D6D0", position: "relative", transition: "background .2s" }}>
@@ -146,15 +107,20 @@ export const SettingsScreen = ({ back, role, toast, onLogout }) => {
             </div>
           ))}
         </Card>
+        {/* The account you're actually signed in as. This screen previously
+            reported LinkedIn as "CONNECTED · BADGE SHARING ON" for every user,
+            with no LinkedIn integration behind it. */}
         <Card>
-          <Label>Linked accounts</Label>
-          <div onClick={() => toast("LinkedIn connected · badge sharing on")} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, cursor: "pointer" }}>
-            <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center" }}><Linkedin size={16} color={C.deep} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>LinkedIn</div>
-              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.teal }}>CONNECTED · BADGE SHARING ON</div>
+          <Label>Account</Label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+            <Monogram name={user?.name || "—"} size={36} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{user?.name || "—"}</div>
+              <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email || ""}</div>
             </div>
-            <ChevronRight size={16} color={C.gray} />
+            <span style={{ fontFamily: F.mono, fontSize: 8.5, color: user?.emailVerified ? C.teal : C.amber, letterSpacing: 0.6 }}>
+              {user?.emailVerified ? "VERIFIED" : "UNVERIFIED"}
+            </span>
           </div>
         </Card>
         {[[role === "mentee" ? "Program track · University" : "Mentor tier & payouts", "Managed with your program lead — message them to change it"], ["Account and privacy", "Data export, visibility, and deletion"]].map(([l, d]) => (

@@ -232,8 +232,19 @@ export const MentorFeed = ({ u, name, feed, publish, greetingUp, uploadGreeting 
 
 /* ————————————————— MENTEE: the Orbit ————————————————— */
 
-export const OrbitScreen = ({ u, stage1, feed, watched, onWatch, reacted, onReact, openDm, back, go }) => {
+export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, onReact, openDm, back, go }) => {
   const [view, setView] = useState("feed");
+  if (!u.mentorName) return (
+    <div>
+      <HeaderRow title="Orbit" onBack={back} />
+      <div style={{ padding: "0 20px 20px" }}>
+        <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>No mentor yet</div>
+          <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>Once you’re matched, everything your mentor posts lands here.</div>
+        </Card>
+      </div>
+    </div>
+  );
   const first = u.mentorName.split(" ")[0];
   const resources = useMemo(() => feed.filter(p => p.kind === "video" || p.kind === "resource"), [feed]);
   const reviewed = resources.filter(p => watched[p.id]).length;
@@ -247,14 +258,15 @@ export const OrbitScreen = ({ u, stage1, feed, watched, onWatch, reacted, onReac
             <Monogram name={u.mentorName} size={54} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{u.mentorName}</div>
-              <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{u.mentorTitle}</div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {u.mentorTier.toUpperCase()} MENTOR</div>
+              {u.mentorTitle && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{u.mentorTitle}</div>}
+              {u.mentorTier && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {u.mentorTier.toUpperCase()} MENTOR</div>}
             </div>
           </div>
+          {/* Was a hard-coded "847 IMPACT · 11 GRADUATED" beside whoever the
+              mentee's real mentor is — the mentor's own numbers attributed
+              wrongly. Only the post count is knowable here. */}
           <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
-            {[["847", "IMPACT"], ["11", "GRADUATED"], [String(feed.length), "POSTS"]].map(([n, l]) => (
-              <div key={l}><div style={{ fontSize: 20, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
-            ))}
+            <div><div style={{ fontSize: 20, fontWeight: 700, color: "#B7AFF2" }}>{feed.length}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>POSTS</div></div>
           </div>
         </Card>
 
@@ -288,6 +300,11 @@ export const OrbitScreen = ({ u, stage1, feed, watched, onWatch, reacted, onReac
           ))}
         </div>
 
+        {view === "feed" && feed.length === 0 && (
+          <Card style={{ textAlign: "center", padding: 26 }}>
+            <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.5 }}>{first} hasn’t posted yet. Everything they share lands here first.</div>
+          </Card>
+        )}
         {view === "feed"
           ? feed.map(p => (
             <PostCard key={p.id} post={p} author={u.mentorName} tier

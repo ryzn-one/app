@@ -1,12 +1,9 @@
 import { createAuthClient } from "better-auth/react";
 import { emailOTPClient, inferAdditionalFields } from "better-auth/client/plugins";
 
-/**
- * When false, the auth screens keep their original prototype behaviour —
- * any input passes and you land straight in the app. Set VITE_API_MODE=live
- * to talk to the real backend. This keeps the demo runnable with no database.
- */
-export const LIVE = import.meta.env.VITE_API_MODE === "live";
+/* There is no prototype mode. Every screen talks to the real backend, and an
+   unauthenticated caller gets a 401 rather than a fixture — the bypass that
+   used to let any input through the auth screens is gone deliberately. */
 
 export const authClient = createAuthClient({
   // Same origin as the app, so cookies just work. basePath defaults to /api/auth.
@@ -58,6 +55,30 @@ export async function api(path, { method = "GET", body } = {}) {
 export const validateInvite = (code) => api("/invites/validate", { method: "POST", body: { code } });
 export const redeemInvite = (code) => api("/invites/redeem", { method: "POST", body: { code } });
 export const fetchMe = () => api("/me");
+
+/** Persists the Ryzn AI setup answers. The chat is one-time-only, so this is
+    what makes that promise true across sessions. */
+export const saveOnboarding = (answers) => api("/onboarding", { method: "POST", body: { answers } });
+
+/** Real people on the other side of the platform — mentors for a mentee,
+    mentees for a mentor. Returns `{ role, people }`; `people` is often empty
+    in an early cohort, and that is a valid answer, not an error. */
+export const fetchRoster = () => api("/roster");
+
+/* ————— Matches —————
+   A pairing is one shared document, so both sides read the same truth and it
+   survives a refresh. Opening a match against someone who already asked you
+   *is* the accept — the server collapses that case. */
+export const fetchMatches = () => api("/matches");
+/** `action` is "request" or "pass" — a pass is recorded so the deck doesn't
+    re-offer someone you already said no to. `otherId` is a user id here. */
+export const requestMatch = (otherId, action = "request") =>
+  api("/matches", { method: "POST", body: { otherId, action } });
+/** `id` is a match id, not a user id: accept | decline | end | promote. */
+export const respondToMatch = (id, action) => api("/matches", { method: "PATCH", body: { id, action } });
+
+/** Ryzn for Teams waitlist. Unauthenticated by design — see api/teams-interest.js. */
+export const registerTeamsInterest = (body) => api("/teams-interest", { method: "POST", body });
 
 /* Founder console. Every one of these 403s unless the caller is an admin —
    see lib/admin.js. */

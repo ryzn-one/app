@@ -9,17 +9,23 @@ import {
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
-import {
-  BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
-  MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
-  EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, FEED_SEED
-} from "./data.js";
+import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
 
 /* ————————————————— JOURNEY: AI CHAT + UNLOCK + MATCHING ————————————————— */
 
-export const ChatScreen = ({ role, xp, addXp, onComplete }) => {
-  const script = role === "mentee" ? MENTEE_SCRIPT : MENTOR_SCRIPT;
+/**
+ * The one-time Ryzn AI setup.
+ *
+ * `firstName` is the name on the account, so the opening line greets the person
+ * who actually signed in. `onComplete(answers)` hands the collected answers up
+ * to be persisted — they used to die with the component, which is why a
+ * returning user was asked the same six questions forever.
+ */
+export const ChatScreen = ({ role, xp, addXp, onComplete, firstName }) => {
+  const script = useMemo(
+    () => (role === "mentee" ? menteeScript(firstName) : mentorScript(firstName)),
+    [role, firstName]
+  );
   const [msgs, setMsgs] = useState([]);
   const [stepIdx, setStepIdx] = useState(0);
   const [typing, setTyping] = useState(false);
@@ -87,7 +93,9 @@ export const ChatScreen = ({ role, xp, addXp, onComplete }) => {
     const filledGoals = goals.filter(g => g.trim().length > 2);
     const text = step.type === "goals" ? filledGoals.map((g, i) => `${i + 1}. ${g}`).join("\n")
       : step.type === "write" ? writeText : sel.join(" · ");
-    setAnswers(a => ({ ...a, [step.id]: step.type === "goals" ? filledGoals : step.type === "write" ? writeText : sel }));
+    const value = step.type === "goals" ? filledGoals : step.type === "write" ? writeText : sel;
+    const next = { ...answers, [step.id]: value };
+    setAnswers(next);
     setMsgs(m => [...m, { who: "user", text }, { who: "xp", text: `+${step.xp} ${unit}` }]);
     addXp(step.xp);
     setReady(false);
@@ -97,8 +105,11 @@ export const ChatScreen = ({ role, xp, addXp, onComplete }) => {
         setTyping(true);
         setTimeout(() => {
           setTyping(false);
-          setMsgs(m => [...m, { who: "ai", text: role === "mentee" ? "That’s everything I need. Building your top 5 mentor matches now — and you’ve just earned your first badge." : "That’s everything. Matching mentees to your profile now — and your tier is confirmed." }]);
-          setTimeout(onComplete, 1600);
+          // No count promised — the roster is however many mentors have actually
+          // onboarded, which on day one may be none.
+          setMsgs(m => [...m, { who: "ai", text: role === "mentee" ? "That’s everything I need. Finding your mentor matches now — and you’ve just earned your first badge." : "That’s everything. Matching mentees to your profile now — and your tier is confirmed." }]);
+          // `next`, not `answers`: the state update above hasn't flushed yet.
+          setTimeout(() => onComplete(next), 1600);
         }, 1300);
       }, 500);
     }
@@ -359,195 +370,250 @@ export const DetailShell = ({ title, right, close, footer, children }) => (
   </div>
 );
 
+
+/* ————— Shared bits for the two decks —————
+   Every field below comes from /api/roster, which reads real accounts. A field
+   the person hasn't filled in renders as nothing, never as a placeholder — an
+   empty profile is information, and inventing a bio to fill the space is the
+   exact behaviour this screen is being cured of. */
+
+/** Shared answers between two people, or null when either side has none.
+    Shown as a count, not a percentage: the old "96% MATCH" was a number no
+    part of the system computed. */
+const AffinityTag = ({ affinity, color = C.purple }) =>
+  affinity && affinity.shared > 0 ? (
+    <Label color={color}>{affinity.shared} SHARED {affinity.shared === 1 ? "ANSWER" : "ANSWERS"}</Label>
+  ) : null;
+
+const Initials = ({ name }) => <>{(name || "?").split(" ").map(w => w[0]).join("").slice(0, 2)}</>;
+
+const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = true, limit }) => (
+  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+    {(limit ? items.slice(0, limit) : items).map(t => (
+      <span key={t} style={{ fontSize: 11, fontWeight: 600, background: bg, border: border ? `1px solid ${C.line}` : "none", borderRadius: 12, padding: "4px 10px", color }}>{t}</span>
+    ))}
+  </div>
+);
+
+/** Shown when nobody is on the other side of the platform yet. Early cohorts
+    genuinely start here, and saying so is better than a deck of strangers. */
+const EmptyRoster = ({ title, body, action }) => (
+  <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
+    <Glyph color={C.purple} size={40} />
+    <div style={{ fontSize: 21, fontWeight: 700, marginTop: 14 }}>{title}</div>
+    <div style={{ fontSize: 13, color: C.gray, marginTop: 8, lineHeight: 1.55, maxWidth: 280 }}>{body}</div>
+    {action}
+  </div>
+);
+
 export const MentorDetailSheet = ({ m, close, footer }) => (
-  <DetailShell title="Mentor profile" right={<Label color={C.purple}>{m.match}% MATCH</Label>} close={close} footer={footer}>
+  <DetailShell title="Mentor profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
     <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
         <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
-          <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{m.title} · {m.company}</div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {m.tier.toUpperCase()}</div>
+          {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{m.headline}</div>}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
         </div>
       </div>
       <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
-        {[[m.impact, "IMPACT"], [m.graduated, "GRADUATED"], [m.city.toUpperCase(), "BASED"]].map(([n, l]) => (
+        {[[m.impact ?? 0, "IMPACT"], [m.industry || "—", "INDUSTRY"]].map(([n, l]) => (
           <div key={l}><div style={{ fontSize: 18, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
         ))}
       </div>
     </Card>
-    <Card>
-      <Label>About</Label>
-      <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.bio}</div>
-    </Card>
-    <Card>
-      <Label color={C.purple}>Achievements</Label>
-      {m.achievements.map(a => (
-        <div key={a} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
-          <div style={{ width: 8, height: 8, background: C.purple, transform: "rotate(45deg)", marginTop: 5, flexShrink: 0 }} />
-          <div style={{ fontSize: 13, lineHeight: 1.45 }}>{a}</div>
-        </div>
-      ))}
-    </Card>
-    <Card>
-      <Label color={C.teal}>Companies & involvement</Label>
-      {m.companies.map(c => (
-        <div key={c} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
-          <div style={{ width: 30, height: 30, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={13} color={C.teal} /></div>
-          <div style={{ fontSize: 13 }}>{c}</div>
-        </div>
-      ))}
-    </Card>
-    <Card>
-      <Label color={C.coral}>Talks & engagements</Label>
-      {m.talks.map(t => (
-        <div key={t} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
-          <div style={{ width: 30, height: 30, background: C.coralTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Mic size={13} color={C.coral} /></div>
-          <div style={{ fontSize: 13, lineHeight: 1.4 }}>{t}</div>
-        </div>
-      ))}
-    </Card>
-    <Card>
-      <Label color={C.amber}>Resources they share</Label>
-      {m.resources.map(r => (
-        <div key={r} style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 10 }}>
-          <div style={{ width: 30, height: 30, background: C.amberTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FileText size={13} color={C.amber} /></div>
-          <div style={{ fontSize: 13, flex: 1 }}>{r}</div>
-          <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray }}>ON CONNECT</span>
-        </div>
-      ))}
-    </Card>
+    {m.why && (
+      <Card>
+        <Label>Why they mentor</Label>
+        <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.why}</div>
+      </Card>
+    )}
+    {m.expertise?.length > 0 && (
+      <Card>
+        <Label color={C.purple}>What they can teach</Label>
+        <div style={{ marginTop: 10 }}><TagRow items={m.expertise} bg={C.purpleTint} color={C.purple} border={false} /></div>
+      </Card>
+    )}
+    {m.menteeFit?.length > 0 && (
+      <Card>
+        <Label color={C.teal}>Who they want to work with</Label>
+        <div style={{ marginTop: 10 }}><TagRow items={m.menteeFit} bg={C.tealTint} color={C.teal} border={false} /></div>
+      </Card>
+    )}
+    {m.capacity != null && (
+      <Card>
+        <Label color={C.amber}>Cohort capacity</Label>
+        <div style={{ fontSize: 13.5, marginTop: 8 }}>Taking up to {m.capacity} mentee{m.capacity === 1 ? "" : "s"} this cohort.</div>
+      </Card>
+    )}
   </DetailShell>
 );
 
 export const MenteeDetailSheet = ({ m, close, footer }) => (
-  <DetailShell title="Mentee profile" right={<Label color={C.purple}>{m.match}% MATCH</Label>} close={close} footer={footer}>
+  <DetailShell title="Mentee profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
     <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
       <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
         <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
-          <div style={{ fontSize: 12.5, color: "#C9C3F2" }}>{m.school}</div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {m.track.toUpperCase()} TRACK</div>
+          {m.track && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {m.track.toUpperCase()}</div>}
         </div>
       </div>
     </Card>
-    <Card>
-      <Label>About</Label>
-      <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.bio}</div>
-    </Card>
-    <Card>
-      <Label color={C.purple}>Their program goals</Label>
-      {m.goals.map((g, i) => (
-        <div key={g} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
-          <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.purple, marginTop: 1 }}>0{i + 1}</span>
-          <div style={{ fontSize: 13, lineHeight: 1.45, fontStyle: "italic" }}>“{g}”</div>
-        </div>
-      ))}
-    </Card>
-    <Card>
-      <Label color={C.teal}>Skills they claim today</Label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-        {m.skills.map(s => <span key={s} style={{ fontSize: 12, fontWeight: 600, background: C.tealTint, borderRadius: 14, padding: "5px 11px", color: C.teal }}>{s}</span>)}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-        {m.tags.map(t => <span key={t} style={{ fontSize: 11, fontWeight: 600, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 14, padding: "4px 10px", color: C.gray }}>{t}</span>)}
-      </div>
-    </Card>
-    <Card>
-      <Label color={C.amber}>Highlights</Label>
-      {m.highlights.map(h => (
-        <div key={h} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
-          <div style={{ width: 8, height: 8, background: C.amber, transform: "rotate(45deg)", marginTop: 5, flexShrink: 0 }} />
-          <div style={{ fontSize: 13, lineHeight: 1.45 }}>{h}</div>
-        </div>
-      ))}
-    </Card>
+    {m.goals?.length > 0 && (
+      <Card>
+        <Label color={C.purple}>Their program goals</Label>
+        {m.goals.map((g, i) => (
+          <div key={g} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
+            <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.purple, marginTop: 1 }}>0{i + 1}</span>
+            <div style={{ fontSize: 13, lineHeight: 1.45, fontStyle: "italic" }}>“{g}”</div>
+          </div>
+        ))}
+      </Card>
+    )}
+    {m.skills?.length > 0 && (
+      <Card>
+        <Label color={C.teal}>Skills they claim today</Label>
+        <div style={{ marginTop: 10 }}><TagRow items={m.skills} bg={C.tealTint} color={C.teal} border={false} /></div>
+      </Card>
+    )}
+    {m.interests?.length > 0 && (
+      <Card>
+        <Label color={C.amber}>What pulls at them</Label>
+        <div style={{ marginTop: 10 }}><TagRow items={m.interests} /></div>
+      </Card>
+    )}
   </DetailShell>
 );
 
-export const MatchesScreen = ({ xp, addXp, toast, onEnterApp }) => {
+/* ————————————————— MENTEE: choosing a mentor ————————————————— */
+
+export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matches = [], onDecide, loading, error }) => {
   const isDesktop = useIsDesktop();
-  const [decided, setDecided] = useState({});
-  const [history, setHistory] = useState([]);
-  const [filters, setFilters] = useState({ tier: "Any", focus: "Any", match: "Any" });
+  const [filters, setFilters] = useState({ tier: "Any", industry: "Any" });
   const [showFilter, setShowFilter] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [busy, setBusy] = useState(false);
   const firstReq = useRef(false);
-  const passes = (m) => (filters.tier === "Any" || m.tier === filters.tier) && (filters.focus === "Any" || m.focus === filters.focus) && (filters.match === "Any" || m.match >= parseInt(filters.match));
-  const filtered = MENTOR_MATCHES.filter(passes);
-  const deck = filtered.filter(m => !decided[m.name]);
-  const openReqs = Object.values(decided).filter(v => v === "pending").length;
-  const acceptedEntry = Object.entries(decided).find(([, v]) => v === "accepted");
-  const requested = MENTOR_MATCHES.filter(m => decided[m.name] === "pending" || decided[m.name] === "accepted");
+
+  /* Decisions come back from the server, not local state. The roster already
+     excludes anyone answered for, so the deck is whatever is genuinely left. */
+  const pending = matches.filter(m => m.status === "pending");
+  const accepted = matches.filter(m => m.status === "accepted");
+  const requested = [...accepted, ...pending];
+  const openReqs = pending.length;
+  const activeMentor = accepted.find(m => m.seat === "active") || accepted[0] || null;
+
+  const passes = (m) =>
+    (filters.tier === "Any" || m.tier === filters.tier) &&
+    (filters.industry === "Any" || m.industry === filters.industry);
+  const filtered = roster.filter(passes);
+  const deck = filtered;
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
-  const decide = (m, dir) => {
-    if (dir === "blocked") { toast("3 open requests held · wait for a reply"); return; }
-    setHistory(h => [...h, m.name]);
-    if (dir === "right") {
-      setDecided(d => ({ ...d, [m.name]: "pending" }));
-      if (!firstReq.current) { firstReq.current = true; addXp(25); setTimeout(() => setDecided(d => ({ ...d, [m.name]: "accepted" })), 1700); }
-      else toast(`Request sent to ${m.name.split(" ")[0]}`);
-    } else setDecided(d => ({ ...d, [m.name]: "passed" }));
+
+  // Industries offered as filters are the ones actually present in the roster,
+  // so the list never promises a category nobody occupies.
+  const industries = ["Any", ...new Set(roster.map(m => m.industry).filter(Boolean))];
+
+  const decide = async (m, dir) => {
+    if (dir === "blocked") { toast("All 3 mentor seats are held"); return; }
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await onDecide(m, dir === "right" ? "request" : "pass");
+      if (dir === "right") {
+        if (!firstReq.current) { firstReq.current = true; addXp(25); }
+        toast(res?.match?.status === "accepted"
+          ? `You’re matched with ${m.name.split(" ")[0]}`
+          : `Request sent to ${m.name.split(" ")[0]}`);
+      }
+    } catch (e) {
+      toast(e.message || "Couldn’t save that. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
-  const undo = () => { const last = history[history.length - 1]; if (!last) return; setHistory(h => h.slice(0, -1)); setDecided(d => { const n = { ...d }; delete n[last]; return n; }); };
+
+  /** Answering a mentor who asked first. Separate from `decide` because it acts
+      on a match id, not a roster person — and it must not reject unhandled. */
+  const respond = async (match, action) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onDecide(match, action);
+      toast(action === "accept" ? `You’re matched with ${match.person.name.split(" ")[0]}` : "Declined.");
+    } catch (e) {
+      toast(e.message || "Couldn’t save that. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const renderCard = (m) => {
-    const i = MENTOR_MATCHES.indexOf(m);
-    const bg = DECK_COLORS[i % DECK_COLORS.length];
+    const bg = DECK_COLORS[Math.max(0, roster.indexOf(m)) % DECK_COLORS.length];
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "44%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}>{m.name.split(" ").map(w => w[0]).join("")}</div>
-          <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "6px 10px" }}>{m.match}% MATCH</div>
-          <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: bg === C.teal ? C.teal : C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><Crown size={11} /> {m.tier.toUpperCase()}</div>
-          <div style={{ position: "absolute", bottom: 12, right: 12, fontFamily: F.mono, fontSize: 9, color: "rgba(255,255,255,.8)", letterSpacing: 1 }}>{m.city.toUpperCase()}</div>
+          <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
+          {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
+          <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: bg === C.teal ? C.teal : C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
+          {m.industry && <div style={{ position: "absolute", bottom: 12, right: 12, fontFamily: F.mono, fontSize: 9, color: "rgba(255,255,255,.8)", letterSpacing: 1 }}>{m.industry.toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
-          <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{m.title} · {m.company}</div>
-          <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 8, overflow: "hidden", flex: 1 }}>{m.bio}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-            {m.tags.slice(0, 3).map(t => <span key={t} style={{ fontSize: 10.5, fontWeight: 600, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 9px", color: C.gray }}>{t}</span>)}
-          </div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 9, letterSpacing: 0.5 }}>IMPACT {m.impact} · {m.graduated} GRADUATED · REPLIES IN 48H</div>
+          {m.headline && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{m.headline}</div>}
+          {m.why && <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 8, overflow: "hidden", flex: 1 }}>{m.why}</div>}
+          <div style={{ marginTop: 8 }}><TagRow items={m.expertise} limit={3} /></div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 9, letterSpacing: 0.5 }}>IMPACT {m.impact ?? 0}{m.capacity ? ` · ${m.capacity} SEAT${m.capacity === 1 ? "" : "S"} THIS COHORT` : ""}</div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, padding: "6px 0", background: C.purpleTint, borderRadius: 10, color: C.purple, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8 }}>TAP FOR FULL PROFILE</div>
         </div>
       </div>
     );
   };
-  const emptyView = (
+
+  const emptyView = requested.length > 0 ? (
     <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
-      {requested.length > 0 ? (<>
-        <Glyph color={C.purple} size={40} />
-        <div style={{ fontSize: 21, fontWeight: 700, marginTop: 14 }}>That’s the deck.</div>
-        <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{requested.length} request{requested.length === 1 ? "" : "s"} out{acceptedEntry ? ` — ${acceptedEntry[0].split(" ")[0]} already said yes.` : " — mentors reply within 48h."}</div>
-        <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-          {requested.map(m => (
-            <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "9px 12px" }}>
-              <Monogram name={m.name} size={30} />
-              <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.name}</span>
-              {decided[m.name] === "accepted"
-                ? <span style={{ fontFamily: F.mono, fontSize: 9, background: C.tealTint, color: C.teal, fontWeight: 700, padding: "4px 8px" }}>ACCEPTED ✓</span>
+      <Glyph color={C.purple} size={40} />
+      <div style={{ fontSize: 21, fontWeight: 700, marginTop: 14 }}>That’s the deck.</div>
+      <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
+        {openReqs > 0
+          ? `${openReqs} request${openReqs === 1 ? "" : "s"} out. Mentors reply in their own time — you’ll get a notification.`
+          : "Your pairings are saved to your account."}
+      </div>
+      <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+        {requested.map(m => (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "9px 12px" }}>
+            <Monogram name={m.person.name} size={30} />
+            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person.name}</span>
+            {m.status === "accepted"
+              ? <span style={{ fontFamily: F.mono, fontSize: 9, background: C.tealTint, color: C.teal, fontWeight: 700, padding: "4px 8px" }}>{m.seat === "active" ? "ACTIVE ✓" : "SUPPORT ✓"}</span>
+              : m.awaitingYou
+                ? <Btn small disabled={busy} onClick={() => respond(m, "accept")}>Accept</Btn>
                 : <span style={{ fontFamily: F.mono, fontSize: 9, background: C.amberTint, color: C.amber, fontWeight: 700, padding: "4px 8px" }}>PENDING</span>}
-            </div>
-          ))}
-        </div>
-        {!acceptedEntry && <button onClick={() => setDecided(d => Object.fromEntries(Object.entries(d).filter(([, v]) => v !== "passed")))} style={{ background: "none", border: "none", color: C.purple, fontFamily: F.sans, fontWeight: 600, fontSize: 13, cursor: "pointer", marginTop: 14 }}>Review passed profiles</button>}
-      </>) : (<>
-        <div style={{ fontSize: 21, fontWeight: 700 }}>You passed on everyone.</div>
-        <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>Fair — it has to feel right. Adjust filters or run the deck again.</div>
-        <Btn style={{ marginTop: 18 }} onClick={() => { setDecided({}); setHistory([]); }}>Restart the deck</Btn>
-        <Btn kind="ghost" style={{ marginTop: 8 }} onClick={() => setShowFilter(true)}><SlidersHorizontal size={14} /> Adjust filters</Btn>
-      </>)}
+          </div>
+        ))}
+      </div>
     </div>
+  ) : (
+    <EmptyRoster
+      title={loading ? "Finding your matches…" : error ? "Couldn’t load the Roster." : "No mentors yet."}
+      body={loading ? "One moment." : error
+        ? "Something went wrong on our end. Try again in a moment."
+        : "The founding mentors are still being onboarded. You’ll get a notification the moment there’s someone to meet — your Day 1 exercises are open in the meantime."}
+      action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp(null)}>Start Day 1 without a mentor</Btn> : null}
+    />
   );
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 20px 10px", background: C.white, borderBottom: `1px solid ${C.line}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1 }}>
             <Label color={C.purple}>Matched from your answers</Label>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>Your top {filtered.length} mentors.</div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>
+              {filtered.length === 0 ? "Your mentors." : `Your ${filtered.length} mentor${filtered.length === 1 ? "" : "s"}.`}
+            </div>
           </div>
           <XPPill xp={xp} />
           <button onClick={() => setShowFilter(true)} style={{ position: "relative", background: activeF ? C.purpleTint : C.white, border: `1.5px solid ${activeF ? C.purple : C.line}`, borderRadius: 12, padding: 9, cursor: "pointer" }}>
@@ -555,105 +621,141 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp }) => {
             {activeF > 0 && <span style={{ position: "absolute", top: -6, right: -6, width: 17, height: 17, borderRadius: 9, background: C.purple, color: C.white, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeF}</span>}
           </button>
         </div>
-        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5 }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {3 - openReqs} REQUEST{3 - openReqs === 1 ? "" : "S"} FREE · FIRST +25 XP</div>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5 }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {Math.max(0, 3 - requested.length)} SEAT{3 - requested.length === 1 ? "" : "S"} FREE</div>
       </div>
       {isDesktop
-        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={openReqs < 3} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />
-        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={openReqs < 3} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />}
-      {acceptedEntry && (
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
+      {activeMentor && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
-          <Btn onClick={() => onEnterApp(acceptedEntry[0])}>Enter Ryzn · Week 1 with {acceptedEntry[0].split(" ")[0]} starts Monday</Btn>
+          <Btn onClick={() => onEnterApp(activeMentor)}>Enter Ryzn · Week 1 with {activeMentor.person.name.split(" ")[0]}</Btn>
         </div>
       )}
       {detail && (
         <MentorDetailSheet m={detail} close={() => setDetail(null)} footer={
           <div style={{ display: "flex", gap: 8 }}>
             <Btn kind="ghost" style={{ flex: 0.6, borderColor: C.line, color: C.gray }} onClick={() => { const m = detail; setDetail(null); decide(m, "left"); }}>Pass</Btn>
-            <Btn style={{ flex: 1 }} disabled={openReqs >= 3} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>{openReqs >= 3 ? "3 open requests held" : "Request to connect"}</Btn>
+            <Btn style={{ flex: 1 }} disabled={requested.length >= 3} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>{requested.length >= 3 ? "All 3 seats held" : "Request to connect"}</Btn>
           </div>
         } />
       )}
       <FilterSheet open={showFilter} close={() => setShowFilter(false)} values={filters} setValues={setFilters} count={filtered.length} countLabel="mentor"
         sections={[
-          { key: "tier", label: "Mentor tier", options: ["Any", "Pathfinder", "Architect", "Legend"] },
-          { key: "focus", label: "Focus area", options: ["Any", "Product", "Design", "Entrepreneurship", "Engineering", "Finance"] },
-          { key: "match", label: "Minimum match", options: ["Any", "85+", "90+"] },
+          { key: "tier", label: "Mentor tier", options: ["Any", "Scout", "Pathfinder", "Architect", "Legend"] },
+          { key: "industry", label: "Industry", options: industries },
         ]} />
     </div>
   );
 };
 
-export const RequestsScreen = ({ xp, addXp, toast, onEnterApp }) => {
+/* ————————————————— MENTOR: accepting mentees ————————————————— */
+
+export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matches = [], onDecide, loading, error, capacity = 4 }) => {
   const isDesktop = useIsDesktop();
-  const [decided, setDecided] = useState({});
-  const [history, setHistory] = useState([]);
-  const [filters, setFilters] = useState({ track: "Any", focus: "Any", match: "Any" });
+  const [filters, setFilters] = useState({ track: "Any" });
   const [showFilter, setShowFilter] = useState(false);
   const [detail, setDetail] = useState(null);
-  const cap = 4;
-  const passes = (m) => (filters.track === "Any" || m.track === filters.track) && (filters.focus === "Any" || m.focus === filters.focus) && (filters.match === "Any" || m.match >= parseInt(filters.match));
-  const filtered = MENTEE_MATCHES.filter(passes);
-  const deck = filtered.filter(m => !decided[m.name]);
-  const taken = Object.values(decided).filter(v => v === "accepted").length;
-  const acceptedNames = Object.entries(decided).filter(([, v]) => v === "accepted").map(([n]) => n);
-  const allDecided = deck.length === 0;
+  const [busy, setBusy] = useState(false);
+  const cap = capacity;
+
+  /* Server state, not local. `inbox` is mentees who asked for you — those are
+     answered, not swiped, and they used to be invisible entirely because a
+     mentee's request lived only in the mentee's own browser. */
+  const accepted = matches.filter(m => m.status === "accepted");
+  const inbox = matches.filter(m => m.awaitingYou);
+  const outbox = matches.filter(m => m.status === "pending" && !m.awaitingYou);
+  const taken = accepted.length;
+
+  const passes = (m) => filters.track === "Any" || m.track === filters.track;
+  const deck = roster.filter(passes);
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
-  const decide = (m, dir) => {
+
+  const decide = async (m, dir) => {
     if (dir === "blocked") { toast(`Cohort full · ${cap} seats`); return; }
-    setHistory(h => [...h, m.name]);
-    if (dir === "right") { setDecided(d => ({ ...d, [m.name]: "accepted" })); addXp(30); }
-    else setDecided(d => ({ ...d, [m.name]: "passed" }));
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await onDecide(m, dir === "right" ? "request" : "pass");
+      if (dir === "right") {
+        addXp(30);
+        toast(res?.match?.status === "accepted"
+          ? `${m.name.split(" ")[0]} joined your cohort`
+          : `Invitation sent to ${m.name.split(" ")[0]}`);
+      }
+    } catch (e) {
+      toast(e.message || "Couldn’t save that. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
-  const undo = () => { const last = history[history.length - 1]; if (!last) return; setHistory(h => h.slice(0, -1)); setDecided(d => { const n = { ...d }; delete n[last]; return n; }); };
+
+  /** Answering a mentee who asked first — acts on a match id, not a roster row. */
+  const respond = async (match, action) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onDecide(match, action);
+      if (action === "accept") addXp(30);
+      toast(action === "accept" ? `${match.person.name.split(" ")[0]} joined your cohort` : "Declined.");
+    } catch (e) {
+      toast(e.message || "Couldn’t save that. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const renderCard = (m) => {
-    const i = MENTEE_MATCHES.indexOf(m);
-    const bg = DECK_COLORS[(i + 1) % DECK_COLORS.length];
+    const bg = DECK_COLORS[(Math.max(0, roster.indexOf(m)) + 1) % DECK_COLORS.length];
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "42%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}>{m.name.split(" ").map(w => w[0]).join("")}</div>
-          <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "6px 10px" }}>{m.match}% MATCH</div>
-          <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {m.track.toUpperCase()}</div>
+          <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
+          {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
+          {m.track && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {m.track.toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
-          <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{m.school}</div>
-          <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 8, overflow: "hidden" }}>{m.bio}</div>
-          <div style={{ background: C.surface, borderRadius: 10, padding: "8px 11px", marginTop: 8 }}>
-            <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, letterSpacing: 0.8 }}>GOAL 1 OF 3</span>
-            <div style={{ fontSize: 12.5, fontStyle: "italic", marginTop: 2 }}>“{m.goal}”</div>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-            {m.tags.slice(0, 2).map(t => <span key={t} style={{ fontSize: 10.5, fontWeight: 600, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: "3px 9px", color: C.gray }}>{t}</span>)}
-          </div>
+          {m.goals?.[0] && (
+            <div style={{ background: C.surface, borderRadius: 10, padding: "8px 11px", marginTop: 8 }}>
+              <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, letterSpacing: 0.8 }}>GOAL 1 OF {m.goals.length}</span>
+              <div style={{ fontSize: 12.5, fontStyle: "italic", marginTop: 2 }}>“{m.goals[0]}”</div>
+            </div>
+          )}
+          <div style={{ marginTop: 8, flex: 1 }}><TagRow items={m.interests} limit={3} /></div>
+          <div style={{ marginTop: 6 }}><TagRow items={m.skills} limit={2} bg={C.tealTint} color={C.teal} border={false} /></div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, padding: "6px 0", background: C.purpleTint, borderRadius: 10, color: C.purple, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8 }}>TAP FOR FULL PROFILE</div>
         </div>
       </div>
     );
   };
-  const emptyView = (
+
+  const emptyView = (taken > 0 || outbox.length > 0) ? (
     <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
-      {taken > 0 ? (<>
-        <Crown size={34} color={C.purple} />
-        <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>Cohort forming.</div>
-        <div style={{ fontSize: 13, color: C.gray, marginTop: 6 }}>{taken} of {cap} seats filled · +{taken * 30} Impact banked. Intro sessions auto-scheduled.</div>
-        <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-          {acceptedNames.map(n => (
-            <div key={n} style={{ display: "flex", alignItems: "center", gap: 10, background: C.tealTint, borderRadius: 12, padding: "9px 12px" }}>
-              <Monogram name={n} size={30} bg={C.teal} color={C.white} />
-              <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13, color: C.teal }}>{n}</span>
-              <Check size={15} color={C.teal} strokeWidth={3} />
-            </div>
-          ))}
-        </div>
-      </>) : (<>
-        <div style={{ fontSize: 21, fontWeight: 700 }}>All passed.</div>
-        <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>No pressure — matching runs weekly. Or run this deck again.</div>
-        <Btn style={{ marginTop: 18 }} onClick={() => { setDecided({}); setHistory([]); }}>See the deck again</Btn>
-        <Btn kind="ghost" style={{ marginTop: 8 }} onClick={() => setShowFilter(true)}><SlidersHorizontal size={14} /> Adjust filters</Btn>
-      </>)}
+      <Crown size={34} color={C.purple} />
+      <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>{taken > 0 ? "Cohort forming." : "Invitations out."}</div>
+      <div style={{ fontSize: 13, color: C.gray, marginTop: 6 }}>{taken} of {cap} seats filled{outbox.length > 0 ? ` · ${outbox.length} awaiting a reply` : ""}.</div>
+      <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+        {[...accepted, ...outbox].map(m => (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: m.status === "accepted" ? C.tealTint : C.surface, borderRadius: 12, padding: "9px 12px" }}>
+            <Monogram name={m.person.name} size={30} bg={m.status === "accepted" ? C.teal : undefined} color={m.status === "accepted" ? C.white : undefined} />
+            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13, color: m.status === "accepted" ? C.teal : C.ink }}>{m.person.name}</span>
+            {m.status === "accepted"
+              ? <Check size={15} color={C.teal} strokeWidth={3} />
+              : <span style={{ fontFamily: F.mono, fontSize: 9, background: C.amberTint, color: C.amber, fontWeight: 700, padding: "4px 8px" }}>PENDING</span>}
+          </div>
+        ))}
+      </div>
     </div>
+  ) : (
+    <EmptyRoster
+      title={loading ? "Matching mentees…" : error ? "Couldn’t load matches." : "No mentees yet."}
+      body={loading ? "One moment." : error
+        ? "Something went wrong on our end. Try again in a moment."
+        : "You’re early — mentee applications for this cohort are still open. We’ll notify you the moment someone matches your profile. Your dashboard is ready in the meantime."}
+      action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp([])}>Open my dashboard</Btn> : null}
+    />
   );
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 20px 10px", background: C.white, borderBottom: `1px solid ${C.line}` }}>
@@ -675,12 +777,30 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp }) => {
           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, fontWeight: 700 }}>{taken}/{cap} SEATS · +30 IMPACT EACH</span>
         </div>
       </div>
+      {inbox.length > 0 && (
+        <div style={{ padding: "10px 20px 0" }}>
+          <Label color={C.purple}>Asked for you · {inbox.length}</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {inbox.map(m => (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.purpleTint, borderRadius: 12, padding: "9px 12px" }}>
+                <Monogram name={m.person.name} size={30} bg={C.purple} color={C.white} />
+                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person.name}</div>
+                  {m.person.goals?.[0] && <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>}
+                </div>
+                <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
+                <Btn small disabled={busy || taken >= cap} onClick={() => respond(m, "accept")}>Accept</Btn>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {isDesktop
-        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />
-        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} onUndo={undo} canUndo={history.length > 0} emptyView={emptyView} onTap={setDetail} />}
-      {taken >= 1 && (
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
+      {(taken >= 1 || outbox.length > 0) && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
-          <Btn onClick={() => onEnterApp(acceptedNames)}>Open mentor dashboard · cohort {taken}/{cap}</Btn>
+          <Btn onClick={() => onEnterApp(accepted)}>Open mentor dashboard · cohort {taken}/{cap}</Btn>
         </div>
       )}
       {detail && (
@@ -692,12 +812,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp }) => {
         } />
       )}
       <FilterSheet open={showFilter} close={() => setShowFilter(false)} values={filters} setValues={setFilters} count={filtered.length} countLabel="mentee"
-        sections={[
-          { key: "track", label: "Track", options: ["Any", "University", "High School"] },
-          { key: "focus", label: "Focus area", options: ["Any", "Product", "Design", "Engineering", "Business"] },
-          { key: "match", label: "Minimum match", options: ["Any", "88+", "90+"] },
-        ]} />
+        sections={[{ key: "track", label: "Track", options: ["Any", "University", "High school"] }]} />
     </div>
   );
 };
-

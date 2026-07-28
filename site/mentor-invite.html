@@ -576,42 +576,57 @@
       : 'A personal invitation to mentor inside ' + orgName + '. Invitation only.';
   }
 
-  // ---------- code confirm (checks admin-console ledger in localStorage) ----------
+  /* ---------- code confirm ----------
+     Checked against /api/invites/validate, the same store the atomic claim
+     reads. This used to validate against a localStorage ledger written by the
+     admin console in the same browser, so on the mentor's machine it matched
+     nothing and fell back to a regex on the prefix — any string starting
+     RYZ-INV- was accepted, and a genuinely revoked or spent code sailed through.
+
+     Accepting sends them to /app/#/join, which carries the code into sign-up.
+     It previously pointed at /app/#/teams: the Ryzn for Teams demo. */
   const checkBtn=document.getElementById('checkBtn'), validMsg=document.getElementById('validMsg'), acceptWrap=document.getElementById('acceptWrap'), codeInput=document.getElementById('codeInput');
-  function readInviteLedger(){
-    try { return JSON.parse(localStorage.getItem('ryzn_teams_invites') || '[]'); }
-    catch { return []; }
+  const validText = validMsg.querySelector('span:last-child');
+
+  function claimUrl(codeVal){
+    return P.get('claim') || (location.origin + '/app/#/join?code=' + encodeURIComponent(codeVal));
   }
-  function markInviteAccepted(codeVal){
-    try {
-      const list = readInviteLedger();
-      const next = list.map(iv => iv.code === codeVal ? { ...iv, status: 'Accepted', acceptedAt: new Date().toISOString() } : iv);
-      localStorage.setItem('ryzn_teams_invites', JSON.stringify(next));
-    } catch { /* ignore */ }
+  function showInvalid(msg){
+    codeInput.style.borderColor='var(--coral)';
+    acceptWrap.classList.remove('show');
+    validMsg.classList.remove('show');
+    checkBtn.disabled=false; checkBtn.textContent='Confirm code'; checkBtn.style.background='';
+    if(msg) alert(msg);
   }
-  function confirmCode(){
+  async function confirmCode(){
     const codeVal = codeInput.value.trim();
-    const formatOk = /^RYZ-INV-/i.test(codeVal);
-    const ledger = readInviteLedger();
-    const listed = ledger.find(iv => iv.code === codeVal);
-    const already = listed && listed.status === 'Accepted';
-    if(!formatOk && !listed){ codeInput.style.borderColor='var(--coral)'; return; }
-    if(already){
-      validMsg.querySelector('span:last-child').textContent = 'This code was already claimed. Sign in to continue.';
+    if(!codeVal){ showInvalid(); return; }
+    codeInput.style.borderColor='';
+    checkBtn.disabled=true; checkBtn.textContent='Checking…';
+    try {
+      const res = await fetch('/api/invites/validate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ code: codeVal })
+      });
+      const data = await res.json().catch(()=>({}));
+      if(!res.ok || !data.valid){
+        showInvalid(data.message || "That code isn't valid. Check the one in your email.");
+        return;
+      }
+      checkBtn.textContent='Confirmed'; checkBtn.style.background='var(--teal)';
+      if(validText) validText.textContent = 'Invitation confirmed. Create your account to claim it.';
+      validMsg.classList.add('show'); acceptWrap.classList.add('show');
+      document.getElementById('acceptBtn').href = claimUrl(codeVal);
+    } catch (e) {
+      showInvalid("Couldn't reach Ryzn to check that code. Try again in a moment.");
     }
-    checkBtn.textContent='Confirmed'; checkBtn.style.background='var(--teal)';
-    validMsg.classList.add('show'); acceptWrap.classList.add('show');
-    if(listed && !already) markInviteAccepted(codeVal);
-    const teamsClaim = location.origin + '/app/#/teams?join=' + encodeURIComponent(codeVal);
-    document.getElementById('acceptBtn').href = P.get('claim') || teamsClaim;
   }
   checkBtn.addEventListener('click', confirmCode);
   codeInput.addEventListener('keydown', e=>{ if(e.key==='Enter') confirmCode(); });
 
-  // Default claim target → Teams app (admin-console connected)
-  if(!P.get('claim')){
-    document.getElementById('acceptBtn').href = location.origin + '/app/#/teams?join=' + encodeURIComponent(document.getElementById('codeInput').value.trim());
-  }
+  // Sensible target before anything is confirmed; confirmCode overwrites it.
+  document.getElementById('acceptBtn').href = claimUrl(codeInput.value.trim());
 </script>
 </body>
 </html>

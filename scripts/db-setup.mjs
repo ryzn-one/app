@@ -54,7 +54,15 @@ const indexes = [
   ["invites", { code: 1 }, { unique: true, name: "code_unique" }],
   ["invites", { redeemedBy: 1 }, { sparse: true, name: "redeemedBy" }],
   ["profiles", { userId: 1 }, { unique: true, name: "userId_unique" }],
-  ["onboarding_answers", { userId: 1, questionId: 1 }, { unique: true, name: "user_question_unique" }],
+  // One document per pair, enforced by the database — this is what stops a
+  // double-tap on "Request" from opening two matches between the same people.
+  ["matches", { menteeId: 1, mentorId: 1 }, { unique: true, name: "pair_unique" }],
+  ["matches", { menteeId: 1, status: 1 }, { name: "mentee_status" }],
+  ["matches", { mentorId: 1, status: 1 }, { name: "mentor_status" }],
+  ["teams_interest", { email: 1 }, { unique: true, name: "email_unique" }],
+  // The onboarding answers are stored as one document per user, not one per
+  // question — the old compound index never matched anything written.
+  ["onboarding_answers", { userId: 1 }, { unique: true, name: "userId_unique" }],
   ["xp_events", { userId: 1, createdAt: -1 }, { name: "user_recent" }],
   ["rate_limits", { key: 1, windowStart: 1 }, { name: "key_window" }],
   ["rate_limits", { expiresAt: 1 }, { expireAfterSeconds: 0, name: "expiresAt_ttl" }],

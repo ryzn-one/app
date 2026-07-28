@@ -7,53 +7,23 @@ import { C, F } from "../theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, Bar, Glyph } from "../ui.jsx";
 import { useIsDesktop } from "../useIsDesktop.js";
 import {
-  LIVE, signIn, signOut, messageFor, redeemInvite,
+  signIn, signOut, messageFor, redeemInvite,
   adminStats, adminUsers, adminInvites, adminMintInvites, adminRevokeInvite,
 } from "../lib/auth-client.js";
-import { buildInviteUrl, copyText } from "../teams/store.js";
+import { buildInviteUrl, copyText } from "../lib/invite-url.js";
 
 /* ————————————————— RYZN ADMIN —————————————————
    The founders' console: platform analytics, the mentor invite Roster, and the
    people table. It's a page in the same app, routed at /app/#/admin — no second
    site, no subdomain, so it shares the origin and the session with everything else.
 
-   Two modes, same as the rest of the app:
-     LIVE=false  seeded sample numbers so the console is explorable with no DB.
-                 Everything is labelled SAMPLE DATA — never present it as real.
-     LIVE=true   /api/admin/* behind an admin-only gate (lib/admin.js).
+   Reads /api/admin/* behind an admin-only gate (lib/admin.js). The console had
+   a second mode that rendered seeded sample numbers — invented users, invented
+   invite codes, invented signup counts — for anyone who opened the URL without
+   a database. It's gone: an admin console that can show fictional platform
+   metrics is one screenshot away from being quoted as real.
 */
 
-/* ————— sample data (LIVE=false only) ————— */
-const SAMPLE = {
-  users: { total: 148, mentees: 126, mentors: 20, admins: 2, last7: 23, last30: 74 },
-  invites: { open: 6, claimed: 14, expired: 0, revoked: 1 },
-  activation: { onboarded: 112, greetings: 13, profiles: 148 },
-  daily: [3, 5, 2, 8, 6, 4, 9, 7, 3, 11, 6, 4, 8, 5].map((n, i) => ({
-    day: new Date(Date.now() - (13 - i) * 864e5).toISOString().slice(0, 10), n,
-  })),
-  recent: [
-    { id: "s1", name: "Alex Reyes", email: "alex@ryzn.one", role: "mentee", createdAt: new Date(Date.now() - 2 * 36e5) },
-    { id: "s2", name: "Jordan Clarke", email: "jordan@harbourline.com", role: "mentor", createdAt: new Date(Date.now() - 9 * 36e5) },
-    { id: "s3", name: "Mia Tran", email: "mia@utoronto.ca", role: "mentee", createdAt: new Date(Date.now() - 26 * 36e5) },
-    { id: "s4", name: "Dana Wolfe", email: "dana@fieldnote.co", role: "mentor", createdAt: new Date(Date.now() - 40 * 36e5) },
-    { id: "s5", name: "Leo Kim", email: "leo@tmu.ca", role: "mentee", createdAt: new Date(Date.now() - 52 * 36e5) },
-  ],
-};
-const SAMPLE_INVITES = [
-  { code: "RYZ-INV-2026-8KQ2M4TZ", state: "claimed", note: "Founding cohort", createdAt: new Date(Date.now() - 12 * 864e5), redeemedAt: new Date(Date.now() - 9 * 864e5), claimedBy: { name: "Jordan Clarke", email: "jordan@harbourline.com" } },
-  { code: "RYZ-INV-2026-P3XV7B9D", state: "claimed", note: "Founding cohort", createdAt: new Date(Date.now() - 12 * 864e5), redeemedAt: new Date(Date.now() - 7 * 864e5), claimedBy: { name: "Dana Wolfe", email: "dana@fieldnote.co" } },
-  { code: "RYZ-INV-2026-R9WM2FJK", state: "open", note: "Founding cohort", createdAt: new Date(Date.now() - 5 * 864e5), expiresAt: new Date(Date.now() + 85 * 864e5), claimedBy: null },
-  { code: "RYZ-INV-2026-T5HN8QC3", state: "open", note: "Design roster", createdAt: new Date(Date.now() - 5 * 864e5), expiresAt: new Date(Date.now() + 85 * 864e5), claimedBy: null },
-  { code: "RYZ-INV-2026-V2JD6XZP", state: "revoked", note: "Founding cohort", createdAt: new Date(Date.now() - 20 * 864e5), claimedBy: null },
-];
-const SAMPLE_PEOPLE = [
-  { id: "u1", name: "Alex Reyes", email: "alex@ryzn.one", role: "mentee", createdAt: new Date(Date.now() - 42 * 864e5), emailVerified: true, onboardingComplete: true, xp: 2140, week: 6, streak: 34 },
-  { id: "u2", name: "Jordan Clarke", email: "jordan@harbourline.com", role: "mentor", createdAt: new Date(Date.now() - 61 * 864e5), emailVerified: true, onboardingComplete: true, impact: 847 },
-  { id: "u3", name: "Mia Tran", email: "mia@utoronto.ca", role: "mentee", createdAt: new Date(Date.now() - 38 * 864e5), emailVerified: true, onboardingComplete: true, xp: 1290, week: 6, streak: 5 },
-  { id: "u4", name: "Dana Wolfe", email: "dana@fieldnote.co", role: "mentor", createdAt: new Date(Date.now() - 55 * 864e5), emailVerified: true, onboardingComplete: false, impact: 902 },
-  { id: "u5", name: "Leo Kim", email: "leo@tmu.ca", role: "mentee", createdAt: new Date(Date.now() - 14 * 864e5), emailVerified: false, onboardingComplete: true, xp: 380, week: 2, streak: 3 },
-  { id: "u6", name: "Priya Raman", email: "priya@novahealth.com", role: "mentor", createdAt: new Date(Date.now() - 70 * 864e5), emailVerified: true, onboardingComplete: true, impact: 1204 },
-];
 
 /* ————— small bits ————— */
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—");
@@ -97,7 +67,6 @@ function AdminGate({ onIn, error }) {
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!LIVE) return onIn();
     setErr(null); setBusy(true);
     try {
       const { error: e } = await signIn.email({ email: email.trim(), password: pw });
@@ -124,7 +93,7 @@ function AdminGate({ onIn, error }) {
         <div style={{ background: C.surface, borderRadius: 20, padding: 22, marginTop: 20 }}>
           <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>Sign in</div>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
-            {LIVE ? "Founding team only. Your account must be on the admin list." : "Sample mode — no database attached. Any credentials open the console."}
+            "Founding team only. Your account must be on the admin list."
           </div>
           <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)}
@@ -402,16 +371,16 @@ export default function RyznAdmin() {
   const [toastMsg, setToastMsg] = useState(null);
   const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2200); };
 
-  const [stats, setStats] = useState(LIVE ? null : SAMPLE);
-  const [invites, setInvites] = useState(LIVE ? [] : SAMPLE_INVITES);
-  const [people, setPeople] = useState(LIVE ? [] : SAMPLE_PEOPLE);
+  const [stats, setStats] = useState(null);
+  const [invites, setInvites] = useState([]);
+  const [people, setPeople] = useState([]);
   const [q, setQ] = useState("");
   const [role, setRole] = useState("all");
 
   /* Load once signed in. A 403 here is the real gate — the sign-in form only
      proves you have an account, lib/admin.js decides whether it's a founder's. */
   useEffect(() => {
-    if (!authed || !LIVE) return;
+    if (!authed) return;
     let cancelled = false;
     (async () => {
       try {
@@ -428,9 +397,9 @@ export default function RyznAdmin() {
     return () => { cancelled = true; };
   }, [authed]);
 
-  /* People search is server-side when live, client-side on sample data. */
+  /* People search runs server-side. */
   useEffect(() => {
-    if (!authed || !LIVE) return;
+    if (!authed) return;
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
@@ -441,24 +410,9 @@ export default function RyznAdmin() {
     return () => { cancelled = true; clearTimeout(t); };
   }, [authed, q, role]);
 
-  const visiblePeople = useMemo(() => {
-    if (LIVE) return people;
-    const needle = q.trim().toLowerCase();
-    return people.filter(u =>
-      (role === "all" || u.role === role) &&
-      (!needle || u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)));
-  }, [people, q, role]);
+  const visiblePeople = people;
 
   const mint = async ({ role: kind, count, expiresDays, note }) => {
-    if (!LIVE) {
-      const made = Array.from({ length: count }, (_, i) => ({
-        code: `RYZ-INV-2026-SAMPLE${String(i + 1).padStart(2, "0")}`,
-        state: "open", role: kind, note, createdAt: new Date(), expiresAt: new Date(Date.now() + expiresDays * 864e5), claimedBy: null,
-      }));
-      setInvites(v => [...made, ...v]);
-      toast(`${count} sample ${kind} code${count === 1 ? "" : "s"} minted`);
-      return;
-    }
     try {
       const { created } = await adminMintInvites({ role: kind, count, expiresDays, note });
       const { invites: fresh } = await adminInvites();
@@ -469,11 +423,6 @@ export default function RyznAdmin() {
   };
 
   const revoke = async (code) => {
-    if (!LIVE) {
-      setInvites(v => v.map(x => x.code === code ? { ...x, state: "revoked" } : x));
-      toast(`${code} revoked`);
-      return;
-    }
     try {
       await adminRevokeInvite(code);
       const { invites: fresh } = await adminInvites();
@@ -483,7 +432,7 @@ export default function RyznAdmin() {
   };
 
   const leave = async () => {
-    if (LIVE) { try { await signOut(); } catch { /* already gone */ } }
+    try { await signOut(); } catch { /* already gone */ }
     setAuthed(false);
     setNav("overview");
   };
@@ -504,16 +453,19 @@ export default function RyznAdmin() {
         <Card>
           <Label color={C.purple}>Ryzn for Teams</Label>
           <div style={{ fontSize: 14, lineHeight: 1.55, marginTop: 8 }}>
-            The company product runs its own console per org — divisions, programs, matching rules, org invites.
-            Open it to set up or demo a pilot.
+            Not built. The org console that used to sit behind this button was a simulation —
+            a fictional company, invented mentors and mentees, and shared demo passwords in the
+            bundle. <b>/app/#/teams</b> is now the pitch plus a waitlist that writes to the
+            <code style={{ fontFamily: F.mono, fontSize: 12 }}> teams_interest</code> collection.
           </div>
-          <Btn style={{ marginTop: 14 }} onClick={() => { window.location.hash = "#/teams"; }}><Building2 size={15} /> Open the Teams console</Btn>
+          <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => { window.location.hash = "#/teams"; }}><Building2 size={15} /> View the Teams page</Btn>
         </Card>
         <Card>
           <Label>Mentor invite page</Label>
           <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55, marginTop: 8 }}>
-            Every code you mint opens the branded claim page with the code pre-filled. It now carries a
-            “build your own company orbit” link into Teams, so mentors who run companies convert from the same page.
+            Every code you mint opens the branded claim page with the code pre-filled. Accepting
+            now lands the mentor on sign-up with the code carried through — it used to send them
+            into the Teams demo instead of creating an account.
           </div>
           <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => window.open("/mentor-invite.html", "_blank", "noopener")}><ExternalLink size={15} /> Preview the invite page</Btn>
         </Card>
@@ -560,8 +512,10 @@ export default function RyznAdmin() {
     ),
   }[nav];
 
+  // alignSelf: stretch, not height: 100% — the row's height is set by the shell,
+  // and a percentage height against it would collapse back to content height.
   const sidebar = (
-    <div style={{ width: 212, flexShrink: 0, background: C.ink, display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ width: 212, flexShrink: 0, background: C.ink, display: "flex", flexDirection: "column", alignSelf: "stretch" }}>
       <div style={{ padding: "22px 18px 18px" }}>
         <div style={{ color: C.white, fontSize: 21, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
         <div style={{ fontFamily: F.mono, fontSize: 7.5, letterSpacing: 1.6, color: "#8B8985", marginTop: 2 }}>FOUNDER CONSOLE</div>
@@ -584,7 +538,7 @@ export default function RyznAdmin() {
   );
 
   return (
-    <div style={{ fontFamily: F.sans, color: C.ink, background: C.surface, minHeight: "100vh", display: "flex" }}>
+    <div style={{ fontFamily: F.sans, color: C.ink, background: C.surface, minHeight: "100vh", height: "100vh", display: "flex", overflow: "hidden" }}>
       {isDesktop && sidebar}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <div style={{ background: C.white, borderBottom: `1px solid ${C.line}`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -592,7 +546,6 @@ export default function RyznAdmin() {
             <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4 }}>{NAV.find(n => n[0] === nav)[1]}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", letterSpacing: 1, marginTop: 2 }}>RYZN PLATFORM · ALL COHORTS</div>
           </div>
-          {!LIVE && <Chip c={C.amber} bg={C.amberTint}>SAMPLE DATA</Chip>}
           {!isDesktop && (
             <button onClick={leave} style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 10, cursor: "pointer", padding: 8, display: "flex" }}><LogOut size={15} color={C.gray} /></button>
           )}

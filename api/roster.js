@@ -1,0 +1,121 @@
+import { getDb, collections } from "../lib/db.js";
+import { json, fail, withUser } from "../lib/http.js";
+import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
+
+/**
+ * GET /api/roster — the people on the other side of the platform.
+ *
+ * Mentees get mentors, mentors get mentees. Never the same side as the caller:
+ * this is the only endpoint that hands one user another user's profile, and a
+ * mentee-to-mentee listing would turn a platform full of minors into a
+ * browsable directory of them. The role check below is the whole guard.
+ *
+ * Replaces the hard-coded MENTOR_MATCHES / MENTEE_MATCHES fixtures the match
+ * decks used to render. An empty roster is a real answer — early cohorts start
+ * empty, and the deck shows an empty state rather than invented people.
+ */
+
+const LIMIT = 50;
+
+/** Overlap between what a mentee wants and what a mentor teaches.
+ *
+ *  Deliberately transparent rather than clever: there is no matching engine yet,
+ *  and a made-up "96%" next to someone's face is a claim the product can't back.
+ *  This is a real count of shared answers, normalised — nothing more is implied.
+ */
+function affinity(viewerProfile, candidateProfile, viewerRole) {
+  const mine = new Set(
+    (viewerRole === "mentee"
+      ? [...(viewerProfile.interests || []), ...(viewerProfile.skills || [])]
+      : [...(candidateProfile.interests || []), ...(candidateProfile.skills || [])]
+    ).map((s) => s.toLowerCase())
+  );
+  const theirs = (
+    viewerRole === "mentee"
+      ? [...(candidateProfile.expertise || []), ...(candidateProfile.menteeFit || [])]
+      : [...(viewerProfile.expertise || []), ...(viewerProfile.menteeFit || [])]
+  ).map((s) => s.toLowerCase());
+
+  if (!mine.size || !theirs.length) return null;
+  const hits = theirs.filter((t) => mine.has(t)).length;
+  return { shared: hits, of: Math.max(mine.size, theirs.length) };
+}
+
+async function handler(request, user) {
+  if (request.method !== "GET") return fail(405, "method_not_allowed", "Use GET.");
+
+  const viewerRole = sideOf(user);
+  const wanted = viewerRole === "mentee" ? "mentor" : "mentee";
+
+  const db = await getDb();
+
+  // Anyone already requested, paired with, or passed on drops out of the deck.
+  // Without this the deck re-offers people the caller has already answered for,
+  // and a second request would just 409.
+  const answered = await listMatches(user, {
+    statuses: [MATCH_STATUS.PENDING, MATCH_STATUS.ACCEPTED, MATCH_STATUS.DECLINED],
+  });
+  const answeredIds = new Set(
+    answered.map((m) => (viewerRole === "mentor" ? m.menteeId : m.mentorId))
+  );
+
+  // Mentees are the default role and may predate the field being written, so
+  // match on absent-or-"mentee" rather than an exact equality that would miss them.
+  const roleFilter =
+    wanted === "mentee" ? { role: { $in: [null, "mentee"] } } : { role: "mentor" };
+
+  const users = await db
+    .collection(collections.user)
+    .find(
+      { ...roleFilter, onboardingComplete: true },
+      { projection: { name: 1, image: 1, role: 1, createdAt: 1 } }
+    )
+    .sort({ createdAt: 1 })
+    .limit(LIMIT)
+    .toArray();
+
+  const ids = users.map((u) => String(u._id));
+  const profiles = await db
+    .collection(collections.profiles)
+    .find({ userId: { $in: [...ids, user.id] } })
+    .toArray();
+  const byUser = new Map(profiles.map((p) => [p.userId, p]));
+  const viewerProfile = byUser.get(user.id) || {};
+
+  const people = users
+    .filter((u) => String(u._id) !== user.id && !answeredIds.has(String(u._id)))
+    .map((u) => {
+      const p = byUser.get(String(u._id)) || {};
+      // No email, ever. These profiles cross the boundary between two users who
+      // have not agreed to talk yet; contact details are what accepting is for.
+      const base = {
+        id: String(u._id),
+        name: u.name || "—",
+        image: u.image ?? null,
+        affinity: affinity(viewerProfile, p, viewerRole),
+      };
+      return wanted === "mentor"
+        ? {
+            ...base,
+            headline: p.headline ?? null,
+            industry: p.industry ?? null,
+            tier: p.tier ?? "Scout",
+            impact: p.impact ?? 0,
+            expertise: p.expertise ?? [],
+            menteeFit: p.menteeFit ?? [],
+            why: p.why ?? null,
+            capacity: p.capacity ?? null,
+          }
+        : {
+            ...base,
+            track: p.track ?? null,
+            interests: p.interests ?? [],
+            skills: p.skills ?? [],
+            goals: p.goals ?? [],
+          };
+    });
+
+  return json({ role: wanted, people });
+}
+
+export default { fetch: withUser(handler) };

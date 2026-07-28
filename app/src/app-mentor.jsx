@@ -9,23 +9,19 @@ import {
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
-import {
-  BADGE_DEFS, GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, MENTEE_SCRIPT, MENTOR_SCRIPT,
-  MENTOR_MATCHES, MENTEE_MATCHES, EXTRA_MENTEES, MENTEE_POOL, RETURNING_MENTEES, STATUS,
-  EXERCISES_RETURNING, EXERCISES_FRESH, COHORT_BOARD_STATIC, SCHOOL_BOARD, MENTOR_BOARD_TOP,
-  EVENT, FEED_SEED
-} from "./data.js";
+import { BADGE_DEFS, STATUS } from "./data.js";
 
 /* ————————————————— APP: MENTOR ————————————————— */
 
-export const MentorDash = ({ u, openOverlay, addsLeft }) => {
+export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
   const isDesktop = useIsDesktop();
+  const firstName = (name || "").split(" ")[0];
   return (
   <div style={{ padding: "18px 20px 20px" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
-        <Label>Q3 2026 · Cohort 7</Label>
-        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>Jordan.</div>
+        <Label>Founding cohort</Label>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
       </div>
       <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
     </div>
@@ -34,8 +30,10 @@ export const MentorDash = ({ u, openOverlay, addsLeft }) => {
         <div>
           <Label color="#9C93E8">Impact Score</Label>
           <div style={{ fontSize: 52, fontWeight: 700, letterSpacing: -2, color: "#B7AFF2", lineHeight: 1.05, marginTop: 4 }}>{u.impact}</div>
+          {/* Was "RANK #12 OF 214" against a 214-mentor platform that does not
+              exist. Rank renders only once the server has one. */}
           <div style={{ fontFamily: F.mono, fontSize: 10, color: "#8B8985", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
-            {u.fresh ? `▲ ${u.impact} THIS QUARTER · RANK #${u.mentorRank} OF 214` : "▲ 63 THIS QUARTER · RANK #12 OF 214"}
+            {u.mentorRank ? `RANK #${u.mentorRank}` : "RANKING OPENS THIS QUARTER"}
             <ChevronRight size={11} color="#8B8985" />
           </div>
         </div>
@@ -74,6 +72,13 @@ export const MentorDash = ({ u, openOverlay, addsLeft }) => {
         </Card>
       )}
     </div>
+    {u.cohort.length === 0 && (
+      <Card style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55 }}>
+          Your cohort is empty. Mentee applications are still open — you’ll be notified when someone matches your profile. Building out your feed in the meantime is what makes mentees pick you.
+        </div>
+      </Card>
+    )}
   </div>
   );
 };
@@ -83,14 +88,14 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   const [note, setNote] = useState("");
   const [sent, setSent] = useState(false);
   const st = STATUS[mentee.status];
-  const goal = MENTEE_POOL.find(m => m.name === mentee.name)?.goal;
+  const goal = mentee.goals?.[0] ?? null;
   return (
     <div>
       <HeaderRow title={mentee.name} onBack={back}
         right={<span style={{ fontFamily: F.mono, fontSize: 9.5, background: st.bg, color: st.c, padding: "5px 9px" }}>{st.label.toUpperCase()}</span>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {[[`Wk ${mentee.week}`, "program"], [`${mentee.streak}`, "streak"], [u.fresh ? "1" : mentee.name === "Alex Reyes" ? "3" : "2", "badges"]].map(([n, l]) => (
+          {[[`Wk ${mentee.week}`, "program"], [`${mentee.streak}`, "streak"], [`${mentee.badges ?? 0}`, "badges"]].map(([n, l]) => (
             <Card key={l} style={{ padding: 12, textAlign: "center" }}>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{n}</div>
               <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>
@@ -109,31 +114,33 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
             {mentee.stage1 && <Btn small style={{ background: C.teal }} onClick={() => openDm(mentee)}><MessageCircle size={13} /> Message</Btn>}
           </div>
         </Card>
-        <Card>
-          <Label>Exercise completion · {u.fresh ? "week 1" : "last 6 weeks"}</Label>
-          <div style={{ marginTop: 12 }}><Heatmap weeks={u.fresh ? 1 : 6} /></div>
-        </Card>
+        {/* Milestone timeline reads the mentee's real badge count. The old
+            version hard-coded three earned badges for one named person and
+            derived the rest from week number, so a mentor was shown progress
+            their mentee had not made. */}
         <Card>
           <Label>Milestone timeline</Label>
           <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
             {BADGE_DEFS.map((b, i) => {
-              const hit = i < (u.fresh ? 1 : mentee.name === "Alex Reyes" ? 3 : Math.max(1, Math.floor(mentee.week / 2)));
+              const hit = i < (mentee.badges ?? 0);
               return <div key={b.id} title={b.name} style={{ flex: 1, height: 26, background: hit ? TIER_COLOR[b.tier] : "#E6E5E1", display: "flex", alignItems: "center", justifyContent: "center" }}>{hit && <Check size={12} color={C.white} strokeWidth={3} />}</div>;
             })}
           </div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 8 }}>{u.fresh ? "NEXT: FIRST SESSION · WEEK 1" : "NEXT: MIDWAY · 2 OF 3 MILESTONE EXERCISES DONE"}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 8 }}>{(mentee.badges ?? 0) === 0 ? "NO MILESTONES YET" : `${mentee.badges} OF ${BADGE_DEFS.length} EARNED`}</div>
         </Card>
+        {/* Journal entries are the mentee's own writing. Nothing is shown until
+            they've written something — the two invented reflections that used
+            to sit here were attributed to a real person in the mentor's UI. */}
         <Card>
-          <Label>Recent journal entries</Label>
-          {(u.fresh
-            ? [["Day 1", goal ? `Goal 1: “${goal}”` : "Set 3 program goals in onboarding."]]
-            : [["Jul 14", "Mapped 11 second-degree contacts. Two of them work in product. Didn’t expect that."], ["Jul 11", "Rewrote my headline four times. The specific version feels riskier but truer."]]
-          ).map(([d, t]) => (
-            <div key={d} style={{ borderLeft: `2px solid ${C.purple}`, paddingLeft: 12, marginTop: 12 }}>
-              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>{d.toUpperCase()}</div>
-              <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 3 }}>{t}</div>
+          <Label>Their goals</Label>
+          {goal ? (
+            <div style={{ borderLeft: `2px solid ${C.purple}`, paddingLeft: 12, marginTop: 12 }}>
+              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>GOAL 1</div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 3, fontStyle: "italic" }}>“{goal}”</div>
             </div>
-          ))}
+          ) : (
+            <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>Nothing written yet. Their first exercise lands here.</div>
+          )}
         </Card>
         <Card>
           <Label>Leave a note</Label>
@@ -157,20 +164,39 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   );
 };
 
+/* Sessions are derived from the real cohort, one opening session per mentee.
+   Scheduling doesn't exist yet, so no date is claimed — the old version printed
+   fixed calendar slots ("Tue Jul 21 · 5:00 PM") for meetings nobody had booked,
+   including for two mentees who weren't real. */
 export const MentorSessions = ({ u, toast }) => {
   const [done, setDone] = useState({});
   const [assigned, setAssigned] = useState({});
   const [noted, setNoted] = useState({});
-  const sessions = u.fresh
-    ? u.cohort.map((m, i) => ({ id: i + 1, mentee: m.name, date: ["Mon Jul 20 · 5:00 PM", "Tue Jul 21 · 6:00 PM", "Wed Jul 22 · 5:30 PM", "Thu Jul 23 · 7:00 PM"][i] || "Fri Jul 24 · 5:00 PM", week: 1, agenda: ["Intro: goals walkthrough (they wrote 3)", "Set the weekly cadence and channel", "Assign the Week 1 exercise track"] }))
-    : [
-      { id: 1, mentee: "Alex Reyes", date: "Tue Jul 21 · 5:00 PM", week: 6, agenda: ["Review Midway milestone work", "Week 6 focus: positioning your story", "Set two intro targets for Week 7"] },
-      { id: 2, mentee: "Mia Tran", date: "Wed Jul 22 · 6:30 PM", week: 6, agenda: ["Re-engage: 5-day streak recovery", "Week 6 focus: positioning your story", "Agree a lighter cadence for exam weeks"] },
-      { id: 3, mentee: "Leo Kim", date: "Thu Jul 23 · 7:00 PM", week: 2, agenda: ["Week 2 check-in: goals review", "First exercise track walkthrough", "Book Week 3 session"] },
-    ];
+  const sessions = u.cohort.map((m, i) => ({
+    id: m.id || i + 1,
+    mentee: m.name,
+    week: m.week || 1,
+    agenda: ["Intro: walk through their goals", "Set the weekly cadence and channel", "Assign the Week 1 exercise track"],
+  }));
+  if (sessions.length === 0) return (
+    <div>
+      <HeaderRow title="Sessions" />
+      <div style={{ padding: "0 20px 20px" }}>
+        <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Calendar size={18} color={C.gray} /></div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>No sessions yet</div>
+              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>An opening session appears here for each mentee who joins your cohort.</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
   return (
     <div>
-      <HeaderRow title="Sessions" right={<Label>WEEK OF JUL 20</Label>} />
+      <HeaderRow title="Sessions" right={<Label>{sessions.length} SCHEDULED</Label>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         {sessions.map(s => (
           <Card key={s.id}>
@@ -178,7 +204,7 @@ export const MentorSessions = ({ u, toast }) => {
               <Monogram name={s.mentee} size={40} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{s.mentee}</div>
-                <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 2 }}>{s.date.toUpperCase()} · WEEK {s.week}</div>
+                <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 2 }}>OPENING SESSION · WEEK {s.week} · NOT YET BOOKED</div>
               </div>
               <Calendar size={16} color={C.gray} />
             </div>
@@ -205,54 +231,45 @@ export const MentorSessions = ({ u, toast }) => {
   );
 };
 
-export const MentorBoard = ({ u, back }) => {
-  const rows = u.fresh
-    ? [...MENTOR_BOARD_TOP, { rank: 12, name: "Jordan Reeve", tier: "Pathfinder", score: 847 }, { gap: true }, { rank: u.mentorRank, name: "Jordan Clarke", tier: "Scout", score: u.impact, me: true }, { rank: u.mentorRank + 1, name: "Grace Liu", tier: "Scout", score: Math.max(40, u.impact - 60) }]
-    : [...MENTOR_BOARD_TOP, { rank: 12, name: "Jordan Clarke", tier: "Pathfinder", score: 847, me: true }, { rank: 13, name: "Omar Farah", tier: "Pathfinder", score: 811 }, { rank: 14, name: "Grace Liu", tier: "Scout", score: 763 }];
-  return (
-    <div>
-      <HeaderRow title="Mentor leaderboard" onBack={back} right={<Label>Q3 2026</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.line}` }}><Label>Quarterly ranking · by Impact Score</Label></div>
-          {rows.map((r, i) => r.gap ? (
-            <div key={`gap-${i}`} style={{ textAlign: "center", fontFamily: F.mono, fontSize: 11, color: "#A5A39D", padding: "6px 0", borderBottom: `1px solid ${C.line}` }}>· · ·</div>
-          ) : (
-            <div key={r.rank} style={{ display: "flex", alignItems: "center", padding: "12px 16px", background: r.me ? C.purple : "transparent", color: r.me ? C.white : C.ink, borderBottom: `1px solid ${r.me ? C.purple : C.line}` }}>
-              <span style={{ fontFamily: F.mono, fontSize: 12, width: 32, opacity: r.me ? 0.85 : 0.5 }}>{String(r.rank).padStart(2, "0")}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: r.me ? 700 : 500, fontSize: 14 }}>{r.name}{r.me && " · you"}</div>
-                <div style={{ fontFamily: F.mono, fontSize: 9, opacity: r.me ? 0.8 : 0.55, marginTop: 1 }}>{r.tier.toUpperCase()}</div>
-              </div>
-              <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700 }}>{r.score.toLocaleString()}</span>
-            </div>
-          ))}
-        </Card>
-        <Card>
-          <Label>Your quarter breakdown</Label>
-          {(u.fresh
-            ? [["Mentees active", `${u.cohort.length} of ${u.cohort.length}`, C.teal], ["Milestones unlocked by cohort", `${u.cohort.length}`, C.purple], ["Graduation rate", "First cohort in progress", C.amber]]
-            : [["Mentees active", "5 of 6", C.teal], ["Milestones unlocked by cohort", "14", C.purple], ["Graduation rate (all-time)", "92%", C.amber]]
-          ).map(([l, v, c]) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-              <span style={{ fontSize: 13.5 }}>{l}</span>
-              <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: c, textAlign: "right" }}>{v}</span>
-            </div>
-          ))}
-        </Card>
-        <Card style={{ background: C.purpleTint, border: "none" }}>
-          <div style={{ fontSize: 13.5, color: C.deep, lineHeight: 1.5 }}>
-            {u.fresh
-              ? <><b>Pathfinder is the next tier.</b> Reach 400 Impact — sessions, milestones, and graduations all count.</>
-              : <><b>Architect is in reach.</b> Two more cohort graduations and one co-designed track qualify you for review.</>}
+/* The quarterly board. Every competitor row was invented — named mentors with
+   Impact scores in the 800–1200 range, which also set the implied bar for a
+   real mentor's own number. There is no cross-mentor ranking service yet, so
+   this shows the caller's own quarter and says plainly that the board is not
+   open. */
+export const MentorBoard = ({ u, back }) => (
+  <div>
+    <HeaderRow title="Impact" onBack={back} right={<Label>THIS QUARTER</Label>} />
+    <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
+        <Label color="#9C93E8">Your Impact Score</Label>
+        <div style={{ fontSize: 46, fontWeight: 700, letterSpacing: -1.8, color: "#B7AFF2", marginTop: 6 }}>{u.impact}</div>
+        <div style={{ fontFamily: F.mono, fontSize: 10, color: "#8B8985", marginTop: 4 }}>{(u.tier || "Scout").toUpperCase()} · {u.mentorRank ? `RANK #${u.mentorRank}` : "UNRANKED"}</div>
+        <div style={{ marginTop: 14 }}><Bar pct={Math.min(1, u.impact / 400)} color={C.purple} h={5} /></div>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 5 }}>{u.impact}/400 → PATHFINDER</div>
+      </Card>
+      <Card>
+        <Label>Your quarter breakdown</Label>
+        {[
+          ["Mentees in your cohort", `${u.cohort.length}`, C.teal],
+          ["Cohort capacity", `${u.capacity ?? "—"}`, C.purple],
+          ["Graduations", u.cohort.length ? "First cohort in progress" : "None yet", C.amber],
+        ].map(([l, v, c]) => (
+          <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+            <span style={{ fontSize: 13.5 }}>{l}</span>
+            <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: c, textAlign: "right" }}>{v}</span>
           </div>
-        </Card>
-      </div>
+        ))}
+      </Card>
+      <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+        <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.55 }}>
+          The quarterly leaderboard opens once the founding roster is complete. Until then your Impact Score stands on its own — sessions, milestones and graduations all count toward it.
+        </div>
+      </Card>
     </div>
-  );
-};
+  </div>
+);
 
-export const MentorProfile = ({ u, openOverlay, toast, feed, go, greetingUp }) => {
+export const MentorProfile = ({ u, name, openOverlay, toast, feed, go, greetingUp }) => {
   const [view, setView] = useState(u.fresh ? "studio" : "preview");
   const checklist = [
     ["Greeting video for new mentees", greetingUp, "+15 Impact"],
@@ -274,28 +291,31 @@ export const MentorProfile = ({ u, openOverlay, toast, feed, go, greetingUp }) =
 
         {view === "preview" ? (<>
           <Card style={{ background: C.ink, border: "none", color: C.white, textAlign: "center", padding: 24 }}>
-            <Monogram name="Jordan Clarke" size={68} bg={C.purple} color={C.white} radius={0} />
-            <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>Jordan Clarke</div>
-            <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 2 }}>VP of Product · Harbourline · Technology</div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {u.tier.toUpperCase()} MENTOR</div>
+            <Monogram name={name || "—"} size={68} bg={C.purple} color={C.white} radius={0} />
+            <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>{name || "Your profile"}</div>
+            {(u.headline || u.industry) && (
+              <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 2 }}>{[u.headline, u.industry].filter(Boolean).join(" · ")}</div>
+            )}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u.tier || "Scout").toUpperCase()} MENTOR</div>
+            {/* "GRADUATED 11 · COHORTS 4" rendered for a mentor on day one.
+                These come off the real cohort now. */}
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
-              {[[u.impact, "IMPACT SCORE"], [u.fresh ? 0 : 11, "GRADUATED"], [u.fresh ? 1 : 4, "COHORTS"]].map(([n, l]) => (
+              {[[u.impact, "IMPACT SCORE"], [u.cohort.length, "MENTEES"], [u.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
                 <div key={l}><div style={{ fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
               ))}
             </div>
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 16, letterSpacing: 0.6 }}>{greetingUp ? "GREETING VIDEO · LIVE" : "NO GREETING YET"} · {feed.length} FEED POST{feed.length === 1 ? "" : "S"}</div>
           </Card>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn kind="primary" style={{ flex: 1 }} onClick={() => toast("Link copied · ryzn.one/m/jclarke")}><ExternalLink size={15} /> Share link</Btn>
-            <Btn kind="ghost" style={{ flex: 1 }} onClick={() => toast("Opening LinkedIn embed…")}><Linkedin size={15} /> Embed</Btn>
-          </div>
-          <Card>
-            <Label>Verification</Label>
-            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 10 }}>
-              <QR seed="jordan-clarke-847" size={84} />
-              <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, lineHeight: 1.7 }}>MENTOR ID<br /><span style={{ color: C.ink, fontWeight: 700 }}>RYZ-M-2026-0087</span><br />ryzn.one/m/jclarke</div>
-            </div>
-          </Card>
+          {u.why && (
+            <Card>
+              <Label>Why you mentor</Label>
+              <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{u.why}</div>
+            </Card>
+          )}
+          {/* Public mentor pages and verification QRs aren't built. The card
+              that was here printed a fixed ID (RYZ-M-2026-0087) and a
+              ryzn.one/m/jclarke URL that resolves to nothing. */}
+          <Btn kind="ghost" onClick={() => toast("Public mentor pages open when the founding roster is complete.")}><ExternalLink size={15} /> Share link</Btn>
         </>) : (<>
           <Card>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

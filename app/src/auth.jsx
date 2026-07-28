@@ -8,14 +8,14 @@ import {
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
-import { LIVE, authClient, signIn, signUp, messageFor, validateInvite, redeemInvite } from "./lib/auth-client.js";
+import { authClient, signIn, signUp, messageFor, validateInvite, redeemInvite } from "./lib/auth-client.js";
 import { useTurnstile } from "./lib/turnstile.js";
 
 /* ————————————————— JOURNEY: AUTH —————————————————
-   Every screen below runs in one of two modes:
-     LIVE = false → original prototype behaviour, any input passes (no DB needed)
-     LIVE = true  → real Better Auth calls against /api/auth/*
-   Set VITE_API_MODE=live to switch. See src/lib/auth-client.js.
+   Every screen below makes real Better Auth calls against /api/auth/*. There is
+   no prototype mode and no prefilled credentials: a form that arrived already
+   filled with someone else's name is how a signed-in user ended up being
+   greeted as "Jordan".
 */
 
 export const Splash = ({ onEnter, isDesktop }) => (
@@ -90,8 +90,15 @@ export const Welcome = ({ role, go }) => (
           ? "We found the people who already did. A hand-picked roster, a 12-week program, and proof you can put on a resume."
           : "20 founding mentors. A public Impact Score, a real talent pipeline, and a movement worth your name. Invitation only."}
       </div>
+      {/* Structural facts about how the program is built — not performance
+          claims. The numbers that used to sit here ("avg XP / cohort",
+          "$56K lifetime earnings lift", "92% graduation rate") described
+          outcomes the platform has not produced yet. */}
       <div style={{ display: "flex", gap: 14, marginTop: 22 }}>
-        {(role === "mentee" ? [["2,140", "avg XP / cohort"], ["8", "verifiable badges"], ["$56K", "lifetime earnings lift"]] : [["847", "top Impact Score"], ["92%", "graduation rate"], ["4", "mentor tiers"]]).map(([n, l]) => (
+        {(role === "mentee"
+          ? [["12", "week program"], ["8", "verifiable badges"], ["3", "mentor seats"]]
+          : [["20", "founding mentors"], ["12", "week cohort"], ["4", "mentor tiers"]]
+        ).map(([n, l]) => (
           <div key={l}>
             <div style={{ fontSize: 20, fontWeight: 700, color: C.purple }}>{n}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase", marginTop: 2 }}>{l}</div>
@@ -110,17 +117,18 @@ const GoogleMark = () => (
   <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
 );
 
-/** LIVE ? real-mode initial value : original prototype filler */
-const demo = (live, fallback) => (LIVE ? live : fallback);
-
-export const Register = ({ role, go, onDone }) => {
+/** `initialInvite` arrives from /app/#/join?code=… — a mentor who clicked
+    through from the invitation email, so the code is already confirmed and
+    shouldn't have to be retyped. It still gets re-validated below, and the
+    claim itself is atomic and server-side. */
+export const Register = ({ role, go, onDone, initialInvite = "" }) => {
   const [show, setShow] = useState(false);
-  const [name, setName] = useState(demo("", role === "mentee" ? "Alex Reyes" : "Jordan Clarke"));
-  const [email, setEmail] = useState(demo("", role === "mentee" ? "alex@ryzn.one" : "jordan@harbourline.com"));
-  const [pw, setPw] = useState(demo("", "••••••••••"));
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
   const [dob, setDob] = useState("");
-  const [inv, setInv] = useState(demo("", "RYZ-INV-2026-0087"));
-  const [inviteState, setInviteState] = useState(demo("idle", "valid")); // idle|checking|valid|invalid
+  const [inv, setInv] = useState(initialInvite || "");
+  const [inviteState, setInviteState] = useState("idle"); // idle|checking|valid|invalid
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
   const turnstile = useTurnstile();
@@ -128,7 +136,7 @@ export const Register = ({ role, go, onDone }) => {
   // Debounced, read-only check so the mentor sees VALID ✓ before committing.
   // The actual single-use claim is a separate atomic server-side operation.
   useEffect(() => {
-    if (!LIVE || role !== "mentor") return;
+    if (role !== "mentor") return;
     const code = inv.trim();
     if (!code) { setInviteState("idle"); return; }
     setInviteState("checking");
@@ -144,7 +152,6 @@ export const Register = ({ role, go, onDone }) => {
   }, [inv, role]);
 
   const submit = async () => {
-    if (!LIVE) return onDone();
     setErr(null);
     if (!name.trim()) return setErr("Enter your full name.");
     if (pw.length < 10) return setErr("Passwords need at least 10 characters.");
@@ -178,7 +185,7 @@ export const Register = ({ role, go, onDone }) => {
     }
   };
 
-  const google = () => LIVE ? signIn.social({ provider: "google", callbackURL: "/app/" }) : onDone();
+  const google = () => signIn.social({ provider: "google", callbackURL: "/app/" });
 
   const inviteBadge = {
     idle: null,
@@ -207,7 +214,7 @@ export const Register = ({ role, go, onDone }) => {
       <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
       <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)} autoComplete="new-password"
         right={<button onClick={() => setShow(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>{show ? <EyeOff size={16} color={C.gray} /> : <Eye size={16} color={C.gray} />}</button>} />
-      {LIVE && role === "mentee" && (
+      {role === "mentee" && (
         // Captured at signup: backfilling DOB once you have real users is
         // painful, and under-18 accounts need guardian consent before any
         // mentor contact opens.
@@ -242,13 +249,12 @@ export const TeamsCrossSell = ({ style }) => (
 
 export const Login = ({ go, onDone, role }) => {
   const [show, setShow] = useState(false);
-  const [email, setEmail] = useState(demo("", role === "mentee" ? "alex@ryzn.one" : "jordan@harbourline.com"));
-  const [pw, setPw] = useState(demo("", "••••••••••"));
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (!LIVE) return onDone();
     setErr(null);
     setBusy(true);
     try {
@@ -262,13 +268,15 @@ export const Login = ({ go, onDone, role }) => {
     }
   };
 
-  const google = () => LIVE ? signIn.social({ provider: "google", callbackURL: "/app/" }) : onDone();
+  const google = () => signIn.social({ provider: "google", callbackURL: "/app/" });
 
   return (
     <div style={{ padding: "0 24px" }}>
       <button onClick={() => go("welcome")} style={{ background: "none", border: "none", cursor: "pointer", padding: "18px 0 0" }}><ArrowLeft size={20} color={C.ink} /></button>
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 12 }}>Welcome back.</div>
-      <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>{role === "mentee" ? "Day 34 of your streak is waiting." : "Your cohort kept moving. Catch up inside."}</div>
+      {/* Was "Day 34 of your streak is waiting." — a specific claim about a
+          person the sign-in screen has not identified yet. */}
+      <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>{role === "mentee" ? "Pick up where you left off." : "Your cohort kept moving. Catch up inside."}</div>
       <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
       <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password"
         onKeyDown={e => e.key === "Enter" && submit()}
@@ -280,7 +288,6 @@ export const Login = ({ go, onDone, role }) => {
         <div style={{ flex: 1, height: 1, background: C.line }} /><Label>or</Label><div style={{ flex: 1, height: 1, background: C.line }} />
       </div>
       <Btn kind="ghost" onClick={google}><GoogleMark /> Continue with Google</Btn>
-      {!LIVE && <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", textAlign: "center", marginTop: 12, letterSpacing: 0.6 }}>RETURNING USERS SKIP SETUP — STRAIGHT TO THE APP</div>}
       <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, marginTop: 12, paddingBottom: 24 }}>New here? <span onClick={() => go("register")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create an account</span></div>
     </div>
   );
@@ -292,7 +299,7 @@ const OTP_LEN = 6;
 
 export const Forgot = ({ go }) => {
   const [step, setStep] = useState("email");
-  const [email, setEmail] = useState(demo("", "alex@ryzn.one"));
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState(Array(OTP_LEN).fill(""));
   const [pw, setPw] = useState("");
   const [err, setErr] = useState(null);
@@ -310,7 +317,6 @@ export const Forgot = ({ go }) => {
   const otp = code.join("");
 
   const sendCode = async () => {
-    if (!LIVE) return setStep("sent");
     setErr(null); setBusy(true);
     try {
       const { error } = await authClient.forgetPassword.emailOtp({ email: email.trim() });
@@ -322,7 +328,6 @@ export const Forgot = ({ go }) => {
   };
 
   const savePassword = async () => {
-    if (!LIVE) return setStep("done");
     setErr(null); setBusy(true);
     try {
       const { error } = await authClient.emailOtp.resetPassword({ email: email.trim(), otp, password: pw });
@@ -357,7 +362,7 @@ export const Forgot = ({ go }) => {
           ))}
         </div>
         <FormError>{err}</FormError>
-        <Btn style={{ marginTop: 20 }} disabled={LIVE && otp.length < OTP_LEN} onClick={() => setStep("reset")}>Verify code</Btn>
+        <Btn style={{ marginTop: 20 }} disabled={otp.length < OTP_LEN} onClick={() => setStep("reset")}>Verify code</Btn>
         <div style={{ textAlign: "center", fontFamily: F.mono, fontSize: 10.5, color: C.gray, marginTop: 14 }}>
           NO EMAIL? CHECK SPAM · <span onClick={sendCode} style={{ color: C.purple, cursor: "pointer", fontWeight: 700 }}>RESEND</span>
         </div>

@@ -186,7 +186,7 @@ export const AuthCardShell = ({ children }) => (
   </div>
 );
 
-export const Sidebar = ({ nav, tab, overlay, onSelect, role, onSettings, onLogout }) => (
+export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, onSettings, onLogout }) => (
   <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.line}`, background: C.white, display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ padding: "26px 22px 20px" }}>
       <div style={{ color: C.purple, fontSize: 22, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
@@ -207,9 +207,9 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, onSettings, onLogou
       })}
     </div>
     <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
-      <Monogram name={role === "mentee" ? "Alex Reyes" : "Jordan Clarke"} size={36} />
+      <Monogram name={name || "—"} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{role === "mentee" ? "Alex Reyes" : "Jordan Clarke"}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
       </div>
       <button onClick={onSettings} title="Settings" style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><Settings size={16} color={C.gray} /></button>

@@ -13,6 +13,10 @@ lib/ratelimit.js   fixed-window limiter backed by Mongo
 
 api/auth-handler.js    every Better Auth endpoint (vercel rewrite /api/auth/*)
 api/me.js              GET  — session + profile (bootstraps profile on first call)
+api/onboarding.js      POST  — persists the Ryzn AI setup answers, sets onboardingComplete
+api/roster.js          GET   — the other side of the platform (mentors↔mentees)
+api/matches.js         GET/POST/PATCH — the mentee↔mentor pairing handshake
+api/teams-interest.js  POST  — Ryzn for Teams waitlist (unauthenticated)
 api/invites/validate.js POST — read-only code check (unauthenticated, rate-limited)
 api/invites/redeem.js   POST — atomic single-use claim; only path to role=mentor
 api/admin/stats.js     GET   — platform counts, 14-day signups, activation funnel
@@ -40,13 +44,13 @@ The console mints and revokes invite codes. It deliberately cannot edit users or
 assign the mentor role — that still happens only in `api/invites/redeem.js`, when
 a mentor claims a code themselves. Keep it that way.
 
-Like the rest of the app, the console honours `VITE_API_MODE`. Without
-`live` it renders clearly-labelled **SAMPLE DATA** and calls no endpoint, so the
-page is explorable with no database — and exposes nothing if someone finds the
-URL. Turn it on with real analytics by setting `VITE_API_MODE=live`.
+The console reads live data only. It used to have a sample mode that rendered
+seeded platform metrics and a fake people table for anyone who opened the URL
+without a database; that is gone, along with `VITE_API_MODE`. Signing in still
+proves nothing on its own — `lib/admin.js` decides on every request.
 
-To turn it on for real: set `ADMIN_EMAILS` and `VITE_API_MODE=live` in the
-Vercel project. Nothing else — no domain, no DNS, no second project.
+To turn it on: set `ADMIN_EMAILS` in the Vercel project. Nothing else — no
+domain, no DNS, no second project.
 
 ## Collections
 
@@ -80,16 +84,61 @@ vercel dev                # terminal 1 — port 3000
 npm run dev               # terminal 2 — port 5173, open /app/
 ```
 
-Set `VITE_API_MODE=live` in `app/.env.local` to make the auth screens hit the
-real backend. Without it they keep the original prototype behaviour and need no
-database — that's the default, so the demo still runs anywhere.
+A database is required. There is no offline mode: the app asks `/api/me` who
+you are on mount and shows the signed-out journey if that 401s.
+
+## Matching
+
+A pairing is **one document** in `matches`, shared by both sides, so a mentor's
+cohort and a mentee's mentor list can never disagree.
+
+```
+pending    one side asked, the other hasn't answered
+accepted   both sides agreed — a real pairing
+declined   answered no (also how a swipe-left is recorded)
+ended      was accepted, since dissolved
+```
+
+Three rules are load-bearing:
+
+**Either side may ask; nobody is paired until the other accepts.** Requesting
+someone who already requested you *is* the accept — the server collapses that
+case rather than opening a second document.
+
+**A pass is stored, not forgotten.** `/api/roster` excludes anyone with a
+pending, accepted or declined record, so the deck never re-offers a person the
+caller already answered for. Losing that on refresh was the old behaviour.
+
+**The unique index on `{menteeId, mentorId}` is the real guard.** It is what
+stops a double-tap from opening two matches. The accept is a
+`findOneAndUpdate` filtered on `status: "pending"`, so two concurrent accepts
+produce exactly one winner.
+
+A mentee holds three seats — one `active`, up to two `support`. A mentor's limit
+is the `capacity` they answered in onboarding. `/api/me` derives `mentor`,
+`supportMentors` and `cohort` from this collection on every call; none of it is
+denormalised onto the profile.
+
+Run `npm run db:setup` before this works properly — the unique index is created
+there, and without it concurrent requests can duplicate a pair.
 
 ## Not built yet
+
+Screens that depend on these render an explicit empty state. None of them fall
+back to sample content — that was the point of the demo-data removal, and a
+placeholder mentor or a seeded leaderboard is worse than an empty one.
 
 - Guardian consent email flow. `/api/me` returns `compliance.needsGuardianConsent`
   for under-18 accounts, but nothing sends the consent request or sets
   `guardianConsentAt`. **Chat must not open for minors until this exists.**
-- Onboarding answer persistence, matching, XP ledger, badge issuance —
-  still client-side in `RyznApp.jsx`. See `docs/PRODUCTION.md`.
+- **Nobody is notified of a match.** A pending request sits in the other party's
+  app until they happen to open it. With Postmark wired up this is the obvious
+  next thing to send.
+- XP ledger and badge issuance — still client-side in `RyznApp.jsx`. Profile XP
+  reads from the server but never increments there.
+- Messages, mentor feed posts, and session scheduling have no store.
+- Cross-user leaderboards (cohort XP, mentor Impact ranking).
+- Ryzn for Teams. `/app/#/teams` is a pitch page plus a waitlist writing to
+  `teams_interest`. The org console it replaced was a simulation.
 - Email verification is off (`requireEmailVerification: false`). Turn it on once
   the sending domain / signature is verified in Postmark.
