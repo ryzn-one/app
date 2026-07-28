@@ -6,12 +6,12 @@ with `/app/` and session cookies work with no CORS.
 ```
 lib/db.js          pooled Mongo client (cached on globalThis — see note below)
 lib/auth.js        Better Auth config: email+password, Google, OTP reset
-lib/email.js       Resend sender; logs to console when no API key
+lib/email.js       Postmark sender (Resend fallback); logs when no token
 lib/http.js        json/fail helpers, withUser() guard, ageFrom()
 lib/admin.js       withAdmin() guard + invite code minting (founder console)
 lib/ratelimit.js   fixed-window limiter backed by Mongo
 
-api/auth/[...all].js   every Better Auth endpoint
+api/auth-handler.js    every Better Auth endpoint (vercel rewrite /api/auth/*)
 api/me.js              GET  — session + profile (bootstraps profile on first call)
 api/invites/validate.js POST — read-only code check (unauthenticated, rate-limited)
 api/invites/redeem.js   POST — atomic single-use claim; only path to role=mentor
@@ -92,4 +92,4 @@ database — that's the default, so the demo still runs anywhere.
 - Onboarding answer persistence, matching, XP ledger, badge issuance —
   still client-side in `RyznApp.jsx`. See `docs/PRODUCTION.md`.
 - Email verification is off (`requireEmailVerification: false`). Turn it on once
-  the sending domain is verified in Resend.
+  the sending domain / signature is verified in Postmark.
