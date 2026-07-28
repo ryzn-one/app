@@ -150,7 +150,14 @@ function AdminGate({ onIn, error }) {
 
           <FormError>{err || error}</FormError>
           <Btn style={{ marginTop: 18 }} disabled={busy} onClick={submit}><Shield size={15} /> {busy ? "Checking…" : "Enter the console"}</Btn>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", textAlign: "center", marginTop: 14, letterSpacing: 0.6 }}>
+          {/* Without this the console is a dead end for anyone who doesn't
+              already have a Ryzn account — there's no sign-up on this screen. */}
+          <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, marginTop: 16 }}>
+            No Ryzn account yet?{" "}
+            <span onClick={() => { window.location.hash = ""; }} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create one</span>
+            , then come back here.
+          </div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", textAlign: "center", marginTop: 12, letterSpacing: 0.6 }}>
             RYZN.ONE/APP/#/ADMIN
           </div>
         </div>

@@ -13,7 +13,8 @@
     "db:setup": "node --env-file=.env.local scripts/db-setup.mjs",
     "db:invites": "node --env-file=.env.local scripts/db-setup.mjs --seed-invites=20",
     "invites:status": "node --env-file=.env.local scripts/invites-status.mjs",
-    "admin:grant": "node --env-file=.env.local scripts/make-admin.mjs"
+    "admin:grant": "node --env-file=.env.local scripts/make-admin.mjs",
+    "user:make": "node --env-file=.env.local scripts/make-user.mjs"
   },
   "dependencies": {
     "better-auth": "^1.6.25",
