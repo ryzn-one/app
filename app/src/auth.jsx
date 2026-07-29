@@ -355,11 +355,11 @@ export const Forgot = ({ go }) => {
         <div style={{ width: 48, height: 48, background: C.tealTint, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 16 }}><Mail size={20} color={C.teal} /></div>
         <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Check your inbox</div>
         <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>Code sent to <b style={{ color: C.ink }}>{email}</b>. Enter it below.</div>
-        <div style={{ display: "flex", gap: 6, marginTop: 20 }}>
+        <div style={{ display: "flex", gap: 6, marginTop: 20, maxWidth: "100%" }}>
           {code.map((d, i) => (
             <input key={i} ref={el => (boxes.current[i] = el)} value={d} inputMode="numeric" autoComplete="one-time-code" maxLength={1}
               onChange={e => setDigit(i, e.target.value)} onKeyDown={e => onKey(i, e)}
-              style={{ width: 46, height: 58, textAlign: "center", fontFamily: F.mono, fontSize: 20, fontWeight: 700, border: `1.5px solid ${C.purple}`, borderRadius: 12, outline: "none", background: C.white, color: C.ink, minWidth: 0 }} />
+              style={{ flex: 1, minWidth: 0, height: 58, textAlign: "center", fontFamily: F.mono, fontSize: 20, fontWeight: 700, border: `1.5px solid ${C.purple}`, borderRadius: 12, outline: "none", background: C.white, color: C.ink }} />
           ))}
         </div>
         <FormError>{err}</FormError>

@@ -314,7 +314,7 @@ export const SwipeDeck = ({ deck, renderCard, stampRight, stampLeft, canRight, o
   const roundBtn = (size, bg, color, borderColor) => ({ width: size, height: size, borderRadius: size / 2, border: borderColor ? `1.5px solid ${borderColor}` : "none", background: bg, color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 14px rgba(26,26,26,.10)" });
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 20px 14px", minHeight: 0 }}>
-      <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
+      <div style={{ flex: 1, position: "relative", minHeight: 0, overflow: "hidden" }}>
         {!top && emptyView}
         {next && <div style={{ position: "absolute", inset: 0, transform: "scale(.94) translateY(12px)", opacity: 0.75, pointerEvents: "none" }}>{renderCard(next)}</div>}
         {top && (
@@ -631,7 +631,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
             {activeF > 0 && <span style={{ position: "absolute", top: -6, right: -6, width: 17, height: 17, borderRadius: 9, background: C.purple, color: C.white, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeF}</span>}
           </button>
         </div>
-        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5 }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {Math.max(0, 3 - requested.length)} SEAT{3 - requested.length === 1 ? "" : "S"} FREE</div>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {Math.max(0, 3 - requested.length)} SEAT{3 - requested.length === 1 ? "" : "S"} FREE</div>
       </div>
       {isDesktop
         ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />

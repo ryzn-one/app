@@ -519,7 +519,7 @@ export default function RyznComplete() {
   );
 
   return (
-    <div className="full-h" style={{ fontFamily: F.sans, color: C.ink, overflow: "hidden" }}>
+    <div className="full-h" style={{ fontFamily: F.sans, color: C.ink, overflow: "hidden", width: "100%", maxWidth: "100%" }}>
 
       {phase === "journey" && (
         <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>

@@ -16,6 +16,7 @@
     "admin:grant": "node --env-file=.env.local scripts/make-admin.mjs",
     "user:make": "node --env-file=.env.local scripts/make-user.mjs",
     "preview:env": "node scripts/setup-preview-env.mjs",
+    "production:env": "node scripts/setup-production-env.mjs",
     "preview:db": "node --env-file=.env.local scripts/db-setup.mjs"
   },
   "dependencies": {
