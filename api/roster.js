@@ -13,7 +13,9 @@ import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
  *
  * Replaces the hard-coded MENTOR_MATCHES / MENTEE_MATCHES fixtures the match
  * decks used to render. An empty roster is a real answer — early cohorts start
- * empty, and the deck shows an empty state rather than invented people.
+ * empty, and the deck shows an empty state rather than invented people. Invited
+ * mentors appear even before they finish the AI chat; mentees only appear once
+ * setup is done.
  *
  * Query params:
  *   ?include=all   keep people the caller has already answered for, tagged with
@@ -117,11 +119,11 @@ async function handler(request, user) {
   const users = await db
     .collection(collections.user)
     .find(
-      { ...roleFilter, onboardingComplete: true, ...(idFilter || {}) },
-      { projection: { name: 1, image: 1, role: 1, createdAt: 1 } }
+      { ...roleFilter, ...(idFilter || {}) },
+      { projection: { name: 1, image: 1, role: 1, createdAt: 1, onboardingComplete: 1 } }
     )
     .sort({ createdAt: 1 })
-    .limit(LIMIT)
+    .limit(LIMIT * 2) // over-fetch a little; readiness filter below may drop some
     .toArray();
 
   const ids = users.map((u) => String(u._id));
@@ -132,8 +134,21 @@ async function handler(request, user) {
   const byUser = new Map(profiles.map((p) => [p.userId, p]));
   const viewerProfile = byUser.get(user.id) || {};
 
+  /* Who belongs on the deck:
+       - finished setup (user flag OR profile flag — they can drift briefly), or
+       - an invited mentor: redeeming a code puts them on the Roster, and hiding
+         them until the AI chat finishes made mentees see "No mentors yet" while
+         the admin People table already listed MENTOR accounts.
+     Mentees still need setup done — a half-signed-up student shouldn't land in
+     a mentor's swipe deck. */
+  const ready = (u, p) =>
+    Boolean(u.onboardingComplete || p.onboardingComplete) ||
+    (wanted === "mentor" && u.role === "mentor");
+
   const people = users
     .filter((u) => String(u._id) !== user.id && (includeAll || !answeredIds.has(String(u._id))))
+    .filter((u) => ready(u, byUser.get(String(u._id)) || {}))
+    .slice(0, LIMIT)
     .map((u) => {
       const p = byUser.get(String(u._id)) || {};
       // No email, ever. These profiles cross the boundary between two users who

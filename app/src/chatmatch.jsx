@@ -401,13 +401,16 @@ export const AffinityTag = ({ affinity, color = C.purple }) =>
 
 export const Initials = ({ name }) => <>{(name || "?").split(" ").map(w => w[0]).join("").slice(0, 2)}</>;
 
-export const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = true, limit }) => (
-  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-    {(limit ? items.slice(0, limit) : items).map(t => (
-      <span key={t} style={{ fontSize: 11, fontWeight: 600, background: bg, border: border ? `1px solid ${C.line}` : "none", borderRadius: 12, padding: "4px 10px", color }}>{t}</span>
-    ))}
-  </div>
-);
+export const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = true, limit }) => {
+  const list = Array.isArray(items) ? items : [];
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {(limit ? list.slice(0, limit) : list).map(t => (
+        <span key={t} style={{ fontSize: 11, fontWeight: 600, background: bg, border: border ? `1px solid ${C.line}` : "none", borderRadius: 12, padding: "4px 10px", color }}>{t}</span>
+      ))}
+    </div>
+  );
+};
 
 /** Shown when nobody is on the other side of the platform yet. Early cohorts
     genuinely start here, and saying so is better than a deck of strangers. */
@@ -512,9 +515,13 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   const firstReq = useRef(false);
 
   /* Decisions come back from the server, not local state. The roster already
-     excludes anyone answered for, so the deck is whatever is genuinely left. */
-  const pending = matches.filter(m => m.status === "pending");
-  const accepted = matches.filter(m => m.status === "accepted");
+     excludes anyone answered for, so the deck is whatever is genuinely left.
+     Guard array shape — a non-array here used to throw in render and take the
+     whole shell down via the root boundary ("Something broke on our side"). */
+  const safeRoster = Array.isArray(roster) ? roster : [];
+  const safeMatches = Array.isArray(matches) ? matches : [];
+  const pending = safeMatches.filter(m => m.status === "pending");
+  const accepted = safeMatches.filter(m => m.status === "accepted");
   const requested = [...accepted, ...pending];
   const openReqs = pending.length;
   const activeMentor = accepted.find(m => m.seat === "active") || accepted[0] || null;
@@ -522,13 +529,13 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   const passes = (m) =>
     (filters.tier === "Any" || m.tier === filters.tier) &&
     (filters.industry === "Any" || m.industry === filters.industry);
-  const filtered = roster.filter(passes);
+  const filtered = safeRoster.filter(passes);
   const deck = filtered;
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
 
   // Industries offered as filters are the ones actually present in the roster,
   // so the list never promises a category nobody occupies.
-  const industries = ["Any", ...new Set(roster.map(m => m.industry).filter(Boolean))];
+  const industries = ["Any", ...new Set(safeRoster.map(m => m.industry).filter(Boolean))];
 
   const decide = async (m, dir) => {
     if (dir === "blocked") { toast("All 3 mentor seats are held"); return; }
@@ -538,9 +545,10 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
       const res = await onDecide(m, dir === "right" ? "request" : "pass");
       if (dir === "right") {
         if (!firstReq.current) { firstReq.current = true; addXp(25); }
+        const first = (m.name || "them").split(" ")[0];
         toast(res?.match?.status === "accepted"
-          ? `You’re matched with ${m.name.split(" ")[0]}`
-          : `Request sent to ${m.name.split(" ")[0]}`);
+          ? `You’re matched with ${first}`
+          : `Request sent to ${first}`);
       }
     } catch (e) {
       toast(e.message || "Couldn’t save that. Try again.");
@@ -556,7 +564,8 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
     setBusy(true);
     try {
       await onDecide(match, action);
-      toast(action === "accept" ? `You’re matched with ${match.person.name.split(" ")[0]}` : "Declined.");
+      const first = (match.person?.name || "them").split(" ")[0];
+      toast(action === "accept" ? `You’re matched with ${first}` : "Declined.");
     } catch (e) {
       toast(e.message || "Couldn’t save that. Try again.");
     } finally {
@@ -565,14 +574,14 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   };
 
   const renderCard = (m) => {
-    const bg = DECK_COLORS[Math.max(0, roster.indexOf(m)) % DECK_COLORS.length];
+    const bg = DECK_COLORS[Math.max(0, safeRoster.indexOf(m)) % DECK_COLORS.length];
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "44%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
           <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: bg === C.teal ? C.teal : C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
-          {m.industry && <div style={{ position: "absolute", bottom: 12, right: 12, fontFamily: F.mono, fontSize: 9, color: "rgba(255,255,255,.8)", letterSpacing: 1 }}>{m.industry.toUpperCase()}</div>}
+          {m.industry && <div style={{ position: "absolute", bottom: 12, right: 12, fontFamily: F.mono, fontSize: 9, color: "rgba(255,255,255,.8)", letterSpacing: 1 }}>{String(m.industry).toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
@@ -598,8 +607,8 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
       <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         {requested.map(m => (
           <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "9px 12px" }}>
-            <Monogram name={m.person.name} size={30} />
-            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person.name}</span>
+            <Monogram name={m.person?.name} size={30} />
+            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person?.name || "—"}</span>
             {m.status === "accepted"
               ? <span style={{ fontFamily: F.mono, fontSize: 9, background: C.tealTint, color: C.teal, fontWeight: 700, padding: "4px 8px" }}>{m.seat === "active" ? "ACTIVE ✓" : "SUPPORT ✓"}</span>
               : m.awaitingYou
@@ -615,7 +624,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
       body={loading ? "One moment." : error
         ? "Something went wrong on our end. Try again in a moment."
         : "The founding mentors are still being onboarded. You’ll get a notification the moment there’s someone to meet — your Day 1 exercises are open in the meantime."}
-      action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp(null)}>Start Day 1 without a mentor</Btn> : null}
+      action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp(null)}>Start Day 1 without a mentor</Btn> : error ? <Btn style={{ marginTop: 18 }} kind="ghost" onClick={() => onEnterApp(null)}>Continue to Day 1</Btn> : null}
     />
   );
 
@@ -642,7 +651,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
         : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
       {activeMentor && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
-          <Btn onClick={() => onEnterApp(activeMentor)}>Enter Ryzn · Week 1 with {activeMentor.person.name.split(" ")[0]}</Btn>
+          <Btn onClick={() => onEnterApp(activeMentor)}>Enter Ryzn · Week 1 with {(activeMentor.person?.name || "your mentor").split(" ")[0]}</Btn>
         </div>
       )}
       {detail && (
@@ -670,18 +679,25 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
   const [showFilter, setShowFilter] = useState(false);
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
-  const cap = capacity;
+  /* capacity can arrive as a bad number from a mangled profile — Array(NaN)
+     throws RangeError and wiped the whole app via the root boundary. */
+  const cap = (() => {
+    const n = Number(capacity);
+    return Number.isFinite(n) && n > 0 ? Math.min(20, Math.floor(n)) : 4;
+  })();
 
   /* Server state, not local. `inbox` is mentees who asked for you — those are
      answered, not swiped, and they used to be invisible entirely because a
      mentee's request lived only in the mentee's own browser. */
-  const accepted = matches.filter(m => m.status === "accepted");
-  const inbox = matches.filter(m => m.awaitingYou);
-  const outbox = matches.filter(m => m.status === "pending" && !m.awaitingYou);
+  const safeRoster = Array.isArray(roster) ? roster : [];
+  const safeMatches = Array.isArray(matches) ? matches : [];
+  const accepted = safeMatches.filter(m => m.status === "accepted");
+  const inbox = safeMatches.filter(m => m.awaitingYou);
+  const outbox = safeMatches.filter(m => m.status === "pending" && !m.awaitingYou);
   const taken = accepted.length;
 
   const passes = (m) => filters.track === "Any" || m.track === filters.track;
-  const deck = roster.filter(passes);
+  const deck = safeRoster.filter(passes);
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
 
   const decide = async (m, dir) => {
@@ -692,9 +708,10 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
       const res = await onDecide(m, dir === "right" ? "request" : "pass");
       if (dir === "right") {
         addXp(30);
+        const first = (m.name || "them").split(" ")[0];
         toast(res?.match?.status === "accepted"
-          ? `${m.name.split(" ")[0]} joined your cohort`
-          : `Invitation sent to ${m.name.split(" ")[0]}`);
+          ? `${first} joined your cohort`
+          : `Invitation sent to ${first}`);
       }
     } catch (e) {
       toast(e.message || "Couldn’t save that. Try again.");
@@ -710,7 +727,8 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
     try {
       await onDecide(match, action);
       if (action === "accept") addXp(30);
-      toast(action === "accept" ? `${match.person.name.split(" ")[0]} joined your cohort` : "Declined.");
+      const first = (match.person?.name || "them").split(" ")[0];
+      toast(action === "accept" ? `${first} joined your cohort` : "Declined.");
     } catch (e) {
       toast(e.message || "Couldn’t save that. Try again.");
     } finally {
@@ -719,13 +737,13 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
   };
 
   const renderCard = (m) => {
-    const bg = DECK_COLORS[(Math.max(0, roster.indexOf(m)) + 1) % DECK_COLORS.length];
+    const bg = DECK_COLORS[(Math.max(0, safeRoster.indexOf(m)) + 1) % DECK_COLORS.length];
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "42%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
-          {m.track && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {m.track.toUpperCase()}</div>}
+          {m.track && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {String(m.track).toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
@@ -751,8 +769,8 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
       <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         {[...accepted, ...outbox].map(m => (
           <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: m.status === "accepted" ? C.tealTint : C.surface, borderRadius: 12, padding: "9px 12px" }}>
-            <Monogram name={m.person.name} size={30} bg={m.status === "accepted" ? C.teal : undefined} color={m.status === "accepted" ? C.white : undefined} />
-            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13, color: m.status === "accepted" ? C.teal : C.ink }}>{m.person.name}</span>
+            <Monogram name={m.person?.name} size={30} bg={m.status === "accepted" ? C.teal : undefined} color={m.status === "accepted" ? C.white : undefined} />
+            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13, color: m.status === "accepted" ? C.teal : C.ink }}>{m.person?.name || "—"}</span>
             {m.status === "accepted"
               ? <Check size={15} color={C.teal} strokeWidth={3} />
               : <span style={{ fontFamily: F.mono, fontSize: 9, background: C.amberTint, color: C.amber, fontWeight: 700, padding: "4px 8px" }}>PENDING</span>}
@@ -766,7 +784,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
       body={loading ? "One moment." : error
         ? "Something went wrong on our end. Try again in a moment."
         : "You’re early — mentee applications for this cohort are still open. We’ll notify you the moment someone matches your profile. Your dashboard is ready in the meantime."}
-      action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp([])}>Open my dashboard</Btn> : null}
+      action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp([])}>Open my dashboard</Btn> : error ? <Btn style={{ marginTop: 18 }} kind="ghost" onClick={() => onEnterApp([])}>Open my dashboard</Btn> : null}
     />
   );
 
@@ -797,10 +815,10 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {inbox.map(m => (
               <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.purpleTint, borderRadius: 12, padding: "9px 12px" }}>
-                <Monogram name={m.person.name} size={30} bg={C.purple} color={C.white} />
+                <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person.name}</div>
-                  {m.person.goals?.[0] && <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>}
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  {m.person?.goals?.[0] && <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>}
                 </div>
                 <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
                 <Btn small disabled={busy || taken >= cap} onClick={() => respond(m, "accept")}>Accept</Btn>

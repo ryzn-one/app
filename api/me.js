@@ -142,7 +142,11 @@ async function handler(request, user) {
          email is in ADMIN_EMAILS — promote via admin invite or `admin:grant`. */
       adminConsole: canAccessAdminConsole(user),
       emailVerified: user.emailVerified,
-      onboardingComplete: user.onboardingComplete ?? false,
+      /* Prefer the profile row: Better Auth's session cookieCache can keep a
+         stale `user.onboardingComplete: false` for up to five minutes after
+         /api/onboarding flips the user doc, which sent people back through the
+         Ryzn AI chat on every reload. The profile is read fresh above. */
+      onboardingComplete: !!(profile?.onboardingComplete || user.onboardingComplete),
     },
     profile: { ...profile, _id: undefined },
     mentor,

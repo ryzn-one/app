@@ -178,13 +178,17 @@ export default function RyznComplete() {
     }
   }, []);
 
+  /* Prefer profile for onboardingComplete — session cookieCache can lag the
+     user document by a few minutes after /api/onboarding, which used to dump
+     people back into the Ryzn AI chat on reload. */
   useEffect(() => {
     let alive = true;
     (async () => {
       const me = await loadSession();
       if (!alive) return;
       if (me) {
-        if (me.user.onboardingComplete) { applyMe(me); setPhase("app"); }
+        const done = !!(me.user?.onboardingComplete || me.profile?.onboardingComplete);
+        if (done) { applyMe(me); setPhase("app"); }
         else { setPhase("journey"); setStage("chat"); }
       }
       setBooting(false);
@@ -199,12 +203,13 @@ export default function RyznComplete() {
     setRosterLoading(true); setRosterError(null);
     try {
       const [{ people }, { matches: mine }] = await Promise.all([fetchRoster(), fetchMatches()]);
-      setRoster(people || []);
-      setMatches(mine || []);
+      setRoster(Array.isArray(people) ? people : []);
+      setMatches(Array.isArray(mine) ? mine : []);
     } catch (err) {
       console.error("[ryzn] roster/matches failed:", err);
       setRosterError(err);
       setRoster([]);
+      setMatches([]);
     } finally {
       setRosterLoading(false);
     }
@@ -213,8 +218,9 @@ export default function RyznComplete() {
   const loadMatches = useCallback(async () => {
     try {
       const { matches: mine } = await fetchMatches();
-      setMatches(mine || []);
-      return mine || [];
+      const rows = Array.isArray(mine) ? mine : [];
+      setMatches(rows);
+      return rows;
     } catch (err) {
       console.error("[ryzn] /api/matches failed:", err);
       return [];
@@ -456,14 +462,18 @@ export default function RyznComplete() {
       case "login": return <Login role={role} go={setStage} onDone={async () => {
         const me = await loadSession();
         // Signing in mid-setup drops you back into the chat, not past it.
-        if (me && !me.user.onboardingComplete) setStage("chat");
+        if (me && !(me.user?.onboardingComplete || me.profile?.onboardingComplete)) setStage("chat");
         else await enterApp(me);
       }} />;
       case "forgot": return <Forgot go={setStage} />;
       case "chat": return <ChatScreen role={role} xp={xp} addXp={addXp} onComplete={completeOnboarding} firstName={session?.user?.name?.split(" ")[0] || ""} />;
-      case "matches": return role === "mentee"
-        ? <MatchesScreen xp={xp} addXp={addXp} toast={toast} onEnterApp={enterFromDeck} roster={roster} matches={matches} onDecide={decideMatch} loading={rosterLoading} error={rosterError} />
-        : <RequestsScreen xp={xp} addXp={addXp} toast={toast} onEnterApp={enterFromDeck} roster={roster} matches={matches} onDecide={decideMatch} loading={rosterLoading} error={rosterError} capacity={session?.profile?.capacity ?? 4} />;
+      case "matches": return (
+        <SectionBoundary name="matches" resetKey={`matches-${role}`}>
+          {role === "mentee"
+            ? <MatchesScreen xp={xp} addXp={addXp} toast={toast} onEnterApp={enterFromDeck} roster={roster} matches={matches} onDecide={decideMatch} loading={rosterLoading} error={rosterError} />
+            : <RequestsScreen xp={xp} addXp={addXp} toast={toast} onEnterApp={enterFromDeck} roster={roster} matches={matches} onDecide={decideMatch} loading={rosterLoading} error={rosterError} capacity={session?.profile?.capacity ?? 4} />}
+        </SectionBoundary>
+      );
       default: return null;
     }
   };

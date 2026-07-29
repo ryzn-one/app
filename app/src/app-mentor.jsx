@@ -42,22 +42,22 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
         </div>
         <div style={{ textAlign: "center" }}>
           <div style={{ width: 64, height: 64, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center" }}><Crown size={28} color={C.white} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 1, marginTop: 6, color: "#B7AFF2" }}>{u.tier.toUpperCase()}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 1, marginTop: 6, color: "#B7AFF2" }}>{(u.tier || "Scout").toUpperCase()}</div>
         </div>
       </div>
       {u.fresh && <div style={{ marginTop: 12 }}><Bar pct={u.impact / 400} color={C.purple} h={5} /><div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 5 }}>{u.impact}/400 → PATHFINDER</div></div>}
     </Card>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "18px 2px 10px" }}>
-      <Label>Your cohort · {u.cohort.length} mentee{u.cohort.length === 1 ? "" : "s"}</Label>
+      <Label>Your cohort · {(u.cohort || []).length} mentee{(u.cohort || []).length === 1 ? "" : "s"}</Label>
       <div style={{ display: "flex", gap: 10 }}>
         {Object.values(STATUS).map(s => <span key={s.label} style={{ fontFamily: F.mono, fontSize: 8.5, color: s.c, display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, background: s.c, display: "inline-block" }} />{s.label.toUpperCase()}</span>)}
       </div>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr 1fr", gap: 10 }}>
-      {u.cohort.map(m => {
-        const st = STATUS[m.status];
+      {(u.cohort || []).map(m => {
+        const st = STATUS[m.status] || STATUS.active;
         return (
-          <Card key={m.name} onClick={() => openOverlay({ mentee: m })} style={{ padding: 13 }}>
+          <Card key={m.id || m.name} onClick={() => openOverlay({ mentee: m })} style={{ padding: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <Monogram name={m.name} size={38} bg={st.bg} color={st.c} />
               <span style={{ width: 9, height: 9, background: st.c }} />
@@ -87,7 +87,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
         <ChevronRight size={16} color={C.gray} />
       </div>
     </Card>
-    {u.cohort.length === 0 && (
+    {!(u.cohort || []).length && (
       <Card style={{ marginTop: 10 }}>
         <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55 }}>
           Your cohort is empty. Mentee applications are still open — you’ll be notified when someone matches your profile. Building out your feed in the meantime is what makes mentees pick you.
@@ -99,7 +99,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
 };
 
 export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
-  const st = STATUS[mentee.status];
+  const st = STATUS[mentee.status] || STATUS.active;
   const goal = mentee.goals?.[0] ?? null;
   const [exercises, setExercises] = useState([]);
   const [exLoading, setExLoading] = useState(true);

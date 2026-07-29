@@ -46,7 +46,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
             <span style={{ fontSize: 26, fontWeight: 700 }}>{u.streak}</span>
             <span style={{ color: C.gray, fontSize: 13, fontWeight: 600 }}>day streak</span>
           </div>
-          <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, marginTop: 8 }}>{u.xp.toLocaleString()} XP{u.rank ? ` · #${u.rank} in cohort` : ""}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, marginTop: 8 }}>{Number(u.xp || 0).toLocaleString()} XP{u.rank ? ` · #${u.rank} in cohort` : ""}</div>
           <div style={{ marginTop: 8 }}><Bar pct={u.streak / 100} color={C.teal} /></div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{u.streak}/100 → 100-DAY STREAK</div>
         </div>
@@ -278,7 +278,7 @@ export const CohortScreen = ({ u, back }) => (
       <Card style={{ background: C.purple, border: "none", color: C.white, padding: 20 }}>
         <Label color="#C9C3F2">Your standing</Label>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 8 }}>
-          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1.5 }}>{u.xp.toLocaleString()}</span>
+          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1.5 }}>{Number(u.xp || 0).toLocaleString()}</span>
           <span style={{ fontFamily: F.mono, fontSize: 11, letterSpacing: 1 }}>XP</span>
         </div>
         <div style={{ fontFamily: F.mono, fontSize: 10, color: "#DDD9F6", marginTop: 6, letterSpacing: 0.6 }}>
@@ -413,7 +413,7 @@ export const MenteeProfile = ({ u, name, badges, openBadge, openOverlay, extraMe
         </Card>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {[[u.xp.toLocaleString(), "total XP", C.purple], [`${u.streak}`, "day streak", C.coral], [`${u.week}/12`, "program wk", C.teal]].map(([n, l, c]) => (
+        {[[Number(u.xp || 0).toLocaleString(), "total XP", C.purple], [`${u.streak || 0}`, "day streak", C.coral], [`${u.week || 1}/12`, "program wk", C.teal]].map(([n, l, c]) => (
           <Card key={l} style={{ padding: 12, textAlign: "center" }}>
             <div style={{ fontSize: 19, fontWeight: 700, color: c }}>{n}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>

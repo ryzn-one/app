@@ -64,8 +64,8 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
     if (u.earned?.goal) items.push({ icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: `Verified and shareable. ${BADGE_DEFS.length - 1} more to go.`, when: u.earned.goal, to: "badges" });
     items.push({ icon: Flame, c: C.coral, bg: C.coralTint, t: u.streak > 0 ? `Streak: day ${u.streak}` : "Start your streak", d: "Today’s exercise takes a few minutes. Finishing it earns XP and unlocks Direct Connect.", when: "Today", to: "exercises" });
   } else {
-    if (u.cohort.length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Their opening sessions are ready to book.`, when: "Recent", to: "sessions" });
-    items.push({ icon: Crown, c: C.amber, bg: C.amberTint, t: `Tier: ${u.tier || "Scout"}`, d: `Impact Score live at ${u.impact}. Pathfinder at 400.`, when: "Today", to: "board" });
+    if ((u.cohort || []).length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Their opening sessions are ready to book.`, when: "Recent", to: "sessions" });
+    items.push({ icon: Crown, c: C.amber, bg: C.amberTint, t: `Tier: ${u.tier || "Scout"}`, d: `Impact Score live at ${u.impact ?? 0}. Pathfinder at 400.`, when: "Today", to: "board" });
   }
   return (
     <div>
