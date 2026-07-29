@@ -36,9 +36,10 @@ without rescoping cookies for the whole platform.
 
 Access is decided **server-side on every `/api/admin/*` call** by `lib/admin.js`.
 Signing in on the console's own form proves identity only — it grants nothing.
-A caller passes if their account has `role: "admin"` **or** their email is listed
-in `ADMIN_EMAILS`. The env var is the bootstrap: nothing can set `role: "admin"`
-until an admin already exists.
+A caller passes if their account has `role: "admin"`, **or** they are a
+`mentor` whose email is listed in `ADMIN_EMAILS`. Mentees never pass — even when
+listed in `ADMIN_EMAILS`. Bootstrap the first admin with
+`npm run admin:grant -- you@example.com` or an admin invite code.
 
 The console mints and revokes invite codes. It deliberately cannot edit users or
 assign the mentor role — that still happens only in `api/invites/redeem.js`, when
@@ -49,8 +50,9 @@ seeded platform metrics and a fake people table for anyone who opened the URL
 without a database; that is gone, along with `VITE_API_MODE`. Signing in still
 proves nothing on its own — `lib/admin.js` decides on every request.
 
-To turn it on: set `ADMIN_EMAILS` in the Vercel project. Nothing else — no
-domain, no DNS, no second project.
+To turn it on: grant `role: "admin"` (CLI or invite), or put a mentor email in
+`ADMIN_EMAILS` in the Vercel project. Nothing else — no domain, no DNS, no
+second project.
 
 ## Collections
 

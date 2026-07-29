@@ -1,0 +1,26 @@
+:root {
+  --ryzn-purple: #5B4FCF;
+  --ryzn-deep: #2D2580;
+  --ryzn-ink: #1A1A1A;
+  --ryzn-white: #FFFFFF;
+  --ryzn-teal: #0F6E56;
+  --ryzn-coral: #D85A30;
+  --ryzn-amber: #BA7517;
+  --ryzn-gray: #5F5E5A;
+  --ryzn-lilac: #B7AFF2;
+  --ryzn-mute: #A5A39D;
+  --ryzn-purple-tint: #EEF0FC;
+  --ryzn-teal-tint: #E1F5EE;
+  --ryzn-coral-tint: #FAECE7;
+  --ryzn-amber-tint: #F7EEDD;
+  --ryzn-surface: #F5F5F3;
+  --ryzn-line: #E8E7E3;
+  --ryzn-font-sans: 'Space Grotesk', 'Century Gothic', system-ui, sans-serif;
+  --ryzn-font-mono: 'Space Mono', 'Consolas', monospace;
+  --ryzn-radius-sm: 9px;
+  --ryzn-radius-md: 14px;
+  --ryzn-radius-lg: 18px;
+  --ryzn-radius-icon: 23.5%;
+  --ryzn-tracking-mono: 0.12em;
+  --ryzn-tracking-head: -0.02em;
+}

@@ -122,10 +122,8 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user }) => {
         <Card onClick={() => window.open("/privacy.html", "_blank", "noopener")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>Privacy policy</span><ChevronRight size={16} color={C.gray} />
         </Card>
-        {/* Founders only. isAdmin covers both routes into the console — the role
-            flag and the ADMIN_EMAILS allowlist — so the person bootstrapping it
-            can still see this. Opens in its own window, as asked. */}
-        {user?.isAdmin && (
+        {/* Founders only — mentees never get this link (see adminConsole). */}
+        {user?.adminConsole && (
           <Card onClick={() => window.open("/app/#/admin", "_blank", "noopener")}
             style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.amberTint}`, background: C.amberTint }}>
             <Shield size={16} color={C.amber} />

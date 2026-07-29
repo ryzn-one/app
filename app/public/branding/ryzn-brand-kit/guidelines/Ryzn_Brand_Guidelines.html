@@ -1,0 +1,373 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Ryzn Brand Guidelines v1.0</title><style>
+@font-face { font-family: 'Space Grotesk'; src: url('../fonts/SpaceGrotesk.ttf') format('truetype');
+  font-weight: 300 700; font-display: block; }
+@font-face { font-family: 'Space Mono'; src: url('../fonts/SpaceMono-Regular.ttf') format('truetype');
+  font-weight: 400; font-display: block; }
+@font-face { font-family: 'Space Mono'; src: url('../fonts/SpaceMono-Bold.ttf') format('truetype');
+  font-weight: 700; font-display: block; }
+
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Space Grotesk', system-ui, sans-serif; color: #1A1A1A; -webkit-print-color-adjust: exact; }
+
+.page { width: 210mm; height: 297mm; padding: 20mm 18mm; position: relative;
+  page-break-after: always; break-after: page; overflow: hidden; background: #fff; }
+.page:last-child { page-break-after: auto; }
+.page.dark { background: #1A1A1A; color: #fff; }
+.page.purple { background: #5B4FCF; color: #fff; }
+
+.mono { font-family: 'Space Mono', monospace; text-transform: uppercase; letter-spacing: .14em; font-size: 8pt; }
+.kicker { color: #A5A39D; }
+.dark .kicker, .purple .kicker { color: #B7AFF2; }
+h1 { font-size: 34pt; letter-spacing: -.03em; line-height: 1.02; font-weight: 700; }
+h2 { font-size: 20pt; letter-spacing: -.02em; font-weight: 700; margin-bottom: 4mm; }
+h3 { font-size: 11pt; letter-spacing: -.01em; font-weight: 700; margin-bottom: 2mm; }
+p  { font-size: 9.5pt; line-height: 1.62; color: #5F5E5A; }
+.dark p, .purple p { color: rgba(255,255,255,.82); }
+.lead { font-size: 12pt; line-height: 1.5; color: #1A1A1A; }
+.dark .lead { color: rgba(255,255,255,.92); }
+small { font-size: 7.5pt; color: #A5A39D; }
+
+.hdr { display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1px solid #E8E7E3; padding-bottom: 3mm; margin-bottom: 8mm; }
+.dark .hdr { border-color: rgba(255,255,255,.18); }
+.pnum { position: absolute; bottom: 12mm; right: 18mm; font-family: 'Space Mono', monospace;
+  font-size: 7.5pt; color: #A5A39D; letter-spacing: .1em; }
+.dark .pnum, .purple .pnum { color: rgba(255,255,255,.5); }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; }
+.grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 4mm; }
+.stack { display: flex; flex-direction: column; gap: 5mm; }
+
+.card { border: 1px solid #E8E7E3; border-radius: 4mm; padding: 6mm; }
+.tile { border: 1px solid #E8E7E3; border-radius: 4mm; padding: 7mm; display: flex;
+  align-items: center; justify-content: center; min-height: 32mm; background: #fff; }
+.tile.surface { background: #F5F5F3; }
+.tile.ink { background: #1A1A1A; border-color: #1A1A1A; }
+.tile.purple { background: #5B4FCF; border-color: #5B4FCF; }
+.tile img, .tile svg { max-width: 100%; max-height: 26mm; }
+.cap { margin-top: 2mm; }
+
+table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+th { text-align: left; font-family: 'Space Mono', monospace; font-size: 7pt; text-transform: uppercase;
+  letter-spacing: .12em; color: #A5A39D; padding: 2.5mm 2mm; border-bottom: 1px solid #E8E7E3; font-weight: 400; }
+td { padding: 2.6mm 2mm; border-bottom: 1px solid #E8E7E3; color: #5F5E5A; }
+td.name { color: #1A1A1A; font-weight: 700; }
+.pill { display: inline-block; font-family: 'Space Mono', monospace; font-size: 6.5pt; letter-spacing: .1em;
+  padding: 1mm 2mm; border-radius: 2mm; }
+.pass { background: #E1F5EE; color: #0F6E56; }
+.fail { background: #FAECE7; color: #D85A30; }
+
+.swatch { border-radius: 3mm; height: 26mm; display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 3.5mm; }
+.swatch .n { font-size: 9pt; font-weight: 700; }
+.swatch .h { font-family: 'Space Mono', monospace; font-size: 7pt; opacity: .8; margin-top: .6mm; }
+
+.do  { border-left: 3px solid #0F6E56; padding-left: 4mm; }
+.dont{ border-left: 3px solid #D85A30; padding-left: 4mm; }
+.badlist li { font-size: 9pt; line-height: 1.7; color: #5F5E5A; margin-left: 4.5mm; }
+
+.spec { font-family: 'Space Mono', monospace; font-size: 7.5pt; color: #A5A39D; letter-spacing: .06em; }
+.rule { height: 1px; background: #E8E7E3; margin: 6mm 0; }
+.dark .rule { background: rgba(255,255,255,.18); }
+</style></head><body><section class="page purple">
+      <div style="height:100%; display:flex; flex-direction:column; justify-content:space-between">
+        <div class="mono" style="color:#B7AFF2">RYZN.ONE &middot; BRAND GUIDELINES &middot; V1.0</div>
+        <div>
+          <img src="../logo/svg/ryzn-lockup-stacked-white.svg" style="width:86mm"/>
+          <h1 style="margin-top:14mm; max-width:130mm">The brand book for a network you rise into.</h1>
+          <p style="color:rgba(255,255,255,.72); margin-top:6mm; max-width:118mm; font-size:11pt">
+            Logo, mark, colour, type, motif, voice, and the rules that keep them consistent
+            across the consumer app, Ryzn for Teams, and everything we publish.</p>
+        </div>
+        <div class="mono" style="color:rgba(255,255,255,.55)">TORONTO &middot; EST. 2026</div>
+      </div></section><section class="page "><div class="hdr"><div class="mono kicker">01 &middot; THE BRAND</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>What Ryzn is</h2>
+      <p class="lead" style="max-width:150mm">Ryzn is an invitation-only mentorship network where access is
+      earned, not bought. Mentees prove commitment before they can reach a mentor. Mentors keep small,
+      deliberate circles. The product exists in two forms: a consumer network, and Ryzn for Teams,
+      the same engine deployed inside a company.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div>
+          <h3>Positioning</h3>
+          <p>Premium, disciplined, and warm. Closer to a members club than a marketplace. We never
+          describe mentorship as a transaction, a booking, or a subscription to someone's time.</p>
+          <h3 style="margin-top:6mm">Tagline</h3>
+          <p style="font-size:16pt; color:#1A1A1A; font-weight:700; letter-spacing:-.02em">Rise now.</p>
+          <p style="margin-top:1mm"><small>Always two words, sentence case, full stop. Set in Space Mono
+          uppercase when used as a label inside product surfaces: RISE NOW.</small></p>
+        </div>
+        <div>
+          <h3>The three promises</h3>
+          <p><b style="color:#1A1A1A">Earned.</b> Stage 1 comes before contact. The gate is the product.</p>
+          <p style="margin-top:3mm"><b style="color:#1A1A1A">Small.</b> Mentors cap their circles. Scarcity is
+          a feature, never an apology.</p>
+          <p style="margin-top:3mm"><b style="color:#1A1A1A">Proven.</b> Progress is recorded, verifiable,
+          and portable. Badges mean something because they cannot be bought.</p>
+          <h3 style="margin-top:6mm">Naming</h3>
+          <p>Ryzn in running text. RYZN in the wordmark and mono labels. Never Rise'n, RYZEN, or Ryzn.io.
+          The mentor circle is an <b style="color:#1A1A1A">Orbit</b>. The community is
+          <b style="color:#1A1A1A">The Roster</b>.</p>
+        </div>
+      </div><div class="pnum">02</div></section><section class="page "><div class="hdr"><div class="mono kicker">02 &middot; THE MARK</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Ascent</h2>
+      <p style="max-width:150mm">Three diamonds, growing as they climb. The diamond is the atom of the
+      product: it marks tiers, bullets, and badges throughout the interface. Repeated three times at
+      increasing scale it becomes the story of the brand, which is a person getting measurably bigger
+      over time. The mark is always drawn from these coordinates. Do not redraw it by eye.</p>
+      <div style="display:flex; gap:10mm; align-items:center; margin-top:8mm">
+        <div><svg width="344.8" height="319.2" viewBox="0 0 344.8 319.2" xmlns="http://www.w3.org/2000/svg"><line x1="30" y1="30" x2="30" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="62.0" y1="30" x2="62.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="94.0" y1="30" x2="94.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="126.0" y1="30" x2="126.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="158.0" y1="30" x2="158.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="190.0" y1="30" x2="190.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="222.0" y1="30" x2="222.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="254.0" y1="30" x2="254.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="286.0" y1="30" x2="286.0" y2="289.2" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="30" x2="314.8" y2="30" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="62.0" x2="314.8" y2="62.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="94.0" x2="314.8" y2="94.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="126.0" x2="314.8" y2="126.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="158.0" x2="314.8" y2="158.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="190.0" x2="314.8" y2="190.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="222.0" x2="314.8" y2="222.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="254.0" x2="314.8" y2="254.0" stroke="#E8E7E3" stroke-width="1"/><line x1="30" y1="286.0" x2="314.8" y2="286.0" stroke="#E8E7E3" stroke-width="1"/><g transform="translate(30 30) scale(3.2)"><path d="M11.00 59.00L22.00 70.00L11.00 81.00L0.00 70.00Z" fill="#B7AFF2"/><path d="M40.00 33.00L55.00 48.00L40.00 63.00L25.00 48.00Z" fill="#5B4FCF"/><path d="M69.00 0.00L89.00 20.00L69.00 40.00L49.00 20.00Z" fill="#2D2580"/></g><line x1="65.2" y1="254.0" x2="100.4" y2="254.0" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="65.2" cy="254.0" r="2" fill="#fff"/><line x1="158.0" y1="183.60000000000002" x2="206.0" y2="183.60000000000002" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="158.0" cy="183.60000000000002" r="2" fill="#fff"/><line x1="250.8" y1="94.0" x2="314.8" y2="94.0" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="250.8" cy="94.0" r="2" fill="#fff"/><text x="65.2" y="302.2" font-family="Space Mono, monospace" font-size="9" fill="#A5A39D" text-anchor="middle">1r</text><text x="158.0" y="244.60000000000002" font-family="Space Mono, monospace" font-size="9" fill="#A5A39D" text-anchor="middle">1.36r</text><text x="250.8" y="171.0" font-family="Space Mono, monospace" font-size="9" fill="#A5A39D" text-anchor="middle">1.82r</text></svg></div>
+        <div style="flex:1">
+          <h3>Construction</h3>
+          <p>Each diamond is a square rotated 45 degrees, defined by a centre and a radius. Radii step
+          at a constant ratio of roughly 1.36, so the three shapes read as one sequence rather than
+          three sizes.</p>
+          <div class="spec" style="margin-top:4mm; line-height:1.9">
+            D1 &nbsp;c(11, 70) &nbsp;r 11<br/>
+            D2 &nbsp;c(40, 48) &nbsp;r 15<br/>
+            D3 &nbsp;c(69, 20) &nbsp;r 20<br/>
+            ART BOX &nbsp;89 &times; 81
+          </div>
+          <h3 style="margin-top:6mm">The atom</h3>
+          <p>At sizes below 32 px the three diamonds blur together. Use the single diamond instead. It
+          is the same shape at the same angle, so the brand still reads.</p>
+        </div>
+      </div><div class="pnum">03</div></section><section class="page "><div class="hdr"><div class="mono kicker">03 &middot; LOGO SUITE</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Four forms, four colourways</h2>
+      <p style="max-width:150mm">Use the horizontal lockup by default. Use stacked where width is tight
+      or where the tagline earns its place. Use the mark alone only where the name is already present.</p>
+      <div class="grid2" style="margin-top:7mm">
+        <div><div class="tile"><img src="../logo/svg/ryzn-lockup-horizontal-purple.svg"/></div>
+          <div class="cap mono kicker">HORIZONTAL &middot; PRIMARY</div></div>
+        <div><div class="tile ink"><img src="../logo/svg/ryzn-lockup-horizontal-white.svg"/></div>
+          <div class="cap mono kicker">HORIZONTAL &middot; REVERSED</div></div>
+        <div><div class="tile"><img src="../logo/svg/ryzn-lockup-stacked-duotone.svg" style="max-height:34mm"/></div>
+          <div class="cap mono kicker">STACKED &middot; WITH TAGLINE</div></div>
+        <div><div class="tile surface"><img src="../logo/svg/ryzn-mark-duotone.svg" style="max-height:24mm"/></div>
+          <div class="cap mono kicker">MARK &middot; DUOTONE</div></div>
+      </div>
+      <div class="rule"></div>
+      <div class="grid4">
+        <div><div class="tile" style="min-height:20mm"><img src="../logo/svg/ryzn-wordmark-purple.svg"/></div>
+          <div class="cap mono kicker">PURPLE</div></div>
+        <div><div class="tile" style="min-height:20mm"><img src="../logo/svg/ryzn-wordmark-ink.svg"/></div>
+          <div class="cap mono kicker">INK</div></div>
+        <div><div class="tile purple" style="min-height:20mm"><img src="../logo/svg/ryzn-wordmark-white.svg"/></div>
+          <div class="cap mono kicker">WHITE</div></div>
+        <div><div class="tile surface" style="min-height:20mm"><img src="../logo/svg/ryzn-mark-purple.svg" style="max-height:14mm"/></div>
+          <div class="cap mono kicker">MARK</div></div>
+      </div><div class="pnum">04</div></section><section class="page "><div class="hdr"><div class="mono kicker">04 &middot; CLEAR SPACE AND SIZE</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Give it room</h2>
+      <p style="max-width:150mm">Clear space on all four sides equals X, the height of the smallest
+      diamond in the mark. Nothing enters that zone: no type, no rules, no photography, no page edge.</p>
+      <div style="margin-top:6mm; display:flex; justify-content:center"><svg width="659.835" height="222.0" viewBox="0 0 659.835 222.0" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="659.835" height="222.0" fill="#EEF0FC"/><rect x="45.0" y="45.0" width="569.835" height="132.0" fill="none" stroke="#5B4FCF" stroke-width="1" stroke-dasharray="4 3"/><g transform="translate(45.0 45.0) scale(1.6296296296296295)"><path d="M11.00 59.00L22.00 70.00L11.00 81.00L0.00 70.00Z" fill="#5B4FCF"/><path d="M40.00 33.00L55.00 48.00L40.00 63.00L25.00 48.00Z" fill="#5B4FCF"/><path d="M69.00 0.00L89.00 20.00L69.00 40.00L49.00 20.00Z" fill="#5B4FCF"/></g><path d="M0.00 0.00V-70.00H30.40Q37.00 -70.00 41.90 -67.70Q46.80 -65.40 49.50 -61.20Q52.20 -57.00 52.20 -51.30V-50.10Q52.20 -43.80 49.20 -39.90Q46.20 -36.00 41.80 -34.20V-32.40Q45.80 -32.20 48.00 -29.65Q50.20 -27.10 50.20 -22.90V0.00H37.00V-21.00Q37.00 -23.40 35.75 -24.90Q34.50 -26.40 31.60 -26.40H13.20V0.00ZM13.20 -38.40H29.00Q33.70 -38.40 36.35 -40.95Q39.00 -43.50 39.00 -47.70V-48.70Q39.00 -52.90 36.40 -55.45Q33.80 -58.00 29.00 -58.00H13.20Z M83.20 0.00V-24.10L59.40 -70.00H74.10L88.90 -40.00H90.70L105.50 -70.00H120.20L96.40 -24.10V0.00Z M127.60 0.00V-16.80L162.20 -56.60V-58.20H128.60V-70.00H176.00V-53.20L141.40 -13.40V-11.80H176.20V0.00Z M189.20 0.00V-70.00H214.30L228.20 -9.00H230.00V-70.00H243.00V0.00H217.90L204.00 -61.00H202.20V0.00Z" transform="translate(230.53703703703704 163.5) scale(1.5)" fill="#1A1A1A"/><rect x="0" y="45.0" width="45.0" height="132.0" fill="#5B4FCF" fill-opacity="0.10"/><rect x="614.835" y="45.0" width="45.0" height="132.0" fill="#5B4FCF" fill-opacity="0.10"/><rect x="45.0" y="0" width="569.835" height="45.0" fill="#5B4FCF" fill-opacity="0.10"/><rect x="45.0" y="177.0" width="569.835" height="45.0" fill="#5B4FCF" fill-opacity="0.10"/><text x="22.5" y="111.0" font-family="Space Mono, monospace" font-size="11" fill="#5B4FCF" text-anchor="middle">X</text><text x="329.9175" y="26.5" font-family="Space Mono, monospace" font-size="11" fill="#5B4FCF" text-anchor="middle">X</text></svg></div>
+      <div class="rule"></div>
+      <div class="grid3">
+        <div class="card"><h3>Minimum sizes</h3>
+          <p class="spec" style="line-height:2">HORIZONTAL &nbsp;120 PX / 32 MM<br/>
+          STACKED &nbsp;80 PX / 22 MM<br/>MARK &nbsp;24 PX / 7 MM<br/>ATOM &nbsp;16 PX</p></div>
+        <div class="card"><h3>Backgrounds</h3>
+          <p>Purple or ink on white and surface. White on ink, purple, deep, and photography that has
+          been darkened to at least 55 percent.</p></div>
+        <div class="card"><h3>Duotone rule</h3>
+          <p>Duotone is for light backgrounds only. Lilac fails contrast on white for text but is
+          acceptable as the smallest shape in the mark, where it is decorative.</p></div>
+      </div><div class="pnum">05</div></section><section class="page "><div class="hdr"><div class="mono kicker">05 &middot; MISUSE</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Ten things that break the logo</h2>
+      <div class="grid2" style="margin-top:6mm">
+        <div class="stack">
+          <div class="dont"><h3>Do not recolour</h3><p>No gradients, no brand-adjacent purples, no
+          division colours applied to the mark.</p></div>
+          <div class="dont"><h3>Do not rotate or shear</h3><p>The diamonds are already at 45 degrees.
+          Rotating the lockup destroys the ascent.</p></div>
+          <div class="dont"><h3>Do not restack</h3><p>Never rearrange the three diamonds, change their
+          spacing, or add a fourth.</p></div>
+          <div class="dont"><h3>Do not outline</h3><p>The mark is solid. No strokes, no hollow shapes,
+          no drop shadows.</p></div>
+          <div class="dont"><h3>Do not stretch</h3><p>Scale proportionally. Always.</p></div>
+        </div>
+        <div class="stack">
+          <div class="dont"><h3>Do not retype the wordmark</h3><p>Use the supplied outlines. Space Grotesk
+          set live will not match the tracking.</p></div>
+          <div class="dont"><h3>Do not add effects</h3><p>No bevels, glows, or animation that deforms
+          the shapes. Fade and scale only.</p></div>
+          <div class="dont"><h3>Do not crowd</h3><p>Respect X on all sides, including against the
+          edge of a slide or screen.</p></div>
+          <div class="dont"><h3>Do not place on busy photography</h3><p>Darken the image or use a solid
+          block behind the logo.</p></div>
+          <div class="dont"><h3>Do not use the mark as a bullet at text size</h3><p>Use the single
+          diamond for that. It is the same motif, built for the job.</p></div>
+        </div>
+      </div><div class="pnum">06</div></section><section class="page "><div class="hdr"><div class="mono kicker">06 &middot; COLOUR</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Purple leads, the rest support</h2>
+      <p style="max-width:150mm">Purple is the brand. Deep and ink carry weight and authority. Teal,
+      coral, and amber are functional: they mean success, attention, and caution in that order, and
+      they also index the mentor tiers. Never introduce a colour outside this set.</p>
+      <div class="grid4" style="margin-top:6mm">
+        <div class="swatch" style="background:#5B4FCF;color:#fff"><div class="n">Purple</div><div class="h">#5B4FCF</div></div><div class="swatch" style="background:#2D2580;color:#fff"><div class="n">Deep</div><div class="h">#2D2580</div></div>
+        <div class="swatch" style="background:#1A1A1A;color:#fff"><div class="n">Ink</div><div class="h">#1A1A1A</div></div><div class="swatch" style="background:#FFFFFF;border:1px solid #E8E7E3;color:#1A1A1A"><div class="n">White</div><div class="h">#FFFFFF</div></div>
+      </div>
+      <div class="grid4" style="margin-top:4mm">
+        <div class="swatch" style="background:#0F6E56;color:#fff"><div class="n">Teal</div><div class="h">#0F6E56</div></div><div class="swatch" style="background:#D85A30;color:#fff"><div class="n">Coral</div><div class="h">#D85A30</div></div>
+        <div class="swatch" style="background:#BA7517;color:#fff"><div class="n">Amber</div><div class="h">#BA7517</div></div><div class="swatch" style="background:#5F5E5A;color:#fff"><div class="n">Gray</div><div class="h">#5F5E5A</div></div>
+      </div>
+      <div class="grid4" style="margin-top:4mm"><div class="swatch" style="background:#EEF0FC;color:#1A1A1A"><div class="n">Purple Tint</div><div class="h">#EEF0FC</div></div><div class="swatch" style="background:#E1F5EE;color:#1A1A1A"><div class="n">Teal Tint</div><div class="h">#E1F5EE</div></div><div class="swatch" style="background:#FAECE7;color:#1A1A1A"><div class="n">Coral Tint</div><div class="h">#FAECE7</div></div><div class="swatch" style="background:#F7EEDD;color:#1A1A1A"><div class="n">Amber Tint</div><div class="h">#F7EEDD</div></div></div>
+      <div class="grid4" style="margin-top:4mm">
+        <div class="swatch" style="background:#B7AFF2;color:#1A1A1A"><div class="n">Lilac</div><div class="h">#B7AFF2</div></div><div class="swatch" style="background:#A5A39D;color:#fff"><div class="n">Mute</div><div class="h">#A5A39D</div></div>
+        <div class="swatch" style="background:#F5F5F3;border:1px solid #E8E7E3;color:#1A1A1A"><div class="n">Surface</div><div class="h">#F5F5F3</div></div><div class="swatch" style="background:#E8E7E3;color:#1A1A1A"><div class="n">Line</div><div class="h">#E8E7E3</div></div>
+      </div><div class="pnum">07</div></section><section class="page "><div class="hdr"><div class="mono kicker">07 &middot; ACCESSIBILITY</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Measured, not assumed</h2>
+      <p style="max-width:150mm">Contrast ratios against white, calculated to WCAG 2.1. Body text needs
+      4.5 to 1. Large text, meaning 18.66 px bold or 24 px regular and above, needs 3 to 1.</p>
+      <table style="margin-top:6mm">
+        <tr><th>Colour</th><th>Hex</th><th>On white</th><th>Body text</th><th>Large text</th><th>White on it</th></tr>
+        <tr><td class="name">Purple</td><td class="spec">#5B4FCF</td><td>6.06</td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td></tr><tr><td class="name">Deep</td><td class="spec">#2D2580</td><td>12.44</td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td></tr><tr><td class="name">Ink</td><td class="spec">#1A1A1A</td><td>17.4</td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td></tr><tr><td class="name">Teal</td><td class="spec">#0F6E56</td><td>6.2</td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td></tr><tr><td class="name">Coral</td><td class="spec">#D85A30</td><td>3.87</td><td><span class="pill fail">FAIL</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill fail">FAIL</span></td></tr><tr><td class="name">Amber</td><td class="spec">#BA7517</td><td>3.72</td><td><span class="pill fail">FAIL</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill fail">FAIL</span></td></tr><tr><td class="name">Gray</td><td class="spec">#5F5E5A</td><td>6.49</td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td><td><span class="pill pass">PASS</span></td></tr><tr><td class="name">Lilac</td><td class="spec">#B7AFF2</td><td>2.01</td><td><span class="pill fail">FAIL</span></td><td><span class="pill fail">FAIL</span></td><td><span class="pill fail">FAIL</span></td></tr><tr><td class="name">Mute</td><td class="spec">#A5A39D</td><td>2.52</td><td><span class="pill fail">FAIL</span></td><td><span class="pill fail">FAIL</span></td><td><span class="pill fail">FAIL</span></td></tr>
+      </table>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="do"><h3>Rules that follow from the table</h3>
+          <p>Coral and amber never carry body copy on white. Use them for chips, bars, icons, and
+          large numerals, or darken them for text.</p>
+          <p style="margin-top:3mm">Lilac and mute are never text on white. Lilac is for marks on dark
+          backgrounds and decorative shapes. Mute is for placeholder and metadata on surface only at
+          large sizes.</p></div>
+        <div class="do"><h3>Safe defaults</h3>
+          <p>Ink on white for body. Gray on white for secondary. White on purple for primary buttons.
+          Teal on teal tint for success states. Purple on purple tint for informational chips.</p>
+          <p style="margin-top:3mm">Every one of those pairs clears 4.5 to 1.</p></div>
+      </div><div class="pnum">08</div></section><section class="page "><div class="hdr"><div class="mono kicker">08 &middot; TYPOGRAPHY</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>Two faces, strict roles</h2>
+      <div class="grid2" style="margin-top:6mm">
+        <div>
+          <div style="font-size:44pt; font-weight:700; letter-spacing:-.03em; line-height:1">Aa</div>
+          <h3 style="margin-top:3mm">Space Grotesk</h3>
+          <p>Everything a human reads as language: headlines, body, buttons, names. Weights 300 to 700.
+          Headlines are 700 with tracking at minus 0.02em. Body is 400 or 500 at 1.6 line height.</p>
+          <p class="spec" style="margin-top:3mm">OFL 1.1 &middot; BUNDLED IN /FONTS</p>
+        </div>
+        <div>
+          <div style="font-family:'Space Mono',monospace; font-size:44pt; font-weight:700; line-height:1">Aa</div>
+          <h3 style="margin-top:3mm">Space Mono</h3>
+          <p>Everything the system says about itself: labels, metadata, codes, stats, timestamps,
+          section kickers. Always uppercase, always tracked at 0.12em or wider, never below 6.5 pt
+          equivalent and never for sentences.</p>
+          <p class="spec" style="margin-top:3mm">OFL 1.1 &middot; BUNDLED IN /FONTS</p>
+        </div>
+      </div>
+      <div class="rule"></div>
+      <h3>Scale</h3>
+      <div style="margin-top:4mm">
+        <div style="font-size:26pt;font-weight:700;letter-spacing:-.03em">Display 34 / 1.02</div>
+        <div style="font-size:17pt;font-weight:700;letter-spacing:-.02em;margin-top:3mm">Heading 20 / 1.15</div>
+        <div style="font-size:12pt;font-weight:700;letter-spacing:-.01em;margin-top:3mm">Subhead 13 / 1.3</div>
+        <div style="font-size:9.5pt;margin-top:3mm;color:#5F5E5A">Body 9.5 to 11 at 1.6 line height, gray or ink</div>
+        <div class="mono" style="margin-top:3mm">LABEL 8 UPPERCASE TRACKED 0.14EM</div>
+      </div>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="do"><h3>Do</h3><p>Set numbers and codes in mono. Let headlines run tight and short.
+        Keep paragraph measure under 75 characters.</p></div>
+        <div class="dont"><h3>Do not</h3><p>Set body copy in mono. Mix a third typeface. Use Century Gothic
+        or Consolas except as the declared fallbacks in decks and email.</p></div>
+      </div><div class="pnum">09</div></section><section class="page "><div class="hdr"><div class="mono kicker">09 &middot; MOTIF AND TIERS</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>The diamond does the work</h2>
+      <p style="max-width:150mm">One shape carries the system. It bullets a list, marks a tier, fills a
+      pattern, and becomes the logo when repeated three times. Because it is everywhere, it must always
+      be the same shape at the same angle with no stroke.</p>
+      <div style="margin-top:7mm"><img src="../motifs/ryzn-tier-marks.svg" style="width:100%"/></div>
+      <p style="margin-top:2mm"><small>Mentor tiers. Colour is the only difference between them, and the
+      order never changes.</small></p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div>
+          <h3>Pattern</h3>
+          <p>A lattice of diamonds at 10 percent opacity over surface or purple. Use it for empty states,
+          section breaks, and social art. Never behind body copy.</p>
+        </div>
+        <div><img src="../motifs/ryzn-diamond-pattern.svg" style="width:100%; border-radius:3mm; border:1px solid #E8E7E3"/></div>
+      </div>
+      <div class="rule"></div>
+      <div class="grid4">
+        <div class="card"><h3 style="color:#5B4FCF">Scout</h3><p><small>Entry tier</small></p></div>
+        <div class="card"><h3 style="color:#0F6E56">Pathfinder</h3><p><small>Proven consistency</small></p></div>
+        <div class="card"><h3 style="color:#D85A30">Architect</h3><p><small>Builds others</small></p></div>
+        <div class="card"><h3 style="color:#BA7517">Legend</h3><p><small>Defines the network</small></p></div>
+      </div><div class="pnum">10</div></section><section class="page "><div class="hdr"><div class="mono kicker">10 &middot; APPLICATIONS</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>In the wild</h2>
+      <div class="grid3" style="margin-top:6mm">
+        <div><div class="tile surface"><img src="../icon/png/ryzn-app-icon-512.png" style="max-height:28mm; border-radius:6mm"/></div>
+          <div class="cap mono kicker">APP ICON</div></div>
+        <div><div class="tile surface"><img src="../icon/png/ryzn-app-icon-light-512.png" style="max-height:28mm; border-radius:6mm"/></div>
+          <div class="cap mono kicker">ICON &middot; LIGHT</div></div>
+        <div><div class="tile surface"><img src="../icon/png/favicon-64.png" style="max-height:16mm; image-rendering:pixelated; border-radius:2mm"/></div>
+          <div class="cap mono kicker">FAVICON &middot; ATOM</div></div>
+      </div>
+      <div style="margin-top:6mm"><img src="../social/ryzn-og-image.png" style="width:100%; border-radius:3mm"/></div>
+      <div class="cap mono kicker">OPEN GRAPH &middot; 1200 &times; 630</div>
+      <div style="margin-top:5mm"><img src="../social/ryzn-banner.png" style="width:100%; border-radius:3mm"/></div>
+      <div class="cap mono kicker">SOCIAL BANNER &middot; 1500 &times; 500</div><div class="pnum">11</div></section><section class="page "><div class="hdr"><div class="mono kicker">11 &middot; VOICE</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>How Ryzn sounds</h2>
+      <p class="lead" style="max-width:150mm">Direct, warm, and slightly understated. We are talking to
+      ambitious people who are tired of being sold to. Short sentences. Concrete nouns. No hype.</p>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div class="do">
+          <h3>We say</h3>
+          <p>"Earn your way in." &nbsp; "Three questions before you apply." &nbsp; "Your mentor sees this."
+          &nbsp; "Week 6 of 12." &nbsp; "Rise now."</p>
+          <p style="margin-top:3mm">Second person. Present tense. Numbers where they are real.</p>
+        </div>
+        <div class="dont">
+          <h3>We never say</h3>
+          <p>"Unlock your potential." &nbsp; "Book a session." &nbsp; "Hire a mentor." &nbsp;
+          "Supercharge your career." &nbsp; "Join thousands of users."</p>
+          <p style="margin-top:3mm">No growth-hack vocabulary, no transaction language, no vanity scale.</p>
+        </div>
+      </div>
+      <div class="rule"></div>
+      <h3>House style</h3>
+      <ul class="badlist">
+        <li>No em dashes or en dashes anywhere. Use a full stop, a comma, or a colon. This is absolute.</li>
+        <li>Sentence case for headlines and buttons. Uppercase only for mono labels.</li>
+        <li>Canadian English. Organisation and colour in brand copy, but keep product code in US spelling.</li>
+        <li>Numerals for everything countable. Week 6, 3 questions, 12 weeks.</li>
+        <li>Never call a person a user in anything a person will read. They are mentees, mentors, members.</li>
+        <li>The full stop in "Rise now." is part of the tagline. Keep it.</li>
+      </ul><div class="pnum">12</div></section><section class="page "><div class="hdr"><div class="mono kicker">12 &middot; ASSET INDEX</div><div class="mono kicker">RYZN BRAND GUIDELINES</div></div>
+      <h2>What is in the kit</h2>
+      <table style="margin-top:5mm">
+        <tr><th>Folder</th><th>Contents</th><th>Use</th></tr>
+        <tr><td class="name">logo/svg</td><td>15 vector files, outlined</td><td>Everything. Preferred format.</td></tr>
+        <tr><td class="name">logo/png</td><td>45 rasters at 1x, 2x, 4x, transparent</td><td>Slides, docs, email.</td></tr>
+        <tr><td class="name">icon/svg, icon/png</td><td>App icon, maskable, light, ink, atom</td><td>Stores, PWA, favicon.</td></tr>
+        <tr><td class="name">icon/favicon.ico</td><td>16, 32, 48 bundled</td><td>Legacy browsers.</td></tr>
+        <tr><td class="name">color</td><td>Swatch sheet, contrast.json</td><td>Reference and audits.</td></tr>
+        <tr><td class="name">tokens</td><td>CSS, SCSS, JS, JSON</td><td>Drop into the codebase.</td></tr>
+        <tr><td class="name">motifs</td><td>Tier marks, diamond pattern</td><td>UI and decoration.</td></tr>
+        <tr><td class="name">social</td><td>OG image, banner, avatar</td><td>Web and profiles.</td></tr>
+        <tr><td class="name">fonts</td><td>Space Grotesk, Space Mono, OFL licences</td><td>Bundle or self-host.</td></tr>
+      </table>
+      <div class="rule"></div>
+      <div class="grid2">
+        <div><h3>Tokens match the code</h3>
+          <p>The values in tokens/ are identical to <span class="spec">src/theme.js</span> and
+          <span class="spec">src/teams/theme.js</span> in the product repo. If a colour changes, it changes
+          in all three or it changes nowhere.</p></div>
+        <div><h3>Licensing</h3>
+          <p>Space Grotesk and Space Mono ship under the SIL Open Font Licence 1.1 and may be bundled and
+          self-hosted. The Ryzn wordmark and mark are proprietary. Do not redraw or redistribute them
+          outside Ryzn work.</p></div>
+      </div><div class="pnum">13</div></section><section class="page dark">
+      <div style="height:100%; display:flex; flex-direction:column; justify-content:space-between">
+        <div class="mono" style="color:#B7AFF2">RYZN BRAND GUIDELINES &middot; V1.0 &middot; JULY 2026</div>
+        <div>
+          <img src="../logo/svg/ryzn-mark-white.svg" style="width:34mm"/>
+          <h1 style="margin-top:10mm; max-width:130mm">Rise now.</h1>
+          <p style="color:rgba(255,255,255,.72); margin-top:5mm; max-width:110mm">
+            Questions about applying the brand, or a case this book does not cover, go to the founder
+            before you improvise.</p>
+        </div>
+        <div class="mono" style="color:rgba(255,255,255,.55)">RYZN.ONE</div>
+      </div></section></body></html>

@@ -1,0 +1,28 @@
+export const RYZN = {
+  color: {
+    purple: "#5B4FCF",
+    deep: "#2D2580",
+    ink: "#1A1A1A",
+    white: "#FFFFFF",
+    teal: "#0F6E56",
+    coral: "#D85A30",
+    amber: "#BA7517",
+    gray: "#5F5E5A",
+    lilac: "#B7AFF2",
+    mute: "#A5A39D",
+    purpleTint: "#EEF0FC",
+    tealTint: "#E1F5EE",
+    coralTint: "#FAECE7",
+    amberTint: "#F7EEDD",
+    surface: "#F5F5F3",
+    line: "#E8E7E3",
+  },
+  font: {
+    sans: "'Space Grotesk', 'Century Gothic', system-ui, sans-serif",
+    mono: "'Space Mono', 'Consolas', monospace",
+  },
+  radius: { sm: 9, md: 14, lg: 18, iconRatio: 0.235 },
+  tracking: { mono: "0.12em", head: "-0.02em" },
+  tier: { scout: "#5B4FCF", pathfinder: "#0F6E56", architect: "#D85A30", legend: "#BA7517" },
+};
+export default RYZN;

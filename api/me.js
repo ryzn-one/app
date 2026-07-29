@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { json, withUser, ageFrom } from "../lib/http.js";
 import { acceptedFor, sideOf } from "../lib/matches.js";
-import { isAdmin } from "../lib/admin.js";
+import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 
 /**
  * GET /api/me — session user + Ryzn profile + live pairings.
@@ -110,10 +110,12 @@ async function handler(request, user) {
       email: user.email,
       image: user.image ?? null,
       role: user.role || "mentee",
-      /* Both admin paths collapsed into one flag. `role` alone isn't enough:
-         an ADMIN_EMAILS founder keeps role:"mentee", so anything gated on the
-         role would hide the console from the one person bootstrapping it. */
+      /* Capability flag (ADMIN_EMAILS or role:admin). Not enough alone to open
+         the console — mentees on the env list must not see founder tools. */
       isAdmin: isAdmin(user),
+      /* Door into the founder console. Mentees never get this, even when their
+         email is in ADMIN_EMAILS — promote via admin invite or `admin:grant`. */
+      adminConsole: canAccessAdminConsole(user),
       emailVerified: user.emailVerified,
       onboardingComplete: user.onboardingComplete ?? false,
     },

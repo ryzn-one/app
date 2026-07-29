@@ -1,0 +1,83 @@
+[
+  {
+    "name": "Purple",
+    "hex": "#5B4FCF",
+    "on_white": 6.06,
+    "on_surface": 5.55,
+    "body_text_ok": true,
+    "large_text_ok": true,
+    "white_text_on_it_ok": true
+  },
+  {
+    "name": "Deep",
+    "hex": "#2D2580",
+    "on_white": 12.44,
+    "on_surface": 11.4,
+    "body_text_ok": true,
+    "large_text_ok": true,
+    "white_text_on_it_ok": true
+  },
+  {
+    "name": "Ink",
+    "hex": "#1A1A1A",
+    "on_white": 17.4,
+    "on_surface": 15.94,
+    "body_text_ok": true,
+    "large_text_ok": true,
+    "white_text_on_it_ok": true
+  },
+  {
+    "name": "Teal",
+    "hex": "#0F6E56",
+    "on_white": 6.2,
+    "on_surface": 5.68,
+    "body_text_ok": true,
+    "large_text_ok": true,
+    "white_text_on_it_ok": true
+  },
+  {
+    "name": "Coral",
+    "hex": "#D85A30",
+    "on_white": 3.87,
+    "on_surface": 3.55,
+    "body_text_ok": false,
+    "large_text_ok": true,
+    "white_text_on_it_ok": false
+  },
+  {
+    "name": "Amber",
+    "hex": "#BA7517",
+    "on_white": 3.72,
+    "on_surface": 3.41,
+    "body_text_ok": false,
+    "large_text_ok": true,
+    "white_text_on_it_ok": false
+  },
+  {
+    "name": "Gray",
+    "hex": "#5F5E5A",
+    "on_white": 6.49,
+    "on_surface": 5.95,
+    "body_text_ok": true,
+    "large_text_ok": true,
+    "white_text_on_it_ok": true
+  },
+  {
+    "name": "Lilac",
+    "hex": "#B7AFF2",
+    "on_white": 2.01,
+    "on_surface": 1.84,
+    "body_text_ok": false,
+    "large_text_ok": false,
+    "white_text_on_it_ok": false
+  },
+  {
+    "name": "Mute",
+    "hex": "#A5A39D",
+    "on_white": 2.52,
+    "on_surface": 2.31,
+    "body_text_ok": false,
+    "large_text_ok": false,
+    "white_text_on_it_ok": false
+  }
+]

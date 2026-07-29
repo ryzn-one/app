@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Users, Send, Building2, Settings, Shield, Search, Copy, ExternalLink,
-  Plus, LogOut, RotateCcw, Eye, EyeOff, Zap,
+  Plus, LogOut, RotateCcw, Eye, EyeOff, Zap, ChevronLeft,
 } from "lucide-react";
 import { C, F } from "../theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, Bar, Glyph } from "../ui.jsx";
@@ -37,6 +37,12 @@ const fmtAgo = (d) => {
 };
 
 const STATE_COLOR = { open: C.purple, claimed: C.teal, expired: C.gray, revoked: C.coral };
+
+/* Clearing the hash drops back to the consumer app on the same bundle — signed
+   in it lands on the app, signed out on the app's own sign-in. The console had
+   no exit at all: once you were on /app/#/admin the only ways out were signing
+   out or editing the URL by hand. */
+const goToApp = () => { window.location.hash = ""; };
 
 const Tile = ({ label, value, color = C.ink, sub }) => (
   <Card style={{ padding: 14 }}>
@@ -84,6 +90,10 @@ function AdminGate({ onIn, error }) {
   return (
     <div style={{ fontFamily: F.sans, color: C.ink, minHeight: "100vh", background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: "min(94vw, 400px)" }}>
+        <button onClick={goToApp}
+          style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 0", marginBottom: 12, display: "flex", alignItems: "center", gap: 6, color: "#8B8985", fontFamily: F.sans, fontWeight: 600, fontSize: 13 }}>
+          <ChevronLeft size={16} /> Back to Ryzn
+        </button>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Glyph color={C.purple} size={30} />
           <div>
@@ -134,11 +144,18 @@ function AdminGate({ onIn, error }) {
             </div>
           )}
           {/* Without this the console is a dead end for anyone who doesn't
-              already have a Ryzn account — there's no sign-up on this screen. */}
-          <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, marginTop: 16 }}>
-            No Ryzn account yet?{" "}
-            <span onClick={() => { window.location.hash = ""; }} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create one</span>
-            , then come back here.
+              already have a Ryzn account — there's no sign-up on this screen.
+              The same link is the way out for anyone who landed here by mistake
+              and just wants the normal sign-in. */}
+          <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 18, paddingTop: 14, textAlign: "center" }}>
+            <button onClick={goToApp} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: C.purple }}>
+              Not a founder? Use the regular Ryzn sign-in
+            </button>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8 }}>
+              No Ryzn account yet?{" "}
+              <span onClick={goToApp} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create one</span>
+              , then come back here.
+            </div>
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", textAlign: "center", marginTop: 12, letterSpacing: 0.6 }}>
             RYZN.ONE/APP/#/ADMIN
@@ -452,6 +469,14 @@ export default function RyznAdmin() {
       try {
         const [s, iv, mine] = await Promise.all([adminStats(), adminInvites(), fetchMe().catch(() => null)]);
         if (cancelled) return;
+        // Defense in depth with /api/admin: a mentee session must not land in
+        // the console even if an older client still called the APIs.
+        if (mine?.user && !mine.user.adminConsole) {
+          setAuthed(false);
+          setBoot("gate");
+          setGateError("Only mentor admins can open this console.");
+          return;
+        }
         setStats(s);
         setInvites(iv.invites);
         setMe(mine?.user || null);
@@ -463,7 +488,7 @@ export default function RyznAdmin() {
         setBoot("gate");
         // 401 just means signed out — that's the gate doing its job, not an error
         // worth shouting about on first paint.
-        if (e.status === 403) setGateError("That account isn’t on the admin list.");
+        if (e.status === 403) setGateError("Only mentor admins can open this console.");
         else if (e.status !== 401) setGateError(messageFor(e, "Couldn’t load the console."));
       }
     })();
@@ -581,11 +606,11 @@ export default function RyznAdmin() {
             Checked server-side on every <span style={{ fontFamily: F.mono, fontSize: 12 }}>/api/admin/*</span> call. A caller passes if:
           </div>
           <ul style={{ margin: "10px 0 0 18px", padding: 0, fontSize: 13.5, lineHeight: 1.7, color: C.gray }}>
-            <li>their account has <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>role: "admin"</span> — set by claiming an admin code, or</li>
-            <li>their email is in <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>ADMIN_EMAILS</span> — the break-glass path, for when nobody can get in.</li>
+            <li>their account has <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>role: "admin"</span> — set by claiming an admin code or <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>admin:grant</span>, or</li>
+            <li>they are a <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>mentor</span> whose email is in <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>ADMIN_EMAILS</span>.</li>
           </ul>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 12, lineHeight: 1.6 }}>
-            Signing in does not grant access — it only proves who you are. Everyone else gets a 403.
+            Mentees never get in — even when listed in ADMIN_EMAILS. Signing in only proves who you are.
           </div>
         </Card>
         <Card>
@@ -623,8 +648,13 @@ export default function RyznAdmin() {
           }}><Icon size={16} color={nav === id ? C.white : "#8B8985"} />{label}</button>
         ))}
       </div>
-      <div style={{ padding: 12, borderTop: "1px solid #2C2C2C" }}>
-        <button onClick={leave} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: "#8B8985" }}>
+      {/* Leaving the console and ending the session are different intentions —
+          a founder checking the app still wants their cookie. */}
+      <div style={{ padding: 12, borderTop: "1px solid #2C2C2C", display: "flex", flexDirection: "column", gap: 2 }}>
+        <button onClick={goToApp} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: "#B5B3AE", textAlign: "left" }}>
+          <ChevronLeft size={14} /> Back to the app
+        </button>
+        <button onClick={leave} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: "#8B8985", textAlign: "left" }}>
           <LogOut size={14} /> Sign out
         </button>
       </div>
@@ -641,7 +671,10 @@ export default function RyznAdmin() {
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", letterSpacing: 1, marginTop: 2 }}>RYZN PLATFORM · ALL COHORTS</div>
           </div>
           {!isDesktop && (
-            <button onClick={leave} style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 10, cursor: "pointer", padding: 8, display: "flex" }}><LogOut size={15} color={C.gray} /></button>
+            <>
+              <button onClick={goToApp} title="Back to the app" style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 10, cursor: "pointer", padding: 8, display: "flex" }}><ChevronLeft size={15} color={C.gray} /></button>
+              <button onClick={leave} title="Sign out" style={{ background: "none", border: `1px solid ${C.line}`, borderRadius: 10, cursor: "pointer", padding: 8, display: "flex" }}><LogOut size={15} color={C.gray} /></button>
+            </>
           )}
         </div>
 

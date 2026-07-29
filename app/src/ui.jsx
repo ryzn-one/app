@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
@@ -7,13 +7,54 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { logoSrc, Brand } from "./branding.js";
+
+/* ————— Brand marks (from public/branding/ryzn-brand-kit) ————— */
+export const BrandLogo = ({
+  variant = "horizontal",
+  color = "purple",
+  height = 28,
+  alt = "Ryzn",
+  style,
+  ...rest
+}) => (
+  <img
+    src={logoSrc(variant, color)}
+    alt={alt}
+    height={height}
+    draggable={false}
+    style={{ height, width: "auto", display: "block", ...style }}
+    {...rest}
+  />
+);
+
+export const BrandMark = ({ color = "purple", size = 28, alt = "Ryzn", style, ...rest }) => (
+  <img
+    src={logoSrc("mark", color)}
+    alt={alt}
+    width={size}
+    height={size}
+    draggable={false}
+    style={{ width: size, height: size, display: "block", objectFit: "contain", ...style }}
+    {...rest}
+  />
+);
+
+export const BrandIcon = ({ size = 48, light = false, alt = "Ryzn", style, ...rest }) => (
+  <img
+    src={light ? Brand.icon.appLight : Brand.icon.app}
+    alt={alt}
+    width={size}
+    height={size}
+    draggable={false}
+    style={{ width: size, height: size, display: "block", borderRadius: size * 0.235, ...style }}
+    {...rest}
+  />
+);
 
 /* ————— Primitives ————— */
 export const Card = ({ style, children, onClick }) => (
   <div onClick={onClick} style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style }}>{children}</div>
-);
-export const Label = ({ children, color = C.gray, style }) => (
-  <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color, ...style }}>{children}</div>
 );
 export const FormError = ({ children }) => children ? (
   <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
@@ -21,6 +62,9 @@ export const FormError = ({ children }) => children ? (
     <span>{children}</span>
   </div>
 ) : null;
+export const Label = ({ children, color = C.gray, style }) => (
+  <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color, ...style }}>{children}</div>
+);
 export const Btn = ({ children, kind = "primary", onClick, style, small, disabled }) => {
   const kinds = {
     primary: { background: disabled ? "#C9C6E8" : C.purple, color: C.white },
@@ -37,9 +81,22 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
     }}>{children}</button>
   );
 };
+/* Name helpers. Every screen greets people by first name and stamps initials on
+   cards, and every one of those was a bare `name.split(" ")` — one null name
+   anywhere threw during render. A missing name is a real state (Google sign-in
+   can return one), so it degrades to a dash rather than taking a screen down. */
+export const firstNameOf = (name) => String(name ?? "").trim().split(/\s+/)[0] || "—";
+export const initialsOf = (name) =>
+  (String(name ?? "").trim() || "—").split(/\s+/).map(w => w[0]).slice(0, 2).join("");
+
+/* An account with no name on it is a real state — Google sign-in can return
+   one, and so can a user bootstrapped from the CLI. This used to be
+   `name.split(" ")`, so a single null name anywhere on a screen threw inside
+   render and the app-wide boundary replaced the whole app with "Something
+   broke". Falling back to a dash is the same thing every caller already did. */
 export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, radius = 12 }) => (
   <div style={{ width: size, height: size, borderRadius: radius, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.36, flexShrink: 0 }}>
-    {name.split(" ").map(w => w[0]).slice(0, 2).join("")}
+    {initialsOf(name)}
   </div>
 );
 /* `rest` is load-bearing: every caller passes autoComplete, and the login screen
@@ -82,7 +139,10 @@ export const Bar = ({ pct, color = C.purple, h = 6 }) => (
 export const QR = ({ seed, size = 120, dark = C.ink, light = C.white }) => {
   const n = 21;
   const cells = useMemo(() => {
-    let h = 0; for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    // Two of the eight badge definitions carry no `code`, so an undefined seed
+    // reaches here the moment either is earned and tapped — `for…of` on
+    // undefined threw and took the whole app down with it.
+    let h = 0; for (const ch of String(seed ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     let s = h || 7; const out = [];
     for (let i = 0; i < n * n; i++) { s = (s * 1103515245 + 12345) >>> 0; out.push((s >>> 16) & 1); }
     return out;
@@ -147,16 +207,34 @@ export const Heatmap = ({ weeks = 6 }) => {
     </div>
   );
 };
-export const HeaderRow = ({ title, onBack, right }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px 10px" }}>
-    {onBack && <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, margin: -4 }}><ChevronLeft size={22} color={C.ink} /></button>}
-    <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, flex: 1 }}>{title}</div>
-    {right}
-  </div>
+/* How much room a floating close button is taking out of the top-right corner,
+   measured in from the right edge. Screens render the same JSX on phone and on
+   desktop, so a header's `right` slot has no way of knowing that ModalShell has
+   parked an X on top of it — this context is how the shell says so. Layers that
+   cover the shell's chrome (DetailShell) reset it with <NoCloseGutter>. */
+const CloseGutter = createContext(0);
+export const NoCloseGutter = ({ children }) => (
+  <CloseGutter.Provider value={0}>{children}</CloseGutter.Provider>
 );
+
+export const HeaderRow = ({ title, onBack, right }) => {
+  const gutter = useContext(CloseGutter);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 14, paddingBottom: 10, paddingLeft: 20, paddingRight: Math.max(20, gutter) }}>
+      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, margin: -4 }}><ChevronLeft size={22} color={C.ink} /></button>}
+      {/* minWidth:0 lets a long title wrap instead of shoving `right` under the X. */}
+      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, flex: 1, minWidth: 0 }}>{title}</div>
+      {right}
+    </div>
+  );
+};
 export const Glyph = ({ color = C.purple, size = 46 }) => (
   <svg width={size} height={size}><polygon points={`${size / 2},2 ${size - 2},${size / 2} ${size / 2},${size - 2} 2,${size / 2}`} fill={color} /></svg>
 );
+const CLOSE_SIZE = 32, CLOSE_INSET = 14, CLOSE_CLEARANCE = 10;
+/* Everything the close button needs to itself, from the modal's right edge. */
+const MODAL_CLOSE_GUTTER = CLOSE_INSET + CLOSE_SIZE + CLOSE_CLEARANCE;
+
 export const ModalShell = ({ children, onClose }) => (
   <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
     <div onClick={e => e.stopPropagation()} style={{
@@ -164,11 +242,13 @@ export const ModalShell = ({ children, onClose }) => (
       background: C.surface, borderRadius: 24, position: "relative",
       display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
     }}>
-      <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 5, width: 32, height: 32, borderRadius: 16, border: "none", background: "rgba(26,26,26,.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+      <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: CLOSE_INSET, right: CLOSE_INSET, zIndex: 5, width: CLOSE_SIZE, height: CLOSE_SIZE, borderRadius: CLOSE_SIZE / 2, border: "none", background: "rgba(26,26,26,.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         <X size={16} color={C.ink} />
       </button>
       <div style={{ flex: 1, overflow: "hidden", borderRadius: 24 }}>
-        <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>{children}</div>
+        <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
+          <CloseGutter.Provider value={MODAL_CLOSE_GUTTER}>{children}</CloseGutter.Provider>
+        </div>
       </div>
     </div>
   </div>
@@ -189,10 +269,10 @@ export const AuthCardShell = ({ children }) => (
   </div>
 );
 
-export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, isAdmin, onSettings, onLogout }) => (
+export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole, onSettings, onLogout }) => (
   <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.line}`, background: C.white, display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ padding: "26px 22px 20px" }}>
-      <div style={{ color: C.purple, fontSize: 22, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
+      <BrandLogo variant="horizontal" color="purple" height={26} />
     </div>
     <div style={{ flex: 1, padding: "0 12px", display: "flex", flexDirection: "column", gap: 2 }}>
       {nav.map(([id, Icon, label]) => {
@@ -210,12 +290,15 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, isAdmin, onSe
       })}
     </div>
     <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
+      {/* The signed-in account, not a sample one. This rail read "Alex Reyes" /
+          "Jordan Clarke" for every user regardless of who was looking. */}
       <Monogram name={name || "—"} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
       </div>
-      {isAdmin && (
+      {/* Founder console — mentees never see this door. */}
+      {adminConsole && (
         <button onClick={() => window.open("/app/#/admin", "_blank", "noopener")} title="Founder console"
           style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><Shield size={16} color={C.amber} /></button>
       )}
@@ -224,6 +307,37 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, isAdmin, onSe
     </div>
   </div>
 );
+
+/* Containment for a screen that throws while rendering.
+
+   There was one boundary, at the root, so any error in any panel replaced the
+   entire app — sidebar, tab bar and all — with "Something broke. Refresh to
+   rise again." and no way out but a manual browser refresh. Wrapping each
+   screen keeps the failure in the panel that caused it: the nav still works,
+   and moving to another tab (a changed `resetKey`) clears it without a reload. */
+export class SectionBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error(`[ryzn] "${this.props.name || "screen"}" crashed:`, err, info); }
+  componentDidUpdate(prev) {
+    if (this.state.err && prev.resetKey !== this.props.resetKey) this.setState({ err: null });
+  }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div style={{ padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10 }}>
+        <Glyph color={C.coral} size={34} />
+        <div style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>This screen didn’t load.</div>
+        <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, maxWidth: 300 }}>
+          Nothing you did is lost. Try again, or move to another tab and come back.
+        </div>
+        <Btn small kind="soft" style={{ marginTop: 6 }} onClick={() => this.setState({ err: null })}>
+          <RotateCcw size={14} /> Try again
+        </Btn>
+      </div>
+    );
+  }
+}
 
 export const TypingDots = () => (
   <div style={{ display: "flex", gap: 4, padding: "12px 14px", background: C.white, border: `1px solid ${C.line}`, borderRadius: "14px 14px 14px 4px", width: "fit-content" }}>

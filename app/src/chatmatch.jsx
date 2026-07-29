@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
@@ -372,12 +372,16 @@ export const CardGrid = ({ deck, renderCard, stampRight, stampLeft, canRight, on
   );
 };
 
+/* Sits above ModalShell's close button rather than beside it, so this header
+   gets the full width back — hence NoCloseGutter. Closing is `close` here. */
 export const DetailShell = ({ title, right, close, footer, children }) => (
-  <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column" }}>
-    <HeaderRow title={title} onBack={close} right={right} />
-    <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>{children}</div>
-    <div style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}`, flexShrink: 0 }}>{footer}</div>
-  </div>
+  <NoCloseGutter>
+    <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column" }}>
+      <HeaderRow title={title} onBack={close} right={right} />
+      <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>{children}</div>
+      <div style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}`, flexShrink: 0 }}>{footer}</div>
+    </div>
+  </NoCloseGutter>
 );
 
 

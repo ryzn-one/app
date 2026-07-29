@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync } from "node:fs";
+﻿import { copyFileSync, cpSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,10 +15,9 @@ copyFileSync(join(root, "site", "mentor-invite.html"), join(dist, "mentor-invite
 copyFileSync(join(root, "site", "privacy.html"), join(dist, "privacy.html"));
 copyFileSync(join(root, "site", "terms.html"), join(dist, "terms.html"));
 
-/* site/avatars held 30 stock portraits used to give the invented Ryzn for Teams
-   mentors and mentees faces. Nothing references them since Teams stopped
-   simulating an org, and shipping photographs of people who aren't users is
-   exactly the kind of prop this cleanup removed. Re-add the copy step here if a
-   real asset directory ever lands. */
+const brandingSrc = join(root, "site", "branding");
+if (existsSync(brandingSrc)) {
+  cpSync(brandingSrc, join(dist, "branding"), { recursive: true });
+}
 
-console.log("Assembled site + /app into dist/");
+console.log("Assembled site + branding + /app into dist/");

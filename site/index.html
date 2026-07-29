@@ -5,16 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ryzn - Rise now. Mentorship that proves itself.</title>
 <meta name="description" content="A 12-week mentorship program matching students with a hand-picked roster of professionals. Verifiable badges, real outcomes. Invitation-only for mentors.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#5B4FCF">
+<link rel="icon" href="/branding/ryzn-brand-kit/icon/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/branding/ryzn-brand-kit/icon/png/favicon-32.png">
+<link rel="icon" type="image/svg+xml" href="/branding/ryzn-brand-kit/icon/svg/ryzn-favicon-atom.svg">
+<link rel="apple-touch-icon" href="/branding/ryzn-brand-kit/icon/png/ryzn-app-icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ryzn — Rise now.">
+<meta property="og:description" content="Mentorship that proves itself. A 12-week program with verifiable badges and real outcomes.">
+<meta property="og:image" content="/branding/ryzn-brand-kit/social/ryzn-og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/branding/ryzn-brand-kit/social/ryzn-og-image.png">
+<link rel="preload" href="/branding/ryzn-brand-kit/fonts/SpaceGrotesk.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/branding/ryzn-brand-kit/fonts/SpaceMono-Regular.ttf" as="font" type="font/ttf" crossorigin>
 <style>
+  @font-face{font-family:"Space Grotesk";src:url("/branding/ryzn-brand-kit/fonts/SpaceGrotesk.ttf") format("truetype");font-weight:400 700;font-style:normal;font-display:swap}
+  @font-face{font-family:"Space Mono";src:url("/branding/ryzn-brand-kit/fonts/SpaceMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"Space Mono";src:url("/branding/ryzn-brand-kit/fonts/SpaceMono-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
   :root{
     --purple:#5B4FCF; --deep:#2D2580; --ink:#1A1A1A; --white:#fff;
     --teal:#0F6E56; --coral:#D85A30; --amber:#BA7517; --gray:#5F5E5A;
+    --lilac:#B7AFF2; --mute:#A5A39D;
     --purple-t:#EEF0FC; --teal-t:#E1F5EE; --coral-t:#FAECE7; --amber-t:#F7EEDD;
     --surface:#F5F5F3; --line:#E8E7E3;
-    --sans:'Space Grotesk',system-ui,sans-serif; --mono:'Space Mono','Courier New',monospace;
+    --sans:'Space Grotesk','Century Gothic',system-ui,sans-serif;
+    --mono:'Space Mono','Consolas',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
   html{scroll-behavior:smooth;width:100%;max-width:100%;overflow-x:hidden}
@@ -34,7 +49,9 @@
   /* ---------- nav ---------- */
   nav{position:sticky;top:0;z-index:50;background:rgba(245,245,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
   .nav-in{display:flex;align-items:center;gap:34px;height:68px}
-  .logo{font-weight:700;font-size:23px;letter-spacing:-.04em;color:var(--purple)}
+  .logo{display:inline-flex;align-items:center;line-height:0}
+  .logo img{height:28px;width:auto;display:block}
+  footer .logo img{height:26px}
   .nav-links{display:flex;gap:26px;font-size:14px;font-weight:600;color:var(--gray)}
   .nav-links a:hover{color:var(--ink)}
   .nav-cta{margin-left:auto;display:flex;gap:10px}
@@ -42,6 +59,8 @@
 
   /* ---------- hero ---------- */
   .hero{padding:74px 0 60px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;background:url("/branding/ryzn-brand-kit/motifs/ryzn-diamond-pattern.svg") center/520px;opacity:.07;pointer-events:none}
+  .hero .wrap{position:relative;z-index:1}
   .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
   .toggle{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:14px;padding:5px;margin:20px 0 26px}
   .toggle button{font-family:var(--sans);font-weight:600;font-size:14px;padding:10px 20px;border:none;border-radius:10px;background:transparent;color:var(--gray);cursor:pointer;transition:all .15s}
@@ -167,8 +186,8 @@
   /* dual cta */
   .dual{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .panel{border-radius:22px;padding:44px 38px;color:#fff;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
-  .panel.mentee{background:var(--purple)}
-  .panel.mentor{background:var(--ink)}
+  .panel.mentee{background:var(--purple);background-image:url("/branding/ryzn-brand-kit/motifs/ryzn-diamond-pattern.svg");background-size:420px;background-blend-mode:soft-light}
+  .panel.mentor{background:var(--ink);background-image:url("/branding/ryzn-brand-kit/motifs/ryzn-diamond-pattern.svg");background-size:420px;background-blend-mode:soft-light}
   .panel h3{font-size:27px;letter-spacing:-.025em;line-height:1.15}
   .panel p{font-size:14.5px;line-height:1.6;opacity:.85}
   .panel .btn{background:#fff;color:var(--ink);margin-top:6px}
@@ -216,7 +235,9 @@
 
 <nav>
   <div class="wrap nav-in">
-    <a class="logo" href="#top">RYZN</a>
+    <a class="logo" href="#top" aria-label="Ryzn home">
+      <img src="/branding/ryzn-brand-kit/logo/svg/ryzn-lockup-horizontal-purple.svg" alt="Ryzn" width="140" height="34">
+    </a>
     <div class="nav-links">
       <a href="#how">Program</a><a href="#badges">Badges</a><a href="#mentors">Mentors</a><a href="#meets">Meets</a><a href="#teams">For teams</a>
     </div>
@@ -486,8 +507,10 @@
 <footer>
   <div class="wrap foot">
     <div>
-      <div class="logo">RYZN</div>
-      <div class="mono" style="margin-top:8px">RISE NOW. · RYZN.ONE · BUILT IN TORONTO</div>
+      <div class="logo">
+        <img src="/branding/ryzn-brand-kit/logo/svg/ryzn-lockup-horizontal-purple.svg" alt="Ryzn" width="130" height="31">
+      </div>
+      <div class="mono" style="margin-top:10px">RISE NOW. · RYZN.ONE · BUILT IN TORONTO</div>
     </div>
     <div class="foot-links">
       <a href="#how">Program</a><a href="#badges">Verify a badge</a><a href="#mentors">The Roster</a><a href="#meets">Mentor Meets</a><a href="#teams">Ryzn for Teams</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>

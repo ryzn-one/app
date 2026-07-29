@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, SlidersHorizontal, Crown, School, Check, Clock, X } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Btn, Monogram, HeaderRow } from "./ui.jsx";
+import { Card, Btn, Monogram, HeaderRow, firstNameOf } from "./ui.jsx";
 import {
   FilterSheet, MentorDetailSheet, MenteeDetailSheet, AffinityTag, TagRow, EmptyRoster,
 } from "./chatmatch.jsx";
@@ -121,7 +121,7 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
   /* One row's worth of action, derived entirely from matchState so the sheet
      and the list can never disagree about what's possible. */
   const footerFor = (p) => {
-    const first = p.name.split(" ")[0];
+    const first = firstNameOf(p.name);
     if (p.matchState === "accepted") {
       return <Btn kind="soft" onClick={() => { setDetail(null); openAccepted?.(p); }}>{wanted === "mentor" ? `Open ${first}’s Orbit` : `Open ${first}’s progress`}</Btn>;
     }

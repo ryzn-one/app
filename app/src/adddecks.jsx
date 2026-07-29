@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, firstNameOf, initialsOf } from "./ui.jsx";
 import { SwipeDeck, CardGrid, MentorDetailSheet, MenteeDetailSheet } from "./chatmatch.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 
@@ -28,7 +28,7 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, 
     setHistory(h => [...h, { id: m.id, dir }]);
     if (dir === "right") {
       setDecided(d => ({ ...d, [m.id]: "pending" }));
-      toast(`Request sent to ${m.name.split(" ")[0]}…`);
+      toast(`Request sent to ${firstNameOf(m.name)}…`);
       onAdd(m);
     } else setDecided(d => ({ ...d, [m.id]: "passed" }));
   };
@@ -38,7 +38,7 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, 
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "42%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 72, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}>{m.name.split(" ").map(w => w[0]).join("")}</div>
+          <div style={{ fontSize: 72, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}>{initialsOf(m.name)}</div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
           <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
         </div>
@@ -70,7 +70,7 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, 
       {detail && (
         <MentorDetailSheet m={detail} close={() => setDetail(null)} footer={
           <Btn disabled={seatsLeft <= 0 || !!decided[detail.id]} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>
-            {decided[detail.id] ? "Request sent" : seatsLeft <= 0 ? "Mentor seats full · 3/3" : `Request ${detail.name.split(" ")[0]} as support · +15 XP`}
+            {decided[detail.id] ? "Request sent" : seatsLeft <= 0 ? "Mentor seats full · 3/3" : `Request ${firstNameOf(detail.name)} as support · +15 XP`}
           </Btn>
         } />
       )}
@@ -98,7 +98,7 @@ export const AddMenteeScreen = ({ candidates, addsUsed, onAdd, back, toast, onLo
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "40%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 72, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}>{m.name.split(" ").map(w => w[0]).join("")}</div>
+          <div style={{ fontSize: 72, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}>{initialsOf(m.name)}</div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
           {m.track && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {m.track.toUpperCase()}</div>}
         </div>
@@ -133,7 +133,7 @@ export const AddMenteeScreen = ({ candidates, addsUsed, onAdd, back, toast, onLo
       {detail && (
         <MenteeDetailSheet m={detail} close={() => setDetail(null)} footer={
           <Btn disabled={addsLeft <= 0 || !!decided[detail.id]} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>
-            {decided[detail.id] ? "Added ✓" : addsLeft <= 0 ? "Add limit reached · 3 per cycle" : `Accept ${detail.name.split(" ")[0]} · +30 Impact`}
+            {decided[detail.id] ? "Added ✓" : addsLeft <= 0 ? "Add limit reached · 3 per cycle" : `Accept ${firstNameOf(detail.name)} · +30 Impact`}
           </Btn>
         } />
       )}

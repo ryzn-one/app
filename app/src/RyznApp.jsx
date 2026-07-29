@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Newspaper
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
 import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost } from "./lib/auth-client.js";
@@ -541,15 +541,21 @@ export default function RyznComplete() {
       {phase === "app" && user && (
         isDesktop ? (
           <div style={{ display: "flex", height: "100%" }}>
-            <Sidebar nav={nav} tab={tab} overlay={overlay} role={role} name={session?.user?.name} isAdmin={session?.user?.isAdmin}
+            <Sidebar nav={nav} tab={tab} overlay={overlay} role={role} name={session?.user?.name} adminConsole={session?.user?.adminConsole}
               onSelect={(id) => { setOverlay(null); setTab(id); }}
               onSettings={() => setOverlay("settings")} onLogout={logout} />
             <div style={{ flex: 1, overflow: "hidden" }}>
               <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
-                <div style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 40px" }}>{tabContent()}</div>
+                <div style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 40px" }}>
+                  <SectionBoundary name={tab} resetKey={tab}>{tabContent()}</SectionBoundary>
+                </div>
               </div>
             </div>
-            {overlayEl && <ModalShell onClose={() => setOverlay(null)}>{overlayEl}</ModalShell>}
+            {overlayEl && (
+              <ModalShell onClose={() => setOverlay(null)}>
+                <SectionBoundary name="overlay" resetKey={overlay}>{overlayEl}</SectionBoundary>
+              </ModalShell>
+            )}
           </div>
         ) : (
           <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
@@ -557,7 +563,11 @@ export default function RyznComplete() {
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
                 paddingTop: "env(safe-area-inset-top, 0px)",
-              }}>{overlayEl || tabContent()}</div>
+              }}>
+                <SectionBoundary name={overlay ? "overlay" : tab} resetKey={overlay || tab}>
+                  {overlayEl || tabContent()}
+                </SectionBoundary>
+              </div>
             </div>
             {!fullScreenOverlay && (
               <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}>
