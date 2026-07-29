@@ -14,7 +14,9 @@
     "db:invites": "node --env-file=.env.local scripts/db-setup.mjs --seed-invites=20",
     "invites:status": "node --env-file=.env.local scripts/invites-status.mjs",
     "admin:grant": "node --env-file=.env.local scripts/make-admin.mjs",
-    "user:make": "node --env-file=.env.local scripts/make-user.mjs"
+    "user:make": "node --env-file=.env.local scripts/make-user.mjs",
+    "preview:env": "node scripts/setup-preview-env.mjs",
+    "preview:db": "node --env-file=.env.local scripts/db-setup.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^2.6.1",

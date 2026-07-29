@@ -30,6 +30,9 @@ Uploads need `BLOB_READ_WRITE_TOKEN` (`vercel env pull` after creating the Blob
 store). Email needs `POSTMARK_SERVER_TOKEN`; without it `sendEmail` logs to the
 console and returns `{delivered:false}`, which is what you want locally.
 
+For real email delivery on a deployed URL (not localhost), use the **Preview**
+environment on the `dev` branch — see `docs/PREVIEW.md`.
+
 Run `npm run db:setup` once after pulling — it creates the indexes idempotently,
 including the ones `posts` and `post_events` need.
 
