@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ryzn - Rise now. Mentorship that proves itself.</title>
 <meta name="description" content="A 12-week mentorship program matching students with a hand-picked roster of professionals. Verifiable badges, real outcomes. Invitation-only for mentors.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,10 +17,10 @@
     --sans:'Space Grotesk',system-ui,sans-serif; --mono:'Space Mono','Courier New',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-  html{scroll-behavior:smooth}
-  body{font-family:var(--sans);color:var(--ink);background:var(--surface)}
+  html{scroll-behavior:smooth;width:100%;max-width:100%;overflow-x:hidden}
+  body{font-family:var(--sans);color:var(--ink);background:var(--surface);width:100%;max-width:100%;overflow-x:hidden}
   a{color:inherit;text-decoration:none}
-  .wrap{max-width:1140px;margin:0 auto;padding:0 28px}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 28px;width:100%}
   .mono{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase}
   .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--purple)}
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--sans);font-weight:600;font-size:15px;padding:15px 26px;border-radius:12px;border:none;cursor:pointer;transition:transform .12s ease, background .15s}
@@ -58,8 +58,8 @@
   body[data-mode="mentor"] span[data-aud="mentor"], body[data-mode="mentor"] div.hero-ctas[data-aud="mentor"]{display:flex}
 
   /* hero mock cards */
-  .mock{position:relative;height:520px}
-  .mcard{position:absolute;background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 18px 44px rgba(26,26,26,.10)}
+  .mock{position:relative;height:520px;max-width:100%;overflow:hidden}
+  .mcard{position:absolute;background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 18px 44px rgba(26,26,26,.10);max-width:100%}
   .mcard .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gray)}
   .m-streak{top:16px;left:0;width:300px;transform:rotate(-2.5deg)}
   .flamewrap{display:flex;align-items:center;gap:14px;margin-top:12px}
@@ -138,10 +138,10 @@
   .meets .wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center}
   .meets h2{color:#fff}
   .meets p{color:#F6D3C4}
-  .count{font-family:var(--mono);display:flex;gap:26px;margin-top:26px}
+  .count{font-family:var(--mono);display:flex;flex-wrap:wrap;gap:26px;margin-top:26px}
   .count b{font-size:44px;font-weight:700;display:block;letter-spacing:-.03em}
   .count span{font-size:9.5px;letter-spacing:.16em}
-  .meets-card{background:rgba(26,26,26,.22);border-radius:18px;padding:24px;font-family:var(--mono);font-size:12px;line-height:2.1;letter-spacing:.08em}
+  .meets-card{background:rgba(26,26,26,.22);border-radius:18px;padding:24px;font-family:var(--mono);font-size:12px;line-height:2.1;letter-spacing:.08em;overflow-wrap:anywhere}
 
   /* quotes */
   .quotes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -151,6 +151,18 @@
   .mg{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
   .q .who b{font-size:14px;display:block}
   .q .who span{font-family:var(--mono);font-size:9.5px;color:#A5A39D;letter-spacing:.1em}
+
+  /* teams */
+  .teams{background:var(--teal);color:#fff}
+  .teams .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:44px;align-items:center}
+  .teams h2{color:#fff}
+  .teams p{color:#CDE9DF;font-size:15.5px;line-height:1.6;margin-top:14px;max-width:520px}
+  .teams .btn{background:#fff;color:var(--ink);margin-top:26px}
+  .teams-card{background:rgba(26,26,26,.22);border-radius:18px;padding:10px 24px}
+  .teams-card .line{display:flex;align-items:center;justify-content:space-between;gap:18px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.16)}
+  .teams-card .line:last-child{border-bottom:none}
+  .teams-card .line span{color:#A9D6C7;flex-shrink:0}
+  .teams-card .line b{font-weight:700;text-align:right;min-width:0;overflow-wrap:anywhere}
 
   /* dual cta */
   .dual{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -166,17 +178,36 @@
   footer{border-top:1px solid var(--line);padding:44px 0 60px;background:#fff}
   .foot{display:flex;align-items:flex-start;justify-content:space-between;gap:30px;flex-wrap:wrap}
   .foot .mono{font-size:10px;color:#A5A39D}
-  .foot-links{display:flex;gap:22px;font-size:13.5px;font-weight:600;color:var(--gray)}
-  .built-by a{color:var(--ink);font-weight:600;text-decoration:none;border-bottom:1px solid var(--line)}
-  .built-by a:hover{color:var(--purple);border-bottom-color:var(--purple)}
+  .foot-links{display:flex;flex-wrap:wrap;gap:22px;font-size:13.5px;font-weight:600;color:var(--gray)}
 
   @media(max-width:920px){
-    .hero-grid,.split,.meets .wrap,.quotes,.dual{grid-template-columns:1fr}
+    .wrap{padding:0 18px}
+    .hero-grid,.split,.meets .wrap,.teams .wrap,.quotes,.dual{grid-template-columns:1fr}
     .mock{height:470px;margin-top:10px}
     .stats-grid{grid-template-columns:repeat(2,1fr)}
     .steps{grid-template-columns:repeat(2,1fr)}
     .badge-row{grid-template-columns:repeat(4,1fr);row-gap:22px}
+    .tiers{grid-template-columns:repeat(2,1fr)}
     .nav-links{display:none}
+    .nav-in{gap:12px}
+  }
+  @media(max-width:560px){
+    .wrap{padding:0 16px}
+    .hero{padding:48px 0 40px}
+    section{padding:64px 0}
+    .nav-cta .btn{padding:9px 14px;font-size:13px}
+    .toggle{width:100%;max-width:100%}
+    .toggle button{flex:1;padding:10px 12px;font-size:13px}
+    .mock{height:380px}
+    .m-streak{width:min(280px,92%);left:2%}
+    .m-badge{width:min(230px,78%);right:2%}
+    .m-match{width:min(270px,90%);left:4%}
+    .m-imp{width:min(220px,72%);right:2%}
+    .panel{padding:32px 22px}
+    .impact-card .big{font-size:56px}
+    .count{gap:18px}
+    .count b{font-size:36px}
+    .verify-note{flex-wrap:wrap;overflow-wrap:anywhere}
   }
   @media(prefers-reduced-motion:reduce){.ticker-in{animation:none}}
 </style>
@@ -187,7 +218,7 @@
   <div class="wrap nav-in">
     <a class="logo" href="#top">RYZN</a>
     <div class="nav-links">
-      <a href="#how">Program</a><a href="#badges">Badges</a><a href="#mentors">Mentors</a><a href="#meets">Meets</a>
+      <a href="#how">Program</a><a href="#badges">Badges</a><a href="#mentors">Mentors</a><a href="#meets">Meets</a><a href="#teams">For teams</a>
     </div>
     <div class="nav-cta">
       <a class="btn btn-ghost" href="/app/">Sign in</a>
@@ -418,6 +449,23 @@
   </div>
 </section>
 
+<section class="teams" id="teams">
+  <div class="wrap">
+    <div>
+      <span class="mono" style="font-size:10px;color:#A9D6C7;letter-spacing:.18em">RYZN FOR TEAMS · PILOT COHORTS</span>
+      <h2>The same engine, inside your company.</h2>
+      <p>Your people get the app they actually open: a matched roster, Direct Connect they earn, streaks and badges. HR gets the console - divisions, programs, matching rules, live participation, and an at-risk list before anyone quietly checks out.</p>
+      <a class="btn" href="mailto:support@ryzn.one?subject=Ryzn%20for%20Teams%20pilot">Talk about a pilot →</a>
+    </div>
+    <div class="teams-card">
+      <div class="line"><span>PILOT LENGTH</span><b>90 DAYS</b></div>
+      <div class="line"><span>SETUP</span><b>2 WEEKS · DONE FOR YOU</b></div>
+      <div class="line"><span>ACCESS</span><b>SSO · ROLE-BASED</b></div>
+      <div class="line"><span>DELIVERABLE</span><b>DAY-90 RESULTS REPORT</b></div>
+    </div>
+  </div>
+</section>
+
 <section id="cta" style="padding-top:20px">
   <div class="wrap dual">
     <div class="panel mentee">
@@ -440,10 +488,9 @@
     <div>
       <div class="logo">RYZN</div>
       <div class="mono" style="margin-top:8px">RISE NOW. · RYZN.ONE · BUILT IN TORONTO</div>
-      <div class="mono built-by" style="margin-top:6px">BUILT BY <a href="https://runbos.ai" target="_blank" rel="noopener">BOS</a></div>
     </div>
     <div class="foot-links">
-      <a href="#how">Program</a><a href="#badges">Verify a badge</a><a href="#mentors">The Roster</a><a href="#meets">Mentor Meets</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
+      <a href="#how">Program</a><a href="#badges">Verify a badge</a><a href="#mentors">The Roster</a><a href="#meets">Mentor Meets</a><a href="#teams">Ryzn for Teams</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
     </div>
     <div class="mono" style="max-width:280px;line-height:2">MENTORS ARE VETTED AND BACKGROUND-CHECKED. GUARDIAN CONSENT REQUIRED UNDER 18.</div>
   </div>
