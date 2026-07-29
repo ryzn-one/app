@@ -101,6 +101,23 @@ export const postAction = (id, action) => api("/posts", { method: "PATCH", body:
 export const updatePost = (id, patch) => api("/posts", { method: "PATCH", body: { id, ...patch } });
 export const deletePost = (id) => api(`/posts?id=${encodeURIComponent(id)}`, { method: "DELETE" });
 
+/* ————— Daily exercises —————
+   Mentee writes today's paragraph; the server stores it, awards XP, bumps
+   streak, and flips stage1Complete so Direct Connect opens. Mentors read a
+   paired mentee's submissions with ?menteeId=. */
+export const fetchExercises = () => api("/exercises");
+export const fetchMenteeExercises = (menteeId) =>
+  api(`/exercises?menteeId=${encodeURIComponent(menteeId)}`);
+export const submitExercise = ({ text, exerciseId } = {}) =>
+  api("/exercises", { method: "POST", body: { text, exerciseId } });
+
+/* ————— Direct Connect —————
+   Accepted mentee↔mentor only; locked until the mentee finishes Stage 1. */
+export const fetchMessages = (otherId) =>
+  api(`/messages?otherId=${encodeURIComponent(otherId)}`);
+export const sendMessage = (otherId, text) =>
+  api("/messages", { method: "POST", body: { otherId, text } });
+
 /** Ryzn for Teams waitlist. Unauthenticated by design — see api/teams-interest.js. */
 export const registerTeamsInterest = (body) => api("/teams-interest", { method: "POST", body });
 

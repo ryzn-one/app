@@ -9,6 +9,7 @@ import {
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { EXERCISE_TRACK } from "./data.js";
+import { fetchMessages, sendMessage } from "./lib/auth-client.js";
 
 /* ————————————————— APP: MENTEE ————————————————— */
 
@@ -42,12 +43,12 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Flame size={22} color={C.coral} fill={C.coral} />
-            <span style={{ fontSize: 26, fontWeight: 700 }}>{u.streak + (todayDone ? 1 : 0)}</span>
+            <span style={{ fontSize: 26, fontWeight: 700 }}>{u.streak}</span>
             <span style={{ color: C.gray, fontSize: 13, fontWeight: 600 }}>day streak</span>
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, marginTop: 8 }}>{u.xp.toLocaleString()} XP{u.rank ? ` · #${u.rank} in cohort` : ""}</div>
-          <div style={{ marginTop: 8 }}><Bar pct={(u.streak + (todayDone ? 1 : 0)) / 100} color={C.teal} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{u.streak + (todayDone ? 1 : 0)}/100 → 100-DAY STREAK</div>
+          <div style={{ marginTop: 8 }}><Bar pct={u.streak / 100} color={C.teal} /></div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{u.streak}/100 → 100-DAY STREAK</div>
         </div>
       </Card>
 
@@ -171,8 +172,9 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
   );
 };
 
-export const MenteeExercises = ({ u, todayDone, onSubmit }) => {
+export const MenteeExercises = ({ u, todayDone, onSubmit, submitting }) => {
   const [text, setText] = useState("");
+  const [err, setErr] = useState(null);
   const list = EXERCISE_TRACK;
   return (
     <div>
@@ -187,12 +189,18 @@ export const MenteeExercises = ({ u, todayDone, onSubmit }) => {
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{ex.title}</div>
               <div style={{ fontSize: 13.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{ex.prompt}</div>
-              {/* A Write/Speak toggle sat above this. "Speak" showed a dashed
-                  box reading "Hold to record · 90 seconds max" over nothing —
-                  there is no MediaRecorder call anywhere in the app. */}
-              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="I’m here because…" rows={4}
+              <textarea value={text} onChange={e => { setText(e.target.value); setErr(null); }} placeholder="I’m here because…" rows={4}
                 style={{ width: "100%", marginTop: 12, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
-              <Btn style={{ marginTop: 12 }} onClick={onSubmit}>Submit · +{ex.xp} XP</Btn>
+              {err && <div style={{ fontSize: 12.5, color: C.coral, marginTop: 8, lineHeight: 1.4 }}>{err}</div>}
+              <Btn style={{ marginTop: 12 }} disabled={submitting} onClick={async () => {
+                try {
+                  setErr(null);
+                  await onSubmit(text);
+                  setText("");
+                } catch (e) {
+                  setErr(e.message || "Couldn’t save that. Try again.");
+                }
+              }}>{submitting ? "Saving…" : `Submit · +${ex.xp} XP`}</Btn>
             </Card>
           );
           const done = ex.state === "open" && todayDone;
@@ -203,10 +211,13 @@ export const MenteeExercises = ({ u, todayDone, onSubmit }) => {
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: done ? C.tealTint : "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {done ? <Check size={17} color={C.teal} strokeWidth={3} /> : upcoming ? <Lock size={14} color="#A5A39D" /> : <Zap size={15} color="#A5A39D" />}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>{ex.day.toUpperCase()}</div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{ex.title}</div>
                   {upcoming && <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>Unlocks at 7 AM. One a day keeps the streak alive.</div>}
+                  {done && u.todayExercise?.text && (
+                    <div style={{ fontSize: 13, color: C.ink, marginTop: 8, lineHeight: 1.5, fontStyle: "italic" }}>“{u.todayExercise.text}”</div>
+                  )}
                 </div>
                 {done ? <span style={{ fontFamily: F.mono, fontSize: 11, color: C.teal, fontWeight: 700 }}>+{ex.xp} XP</span>
                   : <span style={{ fontFamily: F.mono, fontSize: 10, color: "#A5A39D" }}>+{ex.xp} XP</span>}
@@ -287,19 +298,53 @@ export const CohortScreen = ({ u, back }) => (
   </div>
 );
 
-/* Messages are local to the session — there is no message store yet. The
-   scripted "them" replies that used to fire 1.4s after you sent anything are
-   gone: a mentee reading a canned line as their mentor answering is the worst
-   version of this whole problem. */
-export const DMScreen = ({ name, sub, back, seed = [], placeholder }) => {
-  const [msgs, setMsgs] = useState(seed);
+/* Direct Connect — persisted via /api/messages. Fake mentor replies that used
+   to fire 1.4s after send are gone; both sides read the same thread. */
+export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
+  const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
   const scrollRef = useRef(null);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [msgs]);
-  const send = () => {
-    const t = text.trim(); if (!t) return;
-    setMsgs(m => [...m, { who: "me", text: t }]); setText("");
+
+  useEffect(() => {
+    if (!otherId) { setLoading(false); setError("No match to message."); return; }
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setError(null);
+      try {
+        const { messages } = await fetchMessages(otherId);
+        if (!cancelled) setMsgs(messages || []);
+      } catch (e) {
+        if (!cancelled) setError(e.message || "Couldn’t load this conversation.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [otherId]);
+
+  const send = async () => {
+    const t = text.trim();
+    if (!t || busy || !otherId) return;
+    setBusy(true);
+    setText("");
+    const optimistic = { id: `tmp-${Date.now()}`, who: "me", text: t };
+    setMsgs(m => [...m, optimistic]);
+    try {
+      const { message } = await sendMessage(otherId, t);
+      setMsgs(m => m.map(x => x.id === optimistic.id ? message : x));
+    } catch (e) {
+      setMsgs(m => m.filter(x => x.id !== optimistic.id));
+      setText(t);
+      setError(e.message || "Couldn’t send that.");
+    } finally {
+      setBusy(false);
+    }
   };
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${C.line}`, background: C.white }}>
@@ -311,14 +356,18 @@ export const DMScreen = ({ name, sub, back, seed = [], placeholder }) => {
         </div>
       </div>
       <div ref={scrollRef} className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {msgs.length === 0 && (
+        {loading && <div style={{ margin: "auto", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 0.8 }}>LOADING…</div>}
+        {!loading && error && msgs.length === 0 && (
+          <div style={{ margin: "auto", textAlign: "center", maxWidth: 260, fontSize: 13, color: C.coral, lineHeight: 1.5 }}>{error}</div>
+        )}
+        {!loading && !error && msgs.length === 0 && (
           <div style={{ margin: "auto", textAlign: "center", maxWidth: 240 }}>
             <MessageCircle size={26} color="#C9C6C0" />
             <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>No messages yet. Say the first thing.</div>
           </div>
         )}
-        {msgs.map((m, i) => (
-          <div key={i} className="msg-in" style={{
+        {msgs.map((m) => (
+          <div key={m.id} className="msg-in" style={{
             alignSelf: m.who === "them" ? "flex-start" : "flex-end", maxWidth: "80%",
             background: m.who === "them" ? C.white : C.purple, color: m.who === "them" ? C.ink : C.white,
             border: m.who === "them" ? `1px solid ${C.line}` : "none",
@@ -327,10 +376,14 @@ export const DMScreen = ({ name, sub, back, seed = [], placeholder }) => {
           }}>{m.text}</div>
         ))}
       </div>
+      {error && msgs.length > 0 && (
+        <div style={{ padding: "0 14px 6px", fontSize: 12, color: C.coral }}>{error}</div>
+      )}
       <div style={{ display: "flex", gap: 8, padding: "10px 14px 16px", borderTop: `1px solid ${C.line}`, background: C.white }}>
         <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={placeholder}
+          disabled={busy || !otherId}
           style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 20, padding: "11px 16px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.surface, minWidth: 0 }} />
-        <button onClick={send} style={{ width: 42, height: 42, borderRadius: 21, border: "none", background: C.purple, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Send size={16} /></button>
+        <button onClick={send} disabled={busy || !otherId} style={{ width: 42, height: 42, borderRadius: 21, border: "none", background: C.purple, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: busy ? 0.6 : 1 }}><Send size={16} /></button>
       </div>
     </div>
   );

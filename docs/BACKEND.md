@@ -60,7 +60,7 @@ Better Auth owns `user`, `session`, `account`, `verification` — do not write t
 them directly except the deliberate role promotion in `api/invites/redeem.js`.
 
 Ryzn owns `profiles`, `invites`, `onboarding_answers`, `xp_events`, `matches`,
-`teams_interest`, `posts`, `post_events`, `rate_limits`.
+`teams_interest`, `posts`, `post_events`, `exercises`, `messages`, `rate_limits`.
 
 ## Three things that are load-bearing
 

@@ -12,6 +12,7 @@ import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
 import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
 import { TagRow } from "./chatmatch.jsx";
+import { fetchMenteeExercises } from "./lib/auth-client.js";
 
 /* ————————————————— APP: MENTOR ————————————————— */
 
@@ -100,6 +101,26 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
 export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   const st = STATUS[mentee.status];
   const goal = mentee.goals?.[0] ?? null;
+  const [exercises, setExercises] = useState([]);
+  const [exLoading, setExLoading] = useState(true);
+
+  useEffect(() => {
+    if (!mentee.id) { setExLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      setExLoading(true);
+      try {
+        const { exercises: rows } = await fetchMenteeExercises(mentee.id);
+        if (!cancelled) setExercises(rows || []);
+      } catch {
+        if (!cancelled) setExercises([]);
+      } finally {
+        if (!cancelled) setExLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mentee.id]);
+
   return (
     <div>
       <HeaderRow title={mentee.name} onBack={back}
@@ -125,10 +146,6 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
             {mentee.stage1 && <Btn small style={{ background: C.teal }} onClick={() => openDm(mentee)}><MessageCircle size={13} /> Message</Btn>}
           </div>
         </Card>
-        {/* Milestone timeline reads the mentee's real badge count. The old
-            version hard-coded three earned badges for one named person and
-            derived the rest from week number, so a mentor was shown progress
-            their mentee had not made. */}
         <Card>
           <Label>Milestone timeline</Label>
           <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
@@ -139,9 +156,6 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 8 }}>{(mentee.badges ?? 0) === 0 ? "NO MILESTONES YET" : `${mentee.badges} OF ${BADGE_DEFS.length} EARNED`}</div>
         </Card>
-        {/* Journal entries are the mentee's own writing. Nothing is shown until
-            they've written something — the two invented reflections that used
-            to sit here were attributed to a real person in the mentor's UI. */}
         <Card>
           <Label>Their goals</Label>
           {goal ? (
@@ -150,14 +164,27 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
               <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 3, fontStyle: "italic" }}>“{goal}”</div>
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>Nothing written yet. Their first exercise lands here.</div>
+            <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>Nothing written yet.</div>
           )}
         </Card>
-        {/* A "Leave a note" composer sat here with Text and Audio modes. The
-            audio mode was a dashed box reading "Hold to record" over no recorder,
-            and Send only flipped a label to "Sent to {name}" — the text was never
-            read out of state, let alone transmitted. Notes come back when there
-            is somewhere to put them. */}
+        <Card>
+          <Label>Exercise journal</Label>
+          {exLoading && <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 12, letterSpacing: 0.6 }}>LOADING…</div>}
+          {!exLoading && exercises.length === 0 && (
+            <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>
+              Nothing submitted yet. Their first exercise lands here the moment they write it.
+            </div>
+          )}
+          {exercises.map((ex) => (
+            <div key={ex.id} style={{ borderLeft: `2px solid ${C.purple}`, paddingLeft: 12, marginTop: 14 }}>
+              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>
+                {(ex.title || "Exercise").toUpperCase()}
+                {ex.dayKey ? ` · ${ex.dayKey}` : ""}
+              </div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 3, fontStyle: "italic" }}>“{ex.text}”</div>
+            </div>
+          ))}
+        </Card>
       </div>
     </div>
   );

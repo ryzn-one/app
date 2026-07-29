@@ -10,7 +10,7 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
-import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost } from "./lib/auth-client.js";
+import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise } from "./lib/auth-client.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
@@ -94,6 +94,8 @@ function toAppUser(me) {
     streak: p.streak ?? 0,
     xp: p.xp ?? 0,
     rank: p.rank ?? null,
+    stage1Complete: !!p.stage1Complete,
+    todayExercise: me.exercise?.today ?? null,
     // Null until a mentor actually accepts. Screens must handle "no mentor yet"
     // rather than falling back to a name.
     mentorName: me.mentor?.name ?? null,
@@ -135,6 +137,7 @@ export default function RyznComplete() {
   const [overlay, setOverlay] = useState(null);
   const [badgeModal, setBadgeModal] = useState(null);
   const [todayDone, setTodayDone] = useState(false);
+  const [submittingExercise, setSubmittingExercise] = useState(false);
   const [midwayEarned, setMidwayEarned] = useState(false);
   const [showMidway, setShowMidway] = useState(false);
   const [justEarnedId, setJustEarnedId] = useState(null);
@@ -166,19 +169,28 @@ export default function RyznComplete() {
     }
   }, []);
 
+  /** Apply /api/me into app state, including today's exercise completion. */
+  const applyMe = useCallback((me) => {
+    if (!me) return;
+    setUser(toAppUser(me));
+    if ((me.user.role || "mentee") !== "mentor") {
+      setTodayDone(!!me.exercise?.todayDone);
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
     (async () => {
       const me = await loadSession();
       if (!alive) return;
       if (me) {
-        if (me.user.onboardingComplete) { setUser(toAppUser(me)); setPhase("app"); }
+        if (me.user.onboardingComplete) { applyMe(me); setPhase("app"); }
         else { setPhase("journey"); setStage("chat"); }
       }
       setBooting(false);
     })();
     return () => { alive = false; };
-  }, [loadSession]);
+  }, [loadSession, applyMe]);
 
   /* — roster —
      Loaded when the match deck is about to show. Empty is a valid result: an
@@ -212,9 +224,9 @@ export default function RyznComplete() {
   /** Re-reads /api/me so the app reflects a pairing change immediately. */
   const refreshUser = useCallback(async () => {
     const me = await loadSession();
-    if (me) setUser(toAppUser(me));
+    if (me) applyMe(me);
     return me;
-  }, [loadSession]);
+  }, [loadSession, applyMe]);
 
   useEffect(() => { if (stage === "matches" && phase === "journey") loadRoster(); }, [stage, phase, loadRoster]);
 
@@ -263,7 +275,7 @@ export default function RyznComplete() {
     // No session means the cookie didn't survive; falling through to phase:"app"
     // with a null user renders a blank screen, so go back to the journey instead.
     if (!me) { setPhase("journey"); setStage("welcome"); return; }
-    setUser(toAppUser(me));
+    applyMe(me);
     setPhase("app");
   };
 
@@ -314,18 +326,30 @@ export default function RyznComplete() {
     : [];
 
   const todayEx = EXERCISE_TRACK[0];
-  const submitToday = () => {
-    if (todayDone) return;
-    setTodayDone(true);
-    if (role === "mentee" && user) {
-      addUserXp(todayEx.xp);
-      toast(`+${todayEx.xp} XP · streak day ${(user.streak || 0) + 1}`);
-      if (user.mentorName) setTimeout(() => toast(`Direct Connect unlocked · message ${user.mentorName.split(" ")[0]}`), 2300);
+  const submitToday = async (text) => {
+    if (todayDone || submittingExercise) return;
+    setSubmittingExercise(true);
+    try {
+      const res = await submitExercise({ text, exerciseId: "write-your-why" });
+      setTodayDone(true);
+      setUser(u => u && ({
+        ...u,
+        xp: res.xp ?? ((u.xp || 0) + (res.awarded || todayEx.xp)),
+        streak: res.streak ?? u.streak,
+        stage1Complete: true,
+        todayExercise: res.exercise ?? u.todayExercise,
+      }));
+      toast(`+${res.awarded || todayEx.xp} XP · streak day ${res.streak ?? (user?.streak || 0)}`);
+      if (user?.mentorName) setTimeout(() => toast(`Direct Connect unlocked · message ${user.mentorName.split(" ")[0]}`), 2300);
+    } catch (err) {
+      throw err;
+    } finally {
+      setSubmittingExercise(false);
     }
   };
 
-  /* — gamified content + connect — */
-  const stage1 = role === "mentee" && user ? (user.fresh ? todayDone : true) : true;
+  /* Stage 1 = first exercise submitted. Survives refresh via profile.stage1Complete. */
+  const stage1 = role === "mentee" && user ? !!(user.stage1Complete || todayDone) : true;
 
   const watchContent = async (id, xpGain) => {
     if (watched[id]) return;
@@ -468,11 +492,19 @@ export default function RyznComplete() {
     );
     if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} />;
     if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
-    if (overlay === "dm") return user.mentorName ? (
-      <DMScreen name={user.mentorName} sub="DIRECT CONNECT · EARNED AT STAGE 1" back={() => setOverlay(null)} placeholder={`Message ${user.mentorName.split(" ")[0]}…`} seed={[]} />
+    if (overlay === "dm") return user.mentorId ? (
+      <DMScreen name={user.mentorName} otherId={user.mentorId} sub="DIRECT CONNECT · EARNED AT STAGE 1" back={() => setOverlay(null)} placeholder={`Message ${user.mentorName.split(" ")[0]}…`} />
     ) : null;
-    if (overlay.dm) return <DMScreen name={overlay.dm} sub="YOUR MENTEE · STAGE 1 COMPLETE ✓" back={() => setOverlay(overlay.from || null)} placeholder={`Message ${overlay.dm.split(" ")[0]}…`} seed={[]} />;
-    if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dm: m.name, from: { mentee: m } })} />;
+    if (overlay.dmPeer) return (
+      <DMScreen
+        name={overlay.dmPeer.name}
+        otherId={overlay.dmPeer.id}
+        sub="YOUR MENTEE · STAGE 1 COMPLETE ✓"
+        back={() => setOverlay(overlay.from || null)}
+        placeholder={`Message ${overlay.dmPeer.name.split(" ")[0]}…`}
+      />
+    );
+    if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dmPeer: m, from: { mentee: m } })} />;
     return null;
   };
 
@@ -482,7 +514,7 @@ export default function RyznComplete() {
     if (role === "mentee") {
       switch (tab) {
         case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} />;
-        case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} />;
+        case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} />;
         case "profile": return <MenteeProfile u={user} name={session?.user?.name} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} />;
@@ -504,7 +536,7 @@ export default function RyznComplete() {
   const nav = role === "mentee" ? menteeNav : mentorNav;
   const isDesktop = useIsDesktop();
 
-  const fullScreenOverlay = Boolean(overlay === "dm" || (overlay && overlay.dm));
+  const fullScreenOverlay = Boolean(overlay === "dm" || (overlay && overlay.dmPeer));
   const chatLike = phase === "journey" && ["chat", "matches"].includes(stage);
   const useAuthCard = isDesktop && phase === "journey" && ["role", "welcome", "register", "login", "forgot"].includes(stage);
 

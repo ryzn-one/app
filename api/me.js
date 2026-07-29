@@ -4,6 +4,8 @@ import { json, withUser, ageFrom } from "../lib/http.js";
 import { acceptedFor, sideOf } from "../lib/matches.js";
 import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 
+const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+
 /**
  * GET /api/me — session user + Ryzn profile + live pairings.
  *
@@ -95,12 +97,35 @@ async function handler(request, user) {
         week: p.week ?? 1,
         streak: p.streak ?? 0,
         badges: Object.keys(p.earned || {}).length,
-        // Stage 1 is the first exercise. Nothing writes it yet, so it reads
-        // false rather than defaulting to "done".
+        // Stage 1 flips when /api/exercises records their first submission.
         stage1: !!p.stage1Complete,
         status: "active",
       };
     });
+  }
+
+  /* Today's exercise — so the mentee home card survives a refresh without a
+     second round-trip, and so "done" isn't a useState that dies on reload. */
+  let exercise = null;
+  if (side === "mentee") {
+    const today = await db.collection(collections.exercises).findOne(
+      { userId: user.id, dayKey: utcDayKey() },
+      { projection: { text: 1, title: 1, exerciseId: 1, xpAwarded: 1, createdAt: 1, dayKey: 1 } }
+    );
+    exercise = {
+      todayDone: !!today,
+      today: today
+        ? {
+            id: String(today._id),
+            exerciseId: today.exerciseId,
+            title: today.title,
+            text: today.text,
+            xpAwarded: today.xpAwarded ?? 0,
+            dayKey: today.dayKey,
+            createdAt: today.createdAt?.toISOString?.() ?? today.createdAt,
+          }
+        : null,
+    };
   }
 
   return json({
@@ -123,6 +148,7 @@ async function handler(request, user) {
     mentor,
     supportMentors,
     cohort,
+    exercise,
     compliance: {
       age,
       isMinor,
