@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
 import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
@@ -13,9 +14,20 @@ import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
  * Replaces the hard-coded MENTOR_MATCHES / MENTEE_MATCHES fixtures the match
  * decks used to render. An empty roster is a real answer — early cohorts start
  * empty, and the deck shows an empty state rather than invented people.
+ *
+ * Query params:
+ *   ?include=all   keep people the caller has already answered for, tagged with
+ *                  a matchState, instead of dropping them. Explore needs this;
+ *                  the onboarding decks must not have it, or they re-offer
+ *                  someone already decided and the second request just 409s.
+ *   ?q=            name / headline / industry / track / goals search.
  */
 
 const LIMIT = 50;
+
+/** Mongo's regex is a real regex — an unescaped query is a DoS waiting to be
+    pasted. Same escaping as api/admin/users.js. */
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Overlap between what a mentee wants and what a mentor teaches.
  *
@@ -47,27 +59,65 @@ async function handler(request, user) {
   const viewerRole = sideOf(user);
   const wanted = viewerRole === "mentee" ? "mentor" : "mentee";
 
+  const url = new URL(request.url);
+  const includeAll = url.searchParams.get("include") === "all";
+  const q = (url.searchParams.get("q") || "").trim().slice(0, 80);
+
   const db = await getDb();
 
   // Anyone already requested, paired with, or passed on drops out of the deck.
   // Without this the deck re-offers people the caller has already answered for,
-  // and a second request would just 409.
+  // and a second request would just 409. Explore keeps them and shows the state.
   const answered = await listMatches(user, {
     statuses: [MATCH_STATUS.PENDING, MATCH_STATUS.ACCEPTED, MATCH_STATUS.DECLINED],
   });
-  const answeredIds = new Set(
-    answered.map((m) => (viewerRole === "mentor" ? m.menteeId : m.mentorId))
-  );
+  const otherIdOf = (m) => (viewerRole === "mentor" ? m.menteeId : m.mentorId);
+  const answeredIds = new Set(answered.map(otherIdOf));
+  const matchByUser = new Map(answered.map((m) => [otherIdOf(m), m]));
+
+  /* What the caller can do about this person right now. `pending_them` is the
+     one that matters: they asked first, so the action is accept/decline, not
+     request. */
+  const stateOf = (id) => {
+    const m = matchByUser.get(id);
+    if (!m) return { matchState: "none", matchId: null };
+    if (m.status === MATCH_STATUS.ACCEPTED) return { matchState: "accepted", matchId: String(m._id) };
+    if (m.status === MATCH_STATUS.DECLINED) return { matchState: "declined", matchId: String(m._id) };
+    const theyAsked = String(m.requestedBy) !== String(user.id);
+    return { matchState: theyAsked ? "pending_them" : "pending_you", matchId: String(m._id) };
+  };
 
   // Mentees are the default role and may predate the field being written, so
   // match on absent-or-"mentee" rather than an exact equality that would miss them.
   const roleFilter =
     wanted === "mentee" ? { role: { $in: [null, "mentee"] } } : { role: "mentor" };
 
+  /* Search spans two collections — name lives on `user`, everything else on
+     `profiles`. Two indexed queries and a union of ids beats a $lookup here,
+     and stays readable. */
+  let idFilter = null;
+  if (q) {
+    const rx = { $regex: escapeRe(q), $options: "i" };
+    const profileFields = wanted === "mentor"
+      ? [{ headline: rx }, { industry: rx }, { expertise: rx }, { menteeFit: rx }]
+      : [{ track: rx }, { interests: rx }, { skills: rx }, { goals: rx }];
+    const hits = await db
+      .collection(collections.profiles)
+      .find({ $or: profileFields }, { projection: { userId: 1 } })
+      .limit(200)
+      .toArray();
+    idFilter = {
+      $or: [
+        { name: rx },
+        { _id: { $in: hits.map((h) => { try { return new ObjectId(h.userId); } catch { return null; } }).filter(Boolean) } },
+      ],
+    };
+  }
+
   const users = await db
     .collection(collections.user)
     .find(
-      { ...roleFilter, onboardingComplete: true },
+      { ...roleFilter, onboardingComplete: true, ...(idFilter || {}) },
       { projection: { name: 1, image: 1, role: 1, createdAt: 1 } }
     )
     .sort({ createdAt: 1 })
@@ -83,7 +133,7 @@ async function handler(request, user) {
   const viewerProfile = byUser.get(user.id) || {};
 
   const people = users
-    .filter((u) => String(u._id) !== user.id && !answeredIds.has(String(u._id)))
+    .filter((u) => String(u._id) !== user.id && (includeAll || !answeredIds.has(String(u._id))))
     .map((u) => {
       const p = byUser.get(String(u._id)) || {};
       // No email, ever. These profiles cross the boundary between two users who
@@ -93,6 +143,7 @@ async function handler(request, user) {
         name: u.name || "—",
         image: u.image ?? null,
         affinity: affinity(viewerProfile, p, viewerRole),
+        ...stateOf(String(u._id)),
       };
       return wanted === "mentor"
         ? {

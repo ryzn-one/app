@@ -63,7 +63,13 @@ export const saveOnboarding = (answers) => api("/onboarding", { method: "POST", 
 /** Real people on the other side of the platform — mentors for a mentee,
     mentees for a mentor. Returns `{ role, people }`; `people` is often empty
     in an early cohort, and that is a valid answer, not an error. */
-export const fetchRoster = () => api("/roster");
+export const fetchRoster = (params = {}) => {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== "" && v !== false));
+  return api(`/roster${qs.toString() ? `?${qs}` : ""}`);
+};
+/** Explore keeps people you've already answered for, tagged with `matchState`,
+    so the directory doesn't hide your own cohort from you. */
+export const exploreRoster = ({ q } = {}) => fetchRoster({ include: "all", q });
 
 /* ————— Matches —————
    A pairing is one shared document, so both sides read the same truth and it
@@ -77,6 +83,24 @@ export const requestMatch = (otherId, action = "request") =>
 /** `id` is a match id, not a user id: accept | decline | end | promote. */
 export const respondToMatch = (id, action) => api("/matches", { method: "PATCH", body: { id, action } });
 
+/* ————— Mentor content —————
+   The mentor writes it, their cohort reads it. Both sides call the same
+   endpoint; the server decides what each is allowed to see. Posts used to be a
+   React array that died on refresh and never reached a mentee at all. */
+
+/** Own feed when called bare; a mentor's feed when given their id (requires an
+    accepted match — the server checks, not us). Returns `{posts, viewerState}`;
+    `viewerState` rehydrates what you've already watched and reacted to. */
+export const fetchPosts = ({ mentorId } = {}) =>
+  api(`/posts${mentorId ? `?mentorId=${encodeURIComponent(mentorId)}` : ""}`);
+export const createPost = (body) => api("/posts", { method: "POST", body });
+/** `action` is "view" or "react". Idempotent — a second call is a no-op, so a
+    double tap can't inflate a mentor's numbers or re-award XP. */
+export const postAction = (id, action) => api("/posts", { method: "PATCH", body: { id, action } });
+/** Pin, change visibility, or edit the copy. Author only. */
+export const updatePost = (id, patch) => api("/posts", { method: "PATCH", body: { id, ...patch } });
+export const deletePost = (id) => api(`/posts?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+
 /** Ryzn for Teams waitlist. Unauthenticated by design — see api/teams-interest.js. */
 export const registerTeamsInterest = (body) => api("/teams-interest", { method: "POST", body });
 
@@ -87,3 +111,6 @@ export const adminUsers = (params = {}) => api(`/admin/users?${new URLSearchPara
 export const adminInvites = () => api("/admin/invites");
 export const adminMintInvites = (body) => api("/admin/invites", { method: "POST", body });
 export const adminRevokeInvite = (code) => api("/admin/invites", { method: "PATCH", body: { code, action: "revoke" } });
+/** Mails an already-minted code again. `to` is optional — the server falls back
+    to whoever it went to last, so the row's Resend needs no retyping. */
+export const adminResendInvite = ({ code, to }) => api("/admin/invites", { method: "PATCH", body: { code, to, action: "resend" } });

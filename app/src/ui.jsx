@@ -42,11 +42,14 @@ export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, r
     {name.split(" ").map(w => w[0]).slice(0, 2).join("")}
   </div>
 );
-export const Field = ({ label, type = "text", placeholder, value, onChange, right }) => (
+/* `rest` is load-bearing: every caller passes autoComplete, and the login screen
+   passes onKeyDown for Enter-to-submit. Both used to be destructured away and
+   dropped, so Enter did nothing and no password manager could fill the form. */
+export const Field = ({ label, type = "text", right, ...rest }) => (
   <div style={{ marginTop: 14 }}>
     <Label>{label}</Label>
     <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, marginTop: 7, padding: "0 12px" }}>
-      <input type={type} placeholder={placeholder} value={value} onChange={onChange}
+      <input type={type} {...rest}
         style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "13px 2px", fontFamily: F.sans, fontSize: 15, color: C.ink, minWidth: 0 }} />
       {right}
     </div>
@@ -186,7 +189,7 @@ export const AuthCardShell = ({ children }) => (
   </div>
 );
 
-export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, onSettings, onLogout }) => (
+export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, isAdmin, onSettings, onLogout }) => (
   <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.line}`, background: C.white, display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ padding: "26px 22px 20px" }}>
       <div style={{ color: C.purple, fontSize: 22, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
@@ -212,6 +215,10 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, onSettings, o
         <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
       </div>
+      {isAdmin && (
+        <button onClick={() => window.open("/app/#/admin", "_blank", "noopener")} title="Founder console"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><Shield size={16} color={C.amber} /></button>
+      )}
       <button onClick={onSettings} title="Settings" style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><Settings size={16} color={C.gray} /></button>
       <button onClick={onLogout} title="Log out" style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><LogOut size={16} color={C.gray} /></button>
     </div>

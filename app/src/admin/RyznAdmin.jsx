@@ -7,10 +7,11 @@ import { C, F } from "../theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, Bar, Glyph } from "../ui.jsx";
 import { useIsDesktop } from "../useIsDesktop.js";
 import {
-  signIn, signOut, messageFor, redeemInvite,
-  adminStats, adminUsers, adminInvites, adminMintInvites, adminRevokeInvite,
+  signIn, signOut, messageFor, redeemInvite, fetchMe,
+  adminStats, adminUsers, adminInvites, adminMintInvites, adminRevokeInvite, adminResendInvite,
 } from "../lib/auth-client.js";
 import { buildInviteUrl, copyText } from "../lib/invite-url.js";
+import { GoogleMark } from "../auth.jsx";
 
 /* ————————————————— RYZN ADMIN —————————————————
    The founders' console: platform analytics, the mentor invite Roster, and the
@@ -93,10 +94,11 @@ function AdminGate({ onIn, error }) {
         <div style={{ background: C.surface, borderRadius: 20, padding: 22, marginTop: 20 }}>
           <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>Sign in</div>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
-            "Founding team only. Your account must be on the admin list."
+            Founding team only. Your account must be on the admin list.
           </div>
-          <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
           <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)}
+            autoComplete="current-password" onKeyDown={e => e.key === "Enter" && submit()}
             right={<button onClick={() => setShow(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>{show ? <EyeOff size={16} color={C.gray} /> : <Eye size={16} color={C.gray} />}</button>} />
 
           {showCode ? (
@@ -119,6 +121,18 @@ function AdminGate({ onIn, error }) {
 
           <FormError>{err || error}</FormError>
           <Btn style={{ marginTop: 18 }} disabled={busy} onClick={submit}><Shield size={15} /> {busy ? "Checking…" : "Enter the console"}</Btn>
+          {/* Email + password was the only way in, which locks out any founder
+              who signed up with Google — most of them. Comes back to /app/#/admin
+              so the redirect lands on the console, not the consumer app. */}
+          <Btn kind="ghost" style={{ marginTop: 10 }} disabled={busy}
+            onClick={() => signIn.social({ provider: "google", callbackURL: "/app/#/admin" })}>
+            <GoogleMark /> Continue with Google
+          </Btn>
+          {code.trim() && (
+            <div style={{ fontSize: 11.5, color: C.gray, marginTop: 8, lineHeight: 1.5, textAlign: "center" }}>
+              Google sign-in won’t redeem the code above — sign in, then paste it here.
+            </div>
+          )}
           {/* Without this the console is a dead end for anyone who doesn't
               already have a Ryzn account — there's no sign-up on this screen. */}
           <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, marginTop: 16 }}>
@@ -221,25 +235,38 @@ function Overview({ stats }) {
 }
 
 /* ————— invites ————— */
-function Invites({ rows, onMint, onRevoke, toast }) {
+function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
   const [role, setRole] = useState("mentor");
   const [count, setCount] = useState(5);
   const [days, setDays] = useState(90);
   const [note, setNote] = useState("");
+  const [to, setTo] = useState("");
+  const [who, setWho] = useState("");
   const [busy, setBusy] = useState(false);
   const isAdminCode = role === "admin";
+  /* An address turns minting into addressing: one code, mailed to one person.
+     Without it this stays a batch minter and the founder pastes links by hand. */
+  const addressed = to.trim().length > 0;
 
   const mint = async () => {
     setBusy(true);
-    try { await onMint({ role, count: Number(count), expiresDays: Number(days), note }); }
-    finally { setBusy(false); }
+    try {
+      await onMint({
+        role, count: Number(count), expiresDays: Number(days), note,
+        to: to.trim() || undefined, name: who.trim() || undefined,
+      });
+      if (addressed) { setTo(""); setWho(""); }
+    } finally { setBusy(false); }
   };
 
   // Mentor codes open the branded claim page. Admin codes go to the console's
   // own sign-in, where the code field promotes an existing account.
   const linkFor = (iv) => iv.role === "admin"
     ? `${window.location.origin}/app/#/admin?code=${encodeURIComponent(iv.code)}`
-    : buildInviteUrl({ code: iv.code, email: "", role: "Mentor", orgName: "Ryzn", adminName: "Bilal Shafi" });
+    // email comes off the row so a code already mailed to someone rebuilds the
+    // same personalized link; it used to be hardcoded empty, so ?name= was
+    // always blank and the invite page could never greet anyone by name.
+    : buildInviteUrl({ code: iv.code, email: iv.sentTo || "", role: "Mentor", adminName: founderName });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -263,10 +290,20 @@ function Invites({ rows, onMint, onRevoke, toast }) {
           </div>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 12 }}>
+          <div style={{ gridColumn: "span 2", minWidth: 0 }}>
+            <Label color={addressed ? C.purple : C.gray}>Send to (optional)</Label>
+            <input type="email" value={to} onChange={e => setTo(e.target.value)} placeholder="kaleem@example.com" autoComplete="off"
+              style={{ width: "100%", marginTop: 7, border: `1px solid ${addressed ? C.purple : C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
+          </div>
+          <div style={{ gridColumn: "span 2", minWidth: 0 }}>
+            <Label>Their first name</Label>
+            <input value={who} onChange={e => setWho(e.target.value)} placeholder="Guessed from the address if blank"
+              style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
+          </div>
           <div>
             <Label>How many</Label>
-            <input type="number" min={1} max={isAdminCode ? 5 : 50} value={count} onChange={e => setCount(e.target.value)}
-              style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.mono, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
+            <input type="number" min={1} max={isAdminCode ? 5 : 50} value={addressed ? 1 : count} disabled={addressed} onChange={e => setCount(e.target.value)}
+              style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.mono, fontSize: 14, outline: "none", background: addressed ? C.surface : C.white, color: addressed ? C.gray : C.ink, boxSizing: "border-box" }} />
           </div>
           <div>
             <Label>Expires in (days)</Label>
@@ -280,7 +317,12 @@ function Invites({ rows, onMint, onRevoke, toast }) {
           </div>
         </div>
         <Btn style={{ marginTop: 12, ...(isAdminCode ? { background: C.amber } : null) }} disabled={busy} onClick={mint}>
-          <Plus size={15} /> {busy ? "Minting…" : `Mint ${count} ${role} code${Number(count) === 1 ? "" : "s"}`}
+          {addressed ? <Send size={15} /> : <Plus size={15} />}
+          {busy
+            ? (addressed ? "Sending…" : "Minting…")
+            : addressed
+              ? `Mint & send to ${to.trim()}`
+              : `Mint ${count} ${role} code${Number(count) === 1 ? "" : "s"}`}
         </Btn>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10, lineHeight: 1.7 }}>
           {isAdminCode
@@ -305,6 +347,15 @@ function Invites({ rows, onMint, onRevoke, toast }) {
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Copy size={13} color={C.gray} /></button>
               <button onClick={() => window.open(linkFor(iv), "_blank", "noopener")} title="Open invite page"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><ExternalLink size={13} color={C.gray} /></button>
+              {iv.state === "open" && iv.role !== "admin" && (
+                <button onClick={() => {
+                  // No address on file means we have nowhere to send it — ask
+                  // rather than firing a request that can only 400.
+                  const dest = iv.sentTo || window.prompt(`Send ${iv.code} to which email?`, "");
+                  if (dest) onResend(iv.code, dest.trim());
+                }} title={iv.sentTo ? `Resend to ${iv.sentTo}` : "Send to someone"}
+                  style={{ border: "none", background: C.purpleTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Send size={13} color={C.purple} /></button>
+              )}
               {iv.state === "open" && (
                 <button onClick={() => onRevoke(iv.code)} title="Revoke"
                   style={{ border: "none", background: C.coralTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><RotateCcw size={13} color={C.coral} /></button>
@@ -315,6 +366,13 @@ function Invites({ rows, onMint, onRevoke, toast }) {
                 ? `CLAIMED BY ${iv.claimedBy.name.toUpperCase()} · ${iv.claimedBy.email} · ${fmtDate(iv.redeemedAt)}`
                 : `${(iv.note || "—").toUpperCase()} · MINTED ${fmtDate(iv.createdAt)}${iv.expiresAt ? ` · EXPIRES ${fmtDate(iv.expiresAt)}` : ""}`}
             </div>
+            {iv.sentTo && (
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: iv.lastSendError ? C.coral : C.teal, marginTop: 4 }}>
+                {iv.lastSendError
+                  ? `SEND FAILED · ${iv.sentTo} · ${iv.lastSendError.toUpperCase()}`
+                  : `SENT TO ${iv.sentTo} · ${fmtDate(iv.sentAt)}${iv.sentCount > 1 ? ` · ${iv.sentCount}×` : ""}`}
+              </div>
+            )}
           </div>
         ))}
       </Card>
@@ -365,6 +423,12 @@ function People({ rows, q, setQ, role, setRole }) {
 /* ————— root ————— */
 export default function RyznAdmin() {
   const isDesktop = useIsDesktop();
+  /* "checking" until we know whether the cookie we already have is a founder's.
+     This used to start at false and go straight to the sign-in form, so opening
+     the console in a second tab demanded a re-login even though the session was
+     valid and same-origin — which made "open the admin panel in a new window"
+     an unusable flow. */
+  const [boot, setBoot] = useState("checking");
   const [authed, setAuthed] = useState(false);
   const [gateError, setGateError] = useState(null);
   const [nav, setNav] = useState("overview");
@@ -372,26 +436,35 @@ export default function RyznAdmin() {
   const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2200); };
 
   const [stats, setStats] = useState(null);
+  const [me, setMe] = useState(null);
   const [invites, setInvites] = useState([]);
   const [people, setPeople] = useState([]);
   const [q, setQ] = useState("");
   const [role, setRole] = useState("all");
 
-  /* Load once signed in. A 403 here is the real gate — the sign-in form only
-     proves you have an account, lib/admin.js decides whether it's a founder's. */
+  /* Runs on mount, not just after sign-in: an existing session is the common
+     case when this opens in a new window. A 403 here is the real gate — the
+     sign-in form only proves you have an account, lib/admin.js decides whether
+     it's a founder's. */
   useEffect(() => {
-    if (!authed) return;
     let cancelled = false;
     (async () => {
       try {
-        const [s, iv] = await Promise.all([adminStats(), adminInvites()]);
+        const [s, iv, mine] = await Promise.all([adminStats(), adminInvites(), fetchMe().catch(() => null)]);
         if (cancelled) return;
         setStats(s);
         setInvites(iv.invites);
+        setMe(mine?.user || null);
+        setAuthed(true);
+        setBoot("ready");
       } catch (e) {
         if (cancelled) return;
         setAuthed(false);
-        setGateError(e.status === 403 ? "That account isn’t on the admin list." : messageFor(e, "Couldn’t load the console."));
+        setBoot("gate");
+        // 401 just means signed out — that's the gate doing its job, not an error
+        // worth shouting about on first paint.
+        if (e.status === 403) setGateError("That account isn’t on the admin list.");
+        else if (e.status !== 401) setGateError(messageFor(e, "Couldn’t load the console."));
       }
     })();
     return () => { cancelled = true; };
@@ -412,14 +485,30 @@ export default function RyznAdmin() {
 
   const visiblePeople = people;
 
-  const mint = async ({ role: kind, count, expiresDays, note }) => {
+  const mint = async ({ role: kind, count, expiresDays, note, to, name }) => {
     try {
-      const { created } = await adminMintInvites({ role: kind, count, expiresDays, note });
+      const res = await adminMintInvites({ role: kind, count, expiresDays, note, to, name });
       const { invites: fresh } = await adminInvites();
       setInvites(fresh);
-      copyText(created.join("\n"));
-      toast(`${created.length} code${created.length === 1 ? "" : "s"} minted · copied to clipboard`);
+      if (to) {
+        // A failed send doesn't undo the mint — the code is live either way, so
+        // say what actually happened instead of a blanket success.
+        if (res.sent) toast(`Invitation sent to ${to}`);
+        else { copyText(res.url || res.created[0]); toast(res.sendError || `Minted but not sent · link copied`); }
+        return;
+      }
+      copyText(res.created.join("\n"));
+      toast(`${res.created.length} code${res.created.length === 1 ? "" : "s"} minted · copied to clipboard`);
     } catch (e) { toast(messageFor(e, "Couldn’t mint those codes.")); }
+  };
+
+  const resend = async (code, to) => {
+    try {
+      const res = await adminResendInvite({ code, to });
+      const { invites: fresh } = await adminInvites();
+      setInvites(fresh);
+      toast(res.sent ? `Resent to ${res.to}` : (res.sendError || "Couldn’t send that one."));
+    } catch (e) { toast(messageFor(e, "Couldn’t resend that code.")); }
   };
 
   const revoke = async (code) => {
@@ -437,16 +526,21 @@ export default function RyznAdmin() {
     setNav("overview");
   };
 
-  if (!authed) return <AdminGate onIn={() => { setGateError(null); setAuthed(true); }} error={gateError} />;
-  if (!stats) return (
-    <div style={{ minHeight: "100vh", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 1 }}>LOADING CONSOLE…</div>
+  const splash = (label) => (
+    <div style={{ minHeight: "100vh", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 1 }}>{label}</div>
   );
 
+  if (boot === "checking") return splash("CHECKING ACCESS…");
+  if (!authed) return <AdminGate onIn={() => { setGateError(null); setAuthed(true); }} error={gateError} />;
+  if (!stats) return splash("LOADING CONSOLE…");
+
   const NAV = [["overview", "Overview", BarChart3], ["invites", "Invites", Send], ["people", "People", Users], ["teams", "Teams", Building2], ["settings", "Access", Settings]];
+  // Signs the invitation. The server uses the same value when it mails one.
+  const founderName = me?.name || "Ryzn";
 
   const body = {
     overview: <Overview stats={stats} />,
-    invites: <Invites rows={invites} onMint={mint} onRevoke={revoke} toast={toast} />,
+    invites: <Invites rows={invites} onMint={mint} onRevoke={revoke} onResend={resend} toast={toast} founderName={founderName} />,
     people: <People rows={visiblePeople} q={q} setQ={setQ} role={role} setRole={setRole} />,
     teams: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -504,8 +598,8 @@ export default function RyznAdmin() {
         <Card style={{ background: C.coralTint, border: "none" }}>
           <Label color={C.coral}>Read-only by design</Label>
           <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, marginTop: 8 }}>
-            The console can mint and revoke invite codes. It cannot edit people or hand out the mentor role —
-            that still happens only when a mentor claims a code themselves.
+            The console can mint invite codes, mail them, and revoke unclaimed ones. It cannot edit people or
+            hand out the mentor role — that still happens only when a mentor claims a code themselves.
           </div>
         </Card>
       </div>

@@ -5,6 +5,11 @@
  * Lives here rather than in the Teams bundle it used to sit in: the founder
  * console is the real, shipping user of this, and it should not depend on a
  * module that exists to serve a marketing surface.
+ *
+ * lib/invite-url.js at the repo root is the server-side twin, used when the
+ * console mints and emails a code in one action. It cannot be shared with this
+ * file — `app/` is the Vite root and cannot reach outside it — so the two must
+ * be kept in step by hand. Change the query shape in one, change it in both.
  */
 
 /**

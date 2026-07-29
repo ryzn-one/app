@@ -442,7 +442,7 @@
     <div class="codebox rv">
       <label>YOUR INVITATION CODE</label>
       <div class="code-row">
-        <input id="codeInput" value="RYZ-INV-2026-0087" spellcheck="false">
+        <input id="codeInput" value="" placeholder="RYZ-INV-2026-XXXXXXXX" spellcheck="false">
         <button class="btn btn-check" id="checkBtn">Confirm</button>
       </div>
       <div class="valid-msg" id="validMsg"><span class="tick">&#10003;</span> <span>Verified and tied to your name. Setup takes about six minutes.</span></div>
@@ -455,7 +455,7 @@
       <div class="sig-mono" id="founderMono">BS</div>
       <div><b id="founderName">Bilal Shafi</b><span>Founder, Ryzn</span></div>
     </div>
-    <a class="decline rv" href="#">Not the right time? Let us know gently.</a>
+    <a class="decline rv" href="mailto:hello@ryzn.one?subject=Ryzn%20invitation">Not the right time? Let us know gently.</a>
 
     <div class="teams-x rv">
       <p>Want to build your own company orbit?</p>
@@ -487,10 +487,14 @@
     document.getElementById('founderName').textContent = founder;
     document.getElementById('founderMono').textContent = founder[0].toUpperCase();
   }
-  // CTA destinations (edit these or pass ?claim= / ?call=)
-  const claimUrl = P.get('claim') || ('https://ryzn.one/mentor/claim?code=' + encodeURIComponent(document.getElementById('codeInput').value));
+  /* CTA destinations (edit these or pass ?claim= / ?call=).
+     The Accept href is set at the bottom of this script by claimUrl(), which is
+     also what confirmCode() calls. A second `const claimUrl` used to live here
+     and pointed at /mentor/claim — a route that never existed. Worse, declaring
+     it alongside the function of the same name made this whole script a
+     SyntaxError, so not one line of it ran: no personalization, no Confirm
+     handler, and every .rv element stayed at opacity:0. */
   const callUrl  = P.get('call')  || 'https://cal.com/ryzn/founder-15min';
-  document.getElementById('acceptBtn').href = claimUrl;
   document.getElementById('callBtn').href = callUrl;
 
   // ---------- scroll reveal ----------

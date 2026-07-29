@@ -130,6 +130,20 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
         </Card>
       )}
 
+      {/* The directory, as distinct from the deck below it: search the whole
+          Roster and see who you've already asked, rather than being handed one
+          card at a time. */}
+      <Card onClick={() => openOverlay("explore")} style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Search size={16} color={C.purple} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Explore mentors</div>
+            <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Search the whole Roster by name, role, or expertise</div>
+          </div>
+          <ChevronRight size={16} color={C.gray} />
+        </div>
+      </Card>
+
       {mentorSeats < 3 && (
         <Card onClick={() => openOverlay("addmentor")} style={{ marginTop: 12, border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -159,7 +173,6 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
 
 export const MenteeExercises = ({ u, todayDone, onSubmit }) => {
   const [text, setText] = useState("");
-  const [mode, setMode] = useState("text");
   const list = EXERCISE_TRACK;
   return (
     <div>
@@ -174,20 +187,11 @@ export const MenteeExercises = ({ u, todayDone, onSubmit }) => {
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{ex.title}</div>
               <div style={{ fontSize: 13.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{ex.prompt}</div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                {[["text", Type, "Write"], ["voice", Mic, "Speak"]].map(([m, Icon, l]) => (
-                  <button key={m} onClick={() => setMode(m)} style={{ flex: 1, padding: "8px 0", borderRadius: 10, border: `1.5px solid ${mode === m ? C.purple : C.line}`, background: mode === m ? C.purpleTint : C.white, color: mode === m ? C.purple : C.gray, fontFamily: F.sans, fontWeight: 600, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon size={14} />{l}</button>
-                ))}
-              </div>
-              {mode === "text" ? (
-                <textarea value={text} onChange={e => setText(e.target.value)} placeholder="I’m here because…" rows={4}
-                  style={{ width: "100%", marginTop: 10, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
-              ) : (
-                <div style={{ marginTop: 10, borderRadius: 12, border: `1px dashed ${C.line}`, padding: 20, textAlign: "center", background: C.surface }}>
-                  <Mic size={22} color={C.purple} />
-                  <div style={{ fontSize: 12, color: C.gray, marginTop: 6 }}>Hold to record · 90 seconds max</div>
-                </div>
-              )}
+              {/* A Write/Speak toggle sat above this. "Speak" showed a dashed
+                  box reading "Hold to record · 90 seconds max" over nothing —
+                  there is no MediaRecorder call anywhere in the app. */}
+              <textarea value={text} onChange={e => setText(e.target.value)} placeholder="I’m here because…" rows={4}
+                style={{ width: "100%", marginTop: 12, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
               <Btn style={{ marginTop: 12 }} onClick={onSubmit}>Submit · +{ex.xp} XP</Btn>
             </Card>
           );

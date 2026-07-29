@@ -64,6 +64,13 @@ const indexes = [
   // question — the old compound index never matched anything written.
   ["onboarding_answers", { userId: 1 }, { unique: true, name: "userId_unique" }],
   ["xp_events", { userId: 1, createdAt: -1 }, { name: "user_recent" }],
+  // A mentor's own feed, newest first.
+  ["posts", { authorId: 1, createdAt: -1 }, { name: "author_recent" }],
+  // What a mentee sees: one author, cohort-visible, newest first.
+  ["posts", { authorId: 1, visibility: 1, createdAt: -1 }, { name: "author_visibility" }],
+  // One view and one reaction per person per post, enforced by the database —
+  // this is what stops a double-tap inflating a mentor's numbers.
+  ["post_events", { postId: 1, userId: 1, type: 1 }, { unique: true, name: "viewer_unique" }],
   ["rate_limits", { key: 1, windowStart: 1 }, { name: "key_window" }],
   ["rate_limits", { expiresAt: 1 }, { expireAfterSeconds: 0, name: "expiresAt_ttl" }],
 ];

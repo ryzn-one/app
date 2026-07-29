@@ -57,7 +57,8 @@ domain, no DNS, no second project.
 Better Auth owns `user`, `session`, `account`, `verification` — do not write to
 them directly except the deliberate role promotion in `api/invites/redeem.js`.
 
-Ryzn owns `profiles`, `invites`, `onboarding_answers`, `xp_events`, `rate_limits`.
+Ryzn owns `profiles`, `invites`, `onboarding_answers`, `xp_events`, `matches`,
+`teams_interest`, `posts`, `post_events`, `rate_limits`.
 
 ## Three things that are load-bearing
 
@@ -73,6 +74,14 @@ is a brand promise — keep it enforced server-side.
 **The invite claim is one atomic operation.** `findOneAndUpdate` filtered on
 `redeemedBy: null` means two people racing the same code produce exactly one
 winner. A read-then-write would let both through.
+
+**Uploaded media is verified, not trusted.** Files go browser → Blob directly —
+a function body caps at 4.5 MB and a greeting video is far past that, so the
+client tells us the resulting URL. `cleanMedia()` in `api/posts.js` therefore
+checks the host is the project's blob store *and* the path starts with
+`posts/{their own id}/`. Without both, a mentor could attach any URL on the
+internet and have it render as their content. Note `onUploadCompleted` never
+fires on localhost, so nothing may depend on it.
 
 ## Local development
 
@@ -134,9 +143,19 @@ placeholder mentor or a seeded leaderboard is worse than an empty one.
 - **Nobody is notified of a match.** A pending request sits in the other party's
   app until they happen to open it. With Postmark wired up this is the obvious
   next thing to send.
-- XP ledger and badge issuance — still client-side in `RyznApp.jsx`. Profile XP
-  reads from the server but never increments there.
-- Messages, mentor feed posts, and session scheduling have no store.
+- Badge issuance — still client-side in `RyznApp.jsx`. Exercise submissions award
+  XP and a streak day that never reach the server either. Publishing a post and
+  watching one *do* now write through `xp_events` and `$inc` the profile, so
+  those two are real; everything else that toasts "+XP" still isn't.
+- Messages and session scheduling have no store. Both surfaces say so rather
+  than pretending — the fake compose boxes and the "Mark session complete"
+  button that only flipped a local flag are gone.
+- **Public mentor pages.** A mentor's "Public view" renders exactly what a
+  cohort mentee sees, using the same components, but there is no unauthenticated
+  `/m/:slug` route and no share link. Building one is a decision about putting
+  adults' names on the open internet alongside a platform containing minors —
+  it needs to be made deliberately, not as a side effect of a UI change. The
+  verification QR stays out until that URL exists and resolves.
 - Cross-user leaderboards (cohort XP, mentor Impact ranking).
 - Ryzn for Teams. `/app/#/teams` is a pitch page plus a waitlist writing to
   `teams_interest`. The org console it replaced was a simulation.

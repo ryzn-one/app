@@ -15,13 +15,23 @@ the founder console is gated.
 
 ## Develop
 
+`npm run dev` starts **Vite only**, so every `/api/*` call 404s. Two terminals:
+
 ```bash
-# Marketing pages are static HTML in site/
-# App (hot reload):
-npm run dev
+vercel dev --listen 3000   # serves api/ — sign-in, roster, posts, admin
+npm run dev                # Vite, proxies /api to :3000
 ```
 
-App runs on Vite’s default port. Open `/app/` paths after configuring `base` (already set to `/app/` in `app/vite.config.js`).
+Vite serves `app/`, not `site/` — so `localhost:5173/mentor-invite.html` does
+not exist. Test the invite page against `vercel dev` on `:3000`, or build and
+`npx serve dist`.
+
+Uploads need `BLOB_READ_WRITE_TOKEN` (`vercel env pull` after creating the Blob
+store). Email needs `POSTMARK_SERVER_TOKEN`; without it `sendEmail` logs to the
+console and returns `{delivered:false}`, which is what you want locally.
+
+Run `npm run db:setup` once after pulling — it creates the indexes idempotently,
+including the ones `posts` and `post_events` need.
 
 ## Production build
 

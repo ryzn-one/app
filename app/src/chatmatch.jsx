@@ -10,6 +10,7 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
+import { shareToLinkedIn } from "./lib/share.js";
 
 /* ————————————————— JOURNEY: AI CHAT + UNLOCK + MATCHING ————————————————— */
 
@@ -257,7 +258,9 @@ export const UnlockScreen = ({ role, onNext, toast }) => (
       </div>
     )}
     <div style={{ width: "100%", maxWidth: 280, marginTop: 26, display: "flex", flexDirection: "column", gap: 10 }}>
-      <Btn kind="dark" onClick={() => toast("Opening LinkedIn share…")}><Linkedin size={15} /> Share to LinkedIn</Btn>
+      <Btn kind="dark" onClick={() => shareToLinkedIn(role === "mentee"
+        ? "Day one on Ryzn. Three real goals on the record, and my first badge earned."
+        : "I've joined the Ryzn mentor Roster. Taking on my first cohort now.")}><Linkedin size={15} /> Share to LinkedIn</Btn>
       <button onClick={onNext} style={{ background: "none", border: "none", color: "#DDD9F6", fontFamily: F.sans, fontWeight: 600, fontSize: 14, cursor: "pointer", padding: 10 }}>
         {role === "mentee" ? "See my mentor matches" : "See my matched mentees"}
       </button>
@@ -326,7 +329,12 @@ export const SwipeDeck = ({ deck, renderCard, stampRight, stampLeft, canRight, o
       {top && (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, paddingTop: 12 }}>
           <button onClick={() => commit("left")} style={roundBtn(54, C.white, C.coral, C.coral)} title={stampLeft}><X size={24} /></button>
-          <button onClick={onUndo} disabled={!canUndo} style={{ ...roundBtn(38, C.white, canUndo ? C.gray : "#C9C6C0", C.line), boxShadow: "none" }} title="Undo"><RotateCcw size={15} /></button>
+          {/* The match decks pass no onUndo at all, so this used to render as a
+              permanently greyed button that could never do anything. Screens
+              that can undo (the add-a-mentor decks) still get it. */}
+          {onUndo && (
+            <button onClick={onUndo} disabled={!canUndo} style={{ ...roundBtn(38, C.white, canUndo ? C.gray : "#C9C6C0", C.line), boxShadow: "none" }} title="Undo"><RotateCcw size={15} /></button>
+          )}
           <button onClick={() => commit("right")} style={roundBtn(54, canRight ? C.purple : "#C9C6E8", C.white)} title={stampRight}><Check size={26} strokeWidth={3} /></button>
         </div>
       )}
@@ -340,11 +348,13 @@ export const CardGrid = ({ deck, renderCard, stampRight, stampLeft, canRight, on
   if (deck.length === 0) return <div style={{ flex: 1, minHeight: 0, padding: "10px 24px 24px" }}>{emptyView}</div>;
   return (
     <div className="app-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 24px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-        <button onClick={onUndo} disabled={!canUndo} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: `1px solid ${canUndo ? C.line : "transparent"}`, borderRadius: 10, padding: "6px 12px", cursor: canUndo ? "pointer" : "default", color: canUndo ? C.gray : "#C9C6C0", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5 }}>
-          <RotateCcw size={13} /> Undo last
-        </button>
-      </div>
+      {onUndo && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+          <button onClick={onUndo} disabled={!canUndo} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: `1px solid ${canUndo ? C.line : "transparent"}`, borderRadius: 10, padding: "6px 12px", cursor: canUndo ? "pointer" : "default", color: canUndo ? C.gray : "#C9C6C0", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5 }}>
+            <RotateCcw size={13} /> Undo last
+          </button>
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))", gap: 20 }}>
         {deck.map((item, i) => (
           <div key={item.name || i} style={{ height: 420, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -380,14 +390,14 @@ export const DetailShell = ({ title, right, close, footer, children }) => (
 /** Shared answers between two people, or null when either side has none.
     Shown as a count, not a percentage: the old "96% MATCH" was a number no
     part of the system computed. */
-const AffinityTag = ({ affinity, color = C.purple }) =>
+export const AffinityTag = ({ affinity, color = C.purple }) =>
   affinity && affinity.shared > 0 ? (
     <Label color={color}>{affinity.shared} SHARED {affinity.shared === 1 ? "ANSWER" : "ANSWERS"}</Label>
   ) : null;
 
-const Initials = ({ name }) => <>{(name || "?").split(" ").map(w => w[0]).join("").slice(0, 2)}</>;
+export const Initials = ({ name }) => <>{(name || "?").split(" ").map(w => w[0]).join("").slice(0, 2)}</>;
 
-const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = true, limit }) => (
+export const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = true, limit }) => (
   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
     {(limit ? items.slice(0, limit) : items).map(t => (
       <span key={t} style={{ fontSize: 11, fontWeight: 600, background: bg, border: border ? `1px solid ${C.line}` : "none", borderRadius: 12, padding: "4px 10px", color }}>{t}</span>
@@ -397,7 +407,7 @@ const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = true, lim
 
 /** Shown when nobody is on the other side of the platform yet. Early cohorts
     genuinely start here, and saying so is better than a deck of strangers. */
-const EmptyRoster = ({ title, body, action }) => (
+export const EmptyRoster = ({ title, body, action }) => (
   <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
     <Glyph color={C.purple} size={40} />
     <div style={{ fontSize: 21, fontWeight: 700, marginTop: 14 }}>{title}</div>
@@ -811,7 +821,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
           </div>
         } />
       )}
-      <FilterSheet open={showFilter} close={() => setShowFilter(false)} values={filters} setValues={setFilters} count={filtered.length} countLabel="mentee"
+      <FilterSheet open={showFilter} close={() => setShowFilter(false)} values={filters} setValues={setFilters} count={deck.length} countLabel="mentee"
         sections={[{ key: "track", label: "Track", options: ["Any", "University", "High school"] }]} />
     </div>
   );

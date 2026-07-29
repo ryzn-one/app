@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
@@ -9,6 +9,7 @@ import {
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { BADGE_DEFS } from "./data.js";
+import { shareToLinkedIn } from "./lib/share.js";
 
 /* ————————————————— APP: SHARED ————————————————— */
 
@@ -88,25 +89,16 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
   );
 };
 
+/* The notification card that used to open this screen had four toggles —
+   streak reminders, mentee activity, session reminders, leaderboard movement.
+   None of them persisted, and there is no notification pipeline for them to
+   configure, so every switch promised mail that could never arrive. Gone until
+   something actually sends. */
 export const SettingsScreen = ({ back, role, toast, onLogout, user }) => {
-  const [prefs, setPrefs] = useState({ streak: true, notes: true, sessions: true, board: false });
-  const Toggle = ({ k }) => (
-    <button onClick={() => setPrefs(p => ({ ...p, [k]: !p[k] }))} style={{ width: 42, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: prefs[k] ? C.purple : "#D8D6D0", position: "relative", transition: "background .2s" }}>
-      <span style={{ position: "absolute", top: 3, left: prefs[k] ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: C.white, transition: "left .2s" }} />
-    </button>
-  );
   return (
     <div>
       <HeaderRow title="Settings" onBack={back} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <Card>
-          <Label>Notifications</Label>
-          {[["streak", "Streak reminder · daily 7 PM"], ["notes", role === "mentee" ? "Mentor notes" : "Mentee activity"], ["sessions", "Session reminders · 24h and 1h"], ["board", "Leaderboard movement"]].map(([k, l]) => (
-            <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
-              <span style={{ fontSize: 14 }}>{l}</span><Toggle k={k} />
-            </div>
-          ))}
-        </Card>
         {/* The account you're actually signed in as. This screen previously
             reported LinkedIn as "CONNECTED · BADGE SHARING ON" for every user,
             with no LinkedIn integration behind it. */}
@@ -123,11 +115,24 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user }) => {
             </span>
           </div>
         </Card>
-        {[[role === "mentee" ? "Program track · University" : "Mentor tier & payouts", "Managed with your program lead — message them to change it"], ["Account and privacy", "Data export, visibility, and deletion"]].map(([l, d]) => (
-          <Card key={l} onClick={() => toast(d)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{l}</span><ChevronRight size={16} color={C.gray} />
+        {/* "Mentor tier & payouts" and "Account and privacy" sat here with a
+            chevron each and toasted their own subtitle when tapped. There are no
+            payouts, and the export/visibility/deletion the second one promised
+            doesn't exist either. This is the one that leads somewhere real. */}
+        <Card onClick={() => window.open("/privacy.html", "_blank", "noopener")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Privacy policy</span><ChevronRight size={16} color={C.gray} />
+        </Card>
+        {/* Founders only. isAdmin covers both routes into the console — the role
+            flag and the ADMIN_EMAILS allowlist — so the person bootstrapping it
+            can still see this. Opens in its own window, as asked. */}
+        {user?.isAdmin && (
+          <Card onClick={() => window.open("/app/#/admin", "_blank", "noopener")}
+            style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.amberTint}`, background: C.amberTint }}>
+            <Shield size={16} color={C.amber} />
+            <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: C.amber }}>Founder console</span>
+            <ExternalLink size={15} color={C.amber} />
           </Card>
-        ))}
+        )}
         <Card onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.coralTint}`, background: C.coralTint }}>
           <LogOut size={16} color={C.coral} />
           <span style={{ fontSize: 14, fontWeight: 700, color: C.coral }}>Log out</span>
@@ -160,7 +165,7 @@ export const BadgeModal = ({ badge, index, close, toast }) => badge && (
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <Btn style={{ flex: 1 }} onClick={() => toast("Opening LinkedIn share…")}><Linkedin size={15} /> Share to LinkedIn</Btn>
+        <Btn style={{ flex: 1 }} onClick={() => shareToLinkedIn(`I earned the ${badge.name} badge on Ryzn. ${badge.unlocks}`)}><Linkedin size={15} /> Share to LinkedIn</Btn>
         <Btn kind="ghost" onClick={close} style={{ flex: 0.6 }}>Done</Btn>
       </div>
     </div>
@@ -177,7 +182,7 @@ export const MidwayUnlock = ({ onClose, toast }) => (
     <div style={{ fontSize: 14.5, marginTop: 8, lineHeight: 1.55, maxWidth: 250, color: "#DDD9F6" }}>Halfway through the Program, zero shortcuts. The cohort board can see you now.</div>
     <div style={{ fontFamily: F.mono, fontSize: 10.5, marginTop: 14, color: "#C9C3F2" }}>RYZ-2026-00734 · VERIFIED</div>
     <div style={{ width: "100%", maxWidth: 280, marginTop: 28, display: "flex", flexDirection: "column", gap: 10 }}>
-      <Btn kind="dark" onClick={() => toast("Opening LinkedIn share…")}><Linkedin size={15} /> Share to LinkedIn</Btn>
+      <Btn kind="dark" onClick={() => shareToLinkedIn("Halfway through my Ryzn program — four milestones down, four to go.")}><Linkedin size={15} /> Share to LinkedIn</Btn>
       <button onClick={onClose} style={{ background: "none", border: "none", color: "#DDD9F6", fontFamily: F.sans, fontWeight: 600, fontSize: 14, cursor: "pointer", padding: 10 }}>Keep going</button>
     </div>
   </div>

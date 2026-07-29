@@ -17,6 +17,7 @@
     "user:make": "node --env-file=.env.local scripts/make-user.mjs"
   },
   "dependencies": {
+    "@vercel/blob": "^2.6.1",
     "better-auth": "^1.6.25",
     "mongodb": "^6.12.0"
   }

@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import {
   Check, Lock, Crown, Plus, Image as ImageIcon, MessageCircle, Play, FileText,
   Upload, Heart, Eye, Send, Pin, Sparkles,
 } from "lucide-react";
 import { C, F } from "./theme.js";
 import { Card, Label, Btn, Monogram, HeaderRow, Bar } from "./ui.jsx";
+import { uploadMedia, ACCEPT } from "./lib/upload.js";
 
 /* ————————————————— ORBIT FEED —————————————————
    One post model, two screens: the mentor writes it (MentorFeed), the cohort
@@ -19,8 +20,22 @@ export const KIND_META = {
   resource: { icon: FileText,      c: C.amber,  bg: C.amberTint,  label: "Resource" },
 };
 
-/** Media is stubbed until uploads exist: a deterministic brand tile per post,
-    so the same post always looks the same without shipping placeholder JPEGs. */
+/** "3h" / "2d" / "Mar 4". The server returns an ISO timestamp — computing this
+    there would be wrong for anyone in another timezone and uncacheable. */
+export const relTime = (iso) => {
+  if (!iso) return "now";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "now";
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h`;
+  if (mins < 10080) return `${Math.floor(mins / 1440)}d`;
+  return new Date(then).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+
+/** The fallback tile behind media that hasn't loaded, and the whole visual for
+    a post with no file attached. Deterministic, so a post always looks the same. */
 const art = (seed, kind) => {
   let h = 0;
   for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -43,21 +58,55 @@ const art = (seed, kind) => {
   return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
 };
 
-const MediaBlock = ({ post, height = 168 }) => {
+/**
+ * `onEngage` records the view. It fires on the first play of a video or on
+ * opening a file — before real media existed the only way to register a view
+ * was the "WATCH · +5 XP" button, and now that the video plays inline most
+ * people will never press it.
+ */
+const MediaBlock = ({ post, height = 168, onEngage }) => {
   if (post.kind === "status") return null;
-  if (post.kind === "resource") return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12 }}>
-      <div style={{ width: 40, height: 46, background: C.amberTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <FileText size={18} color={C.amber} />
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div>
-        <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 3 }}>{(post.fileKind || "FILE").toUpperCase()}</div>
-      </div>
+  if (post.kind === "resource") {
+    const inner = (
+      <>
+        <div style={{ width: 40, height: 46, background: C.amberTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <FileText size={18} color={C.amber} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 3 }}>
+            {(post.fileKind || "FILE").toUpperCase()}{post.media ? " · TAP TO OPEN" : ""}
+          </div>
+        </div>
+      </>
+    );
+    const style = { display: "flex", alignItems: "center", gap: 12, marginTop: 10, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, textDecoration: "none", color: C.ink };
+    // A real file gets a real link. Without media this is still the right tile —
+    // posts published before uploads existed have none.
+    return post.media?.url
+      ? <a href={post.media.url} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); onEngage?.(); }} style={style}>{inner}</a>
+      : <div style={style}>{inner}</div>;
+  }
+
+  const fallback = { backgroundImage: art(post.id, post.kind), backgroundSize: "cover", backgroundPosition: "center" };
+
+  if (post.kind === "video" && post.media?.url) return (
+    <video src={post.media.url} controls preload="metadata" playsInline
+      onClick={e => e.stopPropagation()} onPlay={() => onEngage?.()}
+      style={{ marginTop: 10, width: "100%", height, borderRadius: 12, background: C.ink, objectFit: "cover", display: "block" }} />
+  );
+
+  if (post.kind === "photo" && post.media?.url) return (
+    // The generated tile sits behind the image so there's no white flash while
+    // it loads.
+    <div style={{ marginTop: 10, height, borderRadius: 12, overflow: "hidden", ...fallback }}>
+      <img src={post.media.url} alt={post.title || ""} loading="lazy"
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
     </div>
   );
+
   return (
-    <div style={{ marginTop: 10, height, borderRadius: 12, overflow: "hidden", position: "relative", backgroundImage: art(post.id, post.kind), backgroundSize: "cover", backgroundPosition: "center" }}>
+    <div style={{ marginTop: 10, height, borderRadius: 12, overflow: "hidden", position: "relative", ...fallback }}>
       {post.kind === "video" && post.mins && (
         <span style={{ position: "absolute", bottom: 8, right: 10, fontFamily: F.mono, fontSize: 10, color: C.white, background: "rgba(0,0,0,.45)", padding: "3px 7px", borderRadius: 6 }}>{post.mins}</span>
       )}
@@ -80,7 +129,7 @@ export const PostCard = ({ post, author, tier, mine, reacted, onReact, onOpen, d
             {tier && <Crown size={11} color={C.purple} />}
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
-            {post.pinned && <><Pin size={9} color={C.purple} /> </>}{String(post.when || "now").toUpperCase()} · {meta.label.toUpperCase()}
+            {post.pinned && <><Pin size={9} color={C.purple} /> </>}{relTime(post.createdAt).toUpperCase()} · {meta.label.toUpperCase()}
           </div>
         </div>
         <div style={{ width: 28, height: 28, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -90,17 +139,24 @@ export const PostCard = ({ post, author, tier, mine, reacted, onReact, onOpen, d
 
       {post.title && post.kind !== "resource" && <div style={{ fontWeight: 700, fontSize: 15, marginTop: 11 }}>{post.title}</div>}
       {post.text && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: post.title && post.kind !== "resource" ? C.gray : C.ink, marginTop: post.title && post.kind !== "resource" ? 4 : 11 }}>{post.text}</div>}
-      <MediaBlock post={post} />
+      {/* Not for the author: a mentor playing back their own video shouldn't
+          count as a view of it. */}
+      <MediaBlock post={post} onEngage={mine ? undefined : () => !done && onOpen?.(post)} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12 }}>
-        <button onClick={mine ? undefined : () => onReact(post.id)} style={{
-          display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
-          cursor: mine ? "default" : "pointer", padding: 0, fontFamily: F.mono, fontSize: 11, fontWeight: 700,
-          color: reacted ? C.coral : C.gray,
-        }}>
-          <Heart size={14} color={reacted ? C.coral : "#A5A39D"} fill={reacted ? C.coral : "none"} />
-          {post.reactions + (reacted ? 1 : 0)}
-        </button>
+        {/* On your own post this is a read-out, not a control — you can't react
+            to yourself. It used to render as a <button> with no handler. */}
+        {React.createElement(mine ? "span" : "button", {
+          ...(mine ? {} : { onClick: () => onReact(post.id) }),
+          style: {
+            display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
+            cursor: mine ? "default" : "pointer", padding: 0, fontFamily: F.mono, fontSize: 11, fontWeight: 700,
+            color: reacted ? C.coral : C.gray,
+          },
+        },
+          <Heart key="h" size={14} color={reacted ? C.coral : "#A5A39D"} fill={reacted ? C.coral : "none"} />,
+          post.reactions + (reacted ? 1 : 0)
+        )}
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.mono, fontSize: 11, color: C.gray }}>
           <Eye size={14} color="#A5A39D" /> {post.views}
         </span>
@@ -110,27 +166,62 @@ export const PostCard = ({ post, author, tier, mine, reacted, onReact, onOpen, d
             padding: "7px 11px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap",
           }}>{done ? "✓ DONE" : `${post.kind === "video" ? "WATCH" : "OPEN"} · +${post.xp} XP`}</button>
         )}
-        {mine && post.isNew && <span style={{ marginLeft: "auto", fontFamily: F.mono, fontSize: 8, background: C.purple, color: C.white, padding: "3px 6px", fontWeight: 700 }}>NEW</span>}
+        {/* Visibility is the useful signal on your own post, not a "NEW" chip
+            that was set on publish and never cleared. */}
+        {mine && post.visibility === "public" && (
+          <span style={{ marginLeft: "auto", fontFamily: F.mono, fontSize: 8, background: C.tealTint, color: C.teal, padding: "3px 6px", fontWeight: 700, letterSpacing: 0.6 }}>ON PROFILE</span>
+        )}
       </div>
     </Card>
   );
 };
 
 /** Compose box. One text field, four kinds, one button — that's the whole thing. */
-export const Composer = ({ onPublish, name }) => {
+export const Composer = ({ onPublish, name, userId }) => {
   const [kind, setKind] = useState("status");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
-  const [attached, setAttached] = useState(false);
+  /* Was a boolean called `attached` that a button flipped to true. There was no
+     <input type="file"> anywhere in the app, so "Photo attached" was a label
+     over nothing. */
+  const [media, setMedia] = useState(null);
+  const [fileName, setFileName] = useState("");
+  const [progress, setProgress] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
+
   const needsFile = kind === "photo" || kind === "video" || kind === "resource";
   const needsTitle = kind === "video" || kind === "resource";
-  const ready = kind === "photo" ? attached || text.trim() : needsTitle ? title.trim() && attached : text.trim();
+  const uploading = progress !== null;
+  const ready = !uploading && !busy && (
+    kind === "photo" ? !!media : needsTitle ? title.trim() && media : text.trim()
+  );
 
-  const reset = () => { setText(""); setTitle(""); setAttached(false); setKind("status"); };
-  const go = () => {
+  const reset = () => { setText(""); setTitle(""); setMedia(null); setFileName(""); setProgress(null); setErr(null); setKind("status"); };
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";           // so re-picking the same file still fires
+    if (!file) return;
+    setErr(null); setFileName(file.name); setProgress(0);
+    try {
+      setMedia(await uploadMedia(file, kind, setProgress, userId));
+    } catch (e2) {
+      setErr(e2?.message || "That upload didn’t finish.");
+      setFileName("");
+    } finally { setProgress(null); }
+  };
+
+  const go = async () => {
     if (!ready) return;
-    onPublish({ kind, text: text.trim(), title: title.trim() });
-    reset();
+    setBusy(true);
+    try {
+      await onPublish({ kind, text: text.trim(), title: title.trim(), media });
+      reset();
+    } catch (e2) {
+      setErr(e2?.message || "Couldn’t publish that.");
+    } finally { setBusy(false); }
   };
 
   const placeholder = {
@@ -155,41 +246,104 @@ export const Composer = ({ onPublish, name }) => {
       )}
 
       {needsFile && (
-        attached ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, background: C.tealTint, borderRadius: 12, padding: "10px 12px" }}>
-            <Check size={14} color={C.teal} strokeWidth={3} />
-            <span style={{ fontSize: 12.5, color: C.teal, fontWeight: 600, flex: 1 }}>{kind === "photo" ? "Photo attached" : kind === "video" ? "Video attached" : "File attached"}</span>
-            <button onClick={() => setAttached(false)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: F.mono, fontSize: 9.5, color: C.teal, fontWeight: 700 }}>REMOVE</button>
-          </div>
-        ) : (
-          <button onClick={() => setAttached(true)} style={{
-            width: "100%", marginTop: 8, border: `1.5px dashed ${C.line}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
-            background: C.surface, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.gray,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-          }}><Upload size={14} /> {kind === "photo" ? "Add a photo" : kind === "video" ? "Record or upload a video" : "Attach a file or link"}</button>
-        )
+        <>
+          <input ref={fileRef} type="file" accept={ACCEPT[kind]} onChange={pick} style={{ display: "none" }} />
+          {uploading ? (
+            <div style={{ marginTop: 8, background: C.surface, borderRadius: 12, padding: "11px 12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.gray }}>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fileName}</span>
+                <span style={{ fontFamily: F.mono, flexShrink: 0, paddingLeft: 8 }}>{Math.round(progress)}%</span>
+              </div>
+              <div style={{ marginTop: 8 }}><Bar pct={progress / 100} /></div>
+            </div>
+          ) : media ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, background: C.tealTint, borderRadius: 12, padding: "10px 12px" }}>
+              <Check size={14} color={C.teal} strokeWidth={3} />
+              <span style={{ fontSize: 12.5, color: C.teal, fontWeight: 600, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fileName}</span>
+              <button onClick={() => { setMedia(null); setFileName(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: F.mono, fontSize: 9.5, color: C.teal, fontWeight: 700, flexShrink: 0 }}>REMOVE</button>
+            </div>
+          ) : (
+            <button onClick={() => fileRef.current?.click()} style={{
+              width: "100%", marginTop: 8, border: `1.5px dashed ${C.line}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
+              background: C.surface, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.gray,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            }}><Upload size={14} /> {kind === "photo" ? "Add a photo" : kind === "video" ? "Upload a video" : "Attach a file"}</button>
+          )}
+        </>
       )}
+
+      {err && <div style={{ marginTop: 8, fontSize: 12.5, color: C.coral, lineHeight: 1.45 }}>{err}</div>}
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
         {Object.entries(KIND_META).map(([id, m]) => {
           const on = kind === id, Icon = m.icon;
           return (
-            <button key={id} onClick={() => { setKind(id); if (id === "status") setAttached(false); }} style={{
-              display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: "pointer", borderRadius: 10,
+            // Switching kind drops the file: a PDF picked as a "resource" isn't
+            // a valid "photo", and the accept filter has already changed.
+            <button key={id} disabled={uploading} onClick={() => { setKind(id); setMedia(null); setFileName(""); setErr(null); }} style={{
+              display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: uploading ? "default" : "pointer", borderRadius: 10,
               padding: "7px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5,
-              background: on ? m.bg : "transparent", color: on ? m.c : C.gray,
+              background: on ? m.bg : "transparent", color: on ? m.c : C.gray, opacity: uploading && !on ? 0.5 : 1,
             }}><Icon size={13} />{m.label}</button>
           );
         })}
-        <Btn small style={{ marginLeft: "auto" }} disabled={!ready} onClick={go}><Send size={13} /> Post</Btn>
+        <Btn small style={{ marginLeft: "auto" }} disabled={!ready} onClick={go}>
+          <Send size={13} /> {busy ? "Posting…" : uploading ? "Uploading…" : "Post"}
+        </Btn>
       </div>
     </Card>
   );
 };
 
+/**
+ * The greeting video — the first thing a new mentee sees, so it's pinned and
+ * kept separate from the composer.
+ *
+ * `onDone(media)` publishes it as a pinned `greeting` post. This used to be a
+ * button that set a boolean to true: the checklist ticked, +15 Impact toasted,
+ * and no video existed anywhere.
+ */
+function GreetingCard({ onDone, userId }) {
+  const [progress, setProgress] = useState(null);
+  const [err, setErr] = useState(null);
+  const ref = useRef(null);
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr(null); setProgress(0);
+    try {
+      const media = await uploadMedia(file, "video", setProgress, userId);
+      await onDone(media);
+    } catch (e2) {
+      setErr(e2?.message || "That upload didn’t finish.");
+    } finally { setProgress(null); }
+  };
+
+  return (
+    <Card style={{ border: `1.5px dashed ${C.purple}` }}>
+      <Label color={C.purple}>Greeting video · pinned to the top of your Orbit</Label>
+      <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>60–90 seconds. Who you are, who you help, one honest reason you’re here. Mentees who watch a greeting are twice as likely to finish Stage 1.</div>
+      <input ref={ref} type="file" accept={ACCEPT.video} onChange={pick} style={{ display: "none" }} />
+      {progress !== null ? (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.gray }}>
+            <span>Uploading…</span><span style={{ fontFamily: F.mono }}>{Math.round(progress)}%</span>
+          </div>
+          <div style={{ marginTop: 8 }}><Bar pct={progress / 100} /></div>
+        </div>
+      ) : (
+        <Btn style={{ marginTop: 12 }} onClick={() => ref.current?.click()}><Upload size={15} /> Upload your greeting · +25 Impact</Btn>
+      )}
+      {err && <div style={{ marginTop: 8, fontSize: 12.5, color: C.coral, lineHeight: 1.45 }}>{err}</div>}
+    </Card>
+  );
+}
+
 /* ————————————————— MENTOR: your feed ————————————————— */
 
-export const MentorFeed = ({ u, name, feed, publish, greetingUp, uploadGreeting }) => {
+export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadGreeting }) => {
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
   const reach = u.cohort ? u.cohort.length : 0;
@@ -206,15 +360,9 @@ export const MentorFeed = ({ u, name, feed, publish, greetingUp, uploadGreeting 
           ))}
         </div>
 
-        {!greetingUp && (
-          <Card style={{ border: `1.5px dashed ${C.purple}` }}>
-            <Label color={C.purple}>Greeting video · pinned to the top of your Orbit</Label>
-            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>60–90 seconds. Who you are, who you help, one honest reason you’re here. Mentees who watch a greeting are twice as likely to finish Stage 1.</div>
-            <Btn style={{ marginTop: 12 }} onClick={uploadGreeting}><Upload size={15} /> Record or upload · +15 Impact</Btn>
-          </Card>
-        )}
+        {!greetingUp && <GreetingCard onDone={uploadGreeting} userId={userId} />}
 
-        <Composer name={name} onPublish={publish} />
+        <Composer name={name} userId={userId} onPublish={publish} />
 
         {feed.length === 0 ? (
           <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
@@ -231,6 +379,67 @@ export const MentorFeed = ({ u, name, feed, publish, greetingUp, uploadGreeting 
 };
 
 /* ————————————————— MENTEE: the Orbit ————————————————— */
+
+/**
+ * The posts-and-resources body, shared by the mentee's Orbit and the mentor's
+ * own "Public view".
+ *
+ * Shared on purpose: the mentor's public view used to be a separate mock that
+ * showed a post *count* and nothing else, so "preview" was previewing something
+ * no mentee would ever see. Rendering the same component in both places is what
+ * makes the preview true.
+ *
+ * `readOnly` drops the XP buttons and reactions — a mentor looking at their own
+ * profile can't collect XP for their own content.
+ */
+export const ContentTabs = ({ feed = [], authorName, view, watched = {}, onWatch, reacted = {}, onReact, emptyText, readOnly }) => {
+  const resources = feed.filter(p => p.kind === "video" || p.kind === "resource");
+  const list = view === "feed" ? feed : resources;
+
+  if (list.length === 0) return (
+    <Card style={{ textAlign: "center", padding: 26 }}>
+      <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.5 }}>
+        {view === "feed" ? emptyText : "No videos or files yet."}
+      </div>
+    </Card>
+  );
+
+  if (view === "feed") return list.map(p => (
+    <PostCard key={p.id} post={p} author={authorName} tier mine={readOnly}
+      reacted={!!reacted[p.id]} onReact={onReact}
+      onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]} />
+  ));
+
+  return list.map(p => {
+    const meta = KIND_META[p.kind], Icon = meta.icon, done = watched[p.id];
+    const open = () => (p.media?.url ? window.open(p.media.url, "_blank", "noopener") : onWatch?.(p.id, p.xp));
+    return (
+      <Card key={p.id}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ width: 40, height: 40, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={meta.c} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{p.title}</div>
+            <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>{(p.mins || p.fileKind || "FILE").toUpperCase()} · {p.views} VIEWS</div>
+          </div>
+          {readOnly ? (
+            <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>+{p.xp} XP</span>
+          ) : (
+            <button onClick={() => { onWatch?.(p.id, p.xp); open(); }} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", padding: "7px 10px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap" }}>{done ? "✓ DONE" : `+${p.xp} XP`}</button>
+          )}
+        </div>
+      </Card>
+    );
+  });
+};
+
+/** Segmented Feed | Resources control, so both screens label them identically. */
+export const ContentTabBar = ({ view, setView, count }) => (
+  <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
+    {[["feed", "Feed"], ["resources", `Resources · ${count}`]].map(([id, l]) => (
+      <button key={id} onClick={() => setView(id)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray }}>{l}</button>
+    ))}
+  </div>
+);
 
 export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, onReact, openDm, back, go }) => {
   const [view, setView] = useState("feed");
@@ -294,38 +503,10 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
           </Card>
         )}
 
-        <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
-          {[["feed", "Feed"], ["resources", `Resources · ${resources.length}`]].map(([id, l]) => (
-            <button key={id} onClick={() => setView(id)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray }}>{l}</button>
-          ))}
-        </div>
+        <ContentTabBar view={view} setView={setView} count={resources.length} />
 
-        {view === "feed" && feed.length === 0 && (
-          <Card style={{ textAlign: "center", padding: 26 }}>
-            <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.5 }}>{first} hasn’t posted yet. Everything they share lands here first.</div>
-          </Card>
-        )}
-        {view === "feed"
-          ? feed.map(p => (
-            <PostCard key={p.id} post={p} author={u.mentorName} tier
-              reacted={!!reacted[p.id]} onReact={onReact}
-              onOpen={() => onWatch(p.id, p.xp)} done={!!watched[p.id]} />
-          ))
-          : resources.map(p => {
-            const meta = KIND_META[p.kind], Icon = meta.icon, done = watched[p.id];
-            return (
-              <Card key={p.id}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <div style={{ width: 40, height: 40, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={meta.c} /></div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{p.title}</div>
-                    <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>{(p.mins || p.fileKind || "FILE").toUpperCase()} · {p.views} VIEWS</div>
-                  </div>
-                  <button onClick={() => onWatch(p.id, p.xp)} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", padding: "7px 10px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap" }}>{done ? "✓ DONE" : `+${p.xp} XP`}</button>
-                </div>
-              </Card>
-            );
-          })}
+        <ContentTabs feed={feed} authorName={u.mentorName} view={view} watched={watched} onWatch={onWatch} reacted={reacted} onReact={onReact}
+          emptyText={`${first} hasn’t posted yet. Everything they share lands here first.`} />
       </div>
     </div>
   );

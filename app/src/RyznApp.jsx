@@ -10,12 +10,13 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
-import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut } from "./lib/auth-client.js";
+import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost } from "./lib/auth-client.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
 import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
 import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProfile } from "./app-mentor.jsx";
+import { ExploreScreen } from "./explore.jsx";
 import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
 
@@ -81,6 +82,10 @@ function toAppUser(me) {
       headline: p.headline ?? null,
       industry: p.industry ?? null,
       why: p.why ?? null,
+      // Already shown to strangers in MentorDetailSheet; the mentor's own
+      // profile was the one place they weren't rendered.
+      expertise: p.expertise ?? [],
+      menteeFit: p.menteeFit ?? [],
     };
   }
   return {
@@ -95,6 +100,10 @@ function toAppUser(me) {
     mentorTitle: me.mentor?.headline ?? null,
     mentorTier: me.mentor?.tier ?? null,
     mentorMatchId: me.mentor?.matchId ?? null,
+    // The mentor's *user* id, not the match id — it's what /api/posts needs to
+    // fetch their feed. Only the match id was exposed before, so a mentee had
+    // no way to ask for their own mentor's content.
+    mentorId: me.mentor?.id ?? null,
     supportMentors: me.supportMentors ?? [],
     track: p.track ?? null,
     goals: p.goals ?? [],
@@ -132,7 +141,6 @@ export default function RyznComplete() {
   const [watched, setWatched] = useState({});
   const [reacted, setReacted] = useState({});
   const [mentorFeed, setMentorFeed] = useState([]);
-  const [greetingUp, setGreetingUp] = useState(false);
   const [menteeAdds, setMenteeAdds] = useState(0);
 
   const toast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2000); };
@@ -210,6 +218,30 @@ export default function RyznComplete() {
 
   useEffect(() => { if (stage === "matches" && phase === "journey") loadRoster(); }, [stage, phase, loadRoster]);
 
+  /* — mentor content —
+     A mentor loads their own feed; a mentee loads their active mentor's. Same
+     endpoint, and the server decides what each is allowed to see. `viewerState`
+     restores what's already been watched and reacted to, which used to be
+     useState maps wiped by every refresh. */
+  const mentorId = user?.mentorId ?? null;
+  const loadFeed = useCallback(async () => {
+    if (role === "mentee" && !mentorId) { setMentorFeed([]); return; }
+    try {
+      const { posts, viewerState } = await fetchPosts(role === "mentee" ? { mentorId } : {});
+      setMentorFeed(posts || []);
+      setWatched(Object.fromEntries((viewerState?.watched || []).map(id => [id, true])));
+      setReacted(Object.fromEntries((viewerState?.reacted || []).map(id => [id, true])));
+    } catch (err) {
+      console.error("[ryzn] /api/posts failed:", err);
+    }
+  }, [role, mentorId]);
+
+  useEffect(() => { if (phase === "app") loadFeed(); }, [phase, loadFeed]);
+
+  /* Derived, not stored: the greeting *is* a post, so the feed is the only
+     thing that can answer whether one exists. */
+  const greetingUp = mentorFeed.some(p => p.greeting);
+
   /* Every deck decision is a server write. The roster is refetched afterwards
      because it excludes anyone already answered for, so the card leaves the
      deck as a consequence of the write rather than of local bookkeeping. */
@@ -249,7 +281,6 @@ export default function RyznComplete() {
       xp: base.xp || xp,
       earned: { ...(base.earned || {}), goal: "Today" },
     });
-    setMentorFeed([]); setGreetingUp(false);
     setPhase("app");
   };
 
@@ -295,19 +326,55 @@ export default function RyznComplete() {
 
   /* — gamified content + connect — */
   const stage1 = role === "mentee" && user ? (user.fresh ? todayDone : true) : true;
-  const watchContent = (id, xpGain) => { if (watched[id]) return; setWatched(w => ({ ...w, [id]: true })); addUserXp(xpGain); toast(`+${xpGain} XP · reviewed`); };
-  const publishPost = ({ kind, text, title }) => {
-    setMentorFeed(f => [{
-      id: "u" + Date.now(), kind, text, title: title || undefined,
-      mins: kind === "video" ? "0:00" : undefined,
-      fileKind: kind === "resource" ? "FILE" : undefined,
-      when: "now", views: 0, reactions: 0, xp: 5, isNew: true,
-    }, ...f]);
-    addUserImpact(10);
-    toast(`+10 Impact · live in ${user?.cohort?.length || 0} mentee orbit${user?.cohort?.length === 1 ? "" : "s"}`);
+
+  const watchContent = async (id, xpGain) => {
+    if (watched[id]) return;
+    setWatched(w => ({ ...w, [id]: true }));   // optimistic; the server dedupes
+    try {
+      const { xp: awarded } = await postAction(id, "view");
+      if (awarded) { addUserXp(awarded); toast(`+${awarded} XP · reviewed`); }
+    } catch (e) {
+      setWatched(w => { const n = { ...w }; delete n[id]; return n; });
+      toast(e.message || "Couldn’t open that.");
+    }
   };
-  const reactToPost = (id) => { if (reacted[id]) return; setReacted(r => ({ ...r, [id]: true })); toast("Reaction sent · your mentor sees it"); };
-  const uploadGreeting = () => { if (greetingUp) return; setGreetingUp(true); addUserImpact(15); toast("+15 Impact · greeting pinned to your Orbit"); };
+
+  const publishPost = async ({ kind, text, title, media }) => {
+    // Throws on failure so the Composer can keep the draft and show why.
+    // `impact` comes back from the server, which is what actually awarded it.
+    const { impact } = await createPost({ kind, text, title, media });
+    await Promise.all([loadFeed(), refreshUser()]);
+    const n = user?.cohort?.length || 0;
+    toast(`+${impact} Impact · live in ${n} mentee orbit${n === 1 ? "" : "s"}`);
+  };
+
+  const reactToPost = async (id) => {
+    if (reacted[id]) return;
+    setReacted(r => ({ ...r, [id]: true }));
+    try { await postAction(id, "react"); toast("Reaction sent"); }
+    catch (e) {
+      setReacted(r => { const n = { ...r }; delete n[id]; return n; });
+      toast(e.message || "Couldn’t send that.");
+    }
+  };
+
+  const pinPost = async (id, pinned) => {
+    try { await updatePost(id, { pinned }); await loadFeed(); toast(pinned ? "Pinned to the top" : "Unpinned"); }
+    catch (e) { toast(e.message || "Couldn’t change that."); }
+  };
+
+  const removePost = async (id) => {
+    try { await deletePost(id); await loadFeed(); toast("Post deleted"); }
+    catch (e) { toast(e.message || "Couldn’t delete that."); }
+  };
+
+  /* The greeting is a pinned video post like any other — that's what makes it
+     show up in a mentee's Orbit. It used to set a boolean and nothing else. */
+  const uploadGreeting = async (media) => {
+    await createPost({ kind: "video", title: "Start here", media, greeting: true });
+    await Promise.all([loadFeed(), refreshUser()]);
+    toast("+25 Impact · greeting pinned to your Orbit");
+  };
 
   const addMentor = async (m) => {
     try {
@@ -343,10 +410,16 @@ export default function RyznComplete() {
     } catch (e) { toast(e.message || "Couldn’t send that invitation."); }
   };
 
+  /* Seats, in one place — Explore and the add decks must agree on whether
+     there's room, and the answer differs per side. */
+  const mentorCapacity = session?.profile?.capacity ?? 4;
+  const mentorSeatsLeft = 3 - ((user?.mentorName ? 1 : 0) + (user?.supportMentors?.length || 0));
+  const cohortSeatsLeft = mentorCapacity - (user?.cohort?.length || 0);
+
   /* — notification deep links — */
   const navTo = (to) => {
     setOverlay(null);
-    if (["cohort", "dm", "orbit", "board"].includes(to)) setTimeout(() => setOverlay(to), 60);
+    if (["cohort", "dm", "orbit", "board", "explore"].includes(to)) setTimeout(() => setOverlay(to), 60);
     else setTab(to);
   };
 
@@ -379,6 +452,20 @@ export default function RyznComplete() {
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
     if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
+    if (overlay === "explore") return (
+      <ExploreScreen
+        role={role} back={() => setOverlay(null)} toast={toast}
+        onRequest={role === "mentee" ? addMentor : addMentee}
+        onRespond={async (id, action) => { await respondToMatch(id, action); await Promise.all([loadRoster(), refreshUser()]); }}
+        canRequest={role === "mentee" ? mentorSeatsLeft > 0 : cohortSeatsLeft > 0}
+        capacityNote={role === "mentee" ? "Mentor seats full · 3 of 3" : `Cohort full · ${mentorCapacity} seats`}
+        openAccepted={(p) => {
+          setOverlay(null);
+          if (role === "mentee") setTimeout(() => setOverlay("orbit"), 60);
+          else { const m = user.cohort?.find(c => c.id === p.id); if (m) setTimeout(() => setOverlay({ mentee: m }), 60); }
+        }}
+      />
+    );
     if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} />;
     if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
     if (overlay === "dm") return user.mentorName ? (
@@ -404,10 +491,10 @@ export default function RyznComplete() {
     }
     switch (tab) {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} />;
-      case "feed": return <MentorFeed u={user} name={session?.user?.name} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
-      case "sessions": return <MentorSessions u={user} toast={(m) => { toast(m); if (m.startsWith("+15")) addUserImpact(15); }} />;
+      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
+      case "sessions": return <MentorSessions u={user} />;
       case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} toast={toast} feed={mentorFeed} go={setTab} greetingUp={greetingUp} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} />;
       default: return null;
     }
   };
@@ -454,7 +541,7 @@ export default function RyznComplete() {
       {phase === "app" && user && (
         isDesktop ? (
           <div style={{ display: "flex", height: "100%" }}>
-            <Sidebar nav={nav} tab={tab} overlay={overlay} role={role} name={session?.user?.name}
+            <Sidebar nav={nav} tab={tab} overlay={overlay} role={role} name={session?.user?.name} isAdmin={session?.user?.isAdmin}
               onSelect={(id) => { setOverlay(null); setTab(id); }}
               onSettings={() => setOverlay("settings")} onLogout={logout} />
             <div style={{ flex: 1, overflow: "hidden" }}>
