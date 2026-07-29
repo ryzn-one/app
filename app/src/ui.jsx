@@ -53,8 +53,8 @@ export const BrandIcon = ({ size = 48, light = false, alt = "Ryzn", style, ...re
 );
 
 /* ————— Primitives ————— */
-export const Card = ({ style, children, onClick }) => (
-  <div onClick={onClick} style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style }}>{children}</div>
+export const Card = ({ style, children, onClick, ...rest }) => (
+  <div {...rest} onClick={onClick} style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style }}>{children}</div>
 );
 export const FormError = ({ children }) => children ? (
   <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
@@ -65,7 +65,7 @@ export const FormError = ({ children }) => children ? (
 export const Label = ({ children, color = C.gray, style }) => (
   <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color, ...style }}>{children}</div>
 );
-export const Btn = ({ children, kind = "primary", onClick, style, small, disabled }) => {
+export const Btn = ({ children, kind = "primary", onClick, style, small, disabled, ...rest }) => {
   const kinds = {
     primary: { background: disabled ? "#C9C6E8" : C.purple, color: C.white },
     dark: { background: C.ink, color: C.white },
@@ -73,7 +73,7 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
     soft: { background: C.purpleTint, color: C.purple },
   };
   return (
-    <button onClick={disabled ? undefined : onClick} style={{
+    <button {...rest} onClick={disabled ? undefined : onClick} style={{
       fontFamily: F.sans, fontWeight: 600, border: "none", borderRadius: 12,
       cursor: disabled ? "default" : "pointer", display: "inline-flex", alignItems: "center",
       justifyContent: "center", gap: 8, padding: small ? "9px 14px" : "14px 18px",

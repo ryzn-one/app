@@ -130,4 +130,4 @@ export const adminMintInvites = (body) => api("/admin/invites", { method: "POST"
 export const adminRevokeInvite = (code) => api("/admin/invites", { method: "PATCH", body: { code, action: "revoke" } });
 /** Mails an already-minted code again. `to` is optional — the server falls back
     to whoever it went to last, so the row's Resend needs no retyping. */
-export const adminResendInvite = ({ code, to }) => api("/admin/invites", { method: "PATCH", body: { code, to, action: "resend" } });
+export const adminResendInvite = ({ code, to, name }) => api("/admin/invites", { method: "PATCH", body: { code, to, name, action: "resend" } });

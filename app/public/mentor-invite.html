@@ -441,10 +441,10 @@
     <div class="codebox rv">
       <label>YOUR INVITATION CODE</label>
       <div class="code-row">
-        <input id="codeInput" value="RYZ-INV-2026-0087" spellcheck="false">
-        <button class="btn btn-check" id="checkBtn">Confirm</button>
+        <input id="codeInput" value="" placeholder="RYZ-INV-…" spellcheck="false" autocomplete="off" autocapitalize="characters">
+        <button class="btn btn-check" id="checkBtn" type="button">Confirm</button>
       </div>
-      <div class="valid-msg" id="validMsg"><span class="tick">&#10003;</span> <span>Verified and tied to your name. Setup takes about six minutes.</span></div>
+      <div class="valid-msg" id="validMsg"><span class="tick">&#10003;</span> <span id="validText">Verified. Setup takes about six minutes.</span></div>
       <div class="accept-wrap" id="acceptWrap">
         <a class="btn btn-accept" id="acceptBtn" href="#">Accept your seat &rarr;</a>
         <a class="btn" style="background:transparent;color:var(--lilac);border:1.5px solid #3a3a3a;margin-top:10px" id="callBtn" href="#">Talk to the founder first</a>
@@ -468,24 +468,63 @@
 
 <script>
   // ---------- personalization via URL: ?name=Kaleem&code=RYZ-...&founder=Sam ----------
+  // Email links also pass ?claim=/app/#/join?code=… so Accept lands on mentor sign-up.
+  // ?preview=1 is for the founder console — same chrome, no real claim.
   const P = new URLSearchParams(location.search);
+  const isPreview = P.get('preview') === '1';
   const first = (P.get('name') || '').trim();
+  const heroName = document.getElementById('heroName');
+  const leadEl = document.querySelector('.hero .lead');
+  const gateH2 = document.querySelector('.gate h2');
+  const gateSub = document.querySelector('.gate .sub');
+
   if(first){
-    document.getElementById('heroName').textContent = first;
+    heroName.textContent = first;
     document.title = 'Ryzn - ' + first + ', you were chosen';
+    if(leadEl){
+      leadEl.textContent = first + ", you weren't added to a list or cold-emailed. Twenty founding mentors for Ryzn's first Toronto cohort, and your name kept coming up.";
+    }
+    if(gateH2) gateH2.textContent = 'Twenty seats. ' + first + ', one of them is yours.';
+    if(gateSub) gateSub.textContent = 'Your code is single-use and tied to you. Confirm it to claim your seat.';
   }
-  const code = (P.get('code') || '').trim();
-  if(code) document.getElementById('codeInput').value = code;
+  const codeInput = document.getElementById('codeInput');
+  const codeFromUrl = (P.get('code') || '').trim().toUpperCase();
+  if(codeFromUrl) codeInput.value = codeFromUrl;
   const founder = (P.get('founder') || '').trim();
   if(founder){
     document.getElementById('founderName').textContent = founder;
-    document.getElementById('founderMono').textContent = founder[0].toUpperCase();
+    document.getElementById('founderMono').textContent = founder.split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
   }
-  // CTA destinations (edit these or pass ?claim= / ?call=)
-  const claimUrl = P.get('claim') || ('https://ryzn.one/mentor/claim?code=' + encodeURIComponent(document.getElementById('codeInput').value));
-  const callUrl  = P.get('call')  || 'https://cal.com/ryzn/founder-15min';
-  document.getElementById('acceptBtn').href = claimUrl;
-  document.getElementById('callBtn').href = callUrl;
+
+  if(isPreview){
+    const bar = document.createElement('div');
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:sticky;top:0;z-index:50;background:#BA7517;color:#fff;text-align:center;padding:10px 16px;font-family:var(--sans);font-size:13px;font-weight:600';
+    bar.textContent = first
+      ? 'Preview — how this invitation looks for ' + first
+      : 'Preview — founder console, not a real invitation';
+    document.body.prepend(bar);
+  }
+
+  function joinUrl(codeVal){
+    return location.origin + '/app/#/join?code=' + encodeURIComponent(codeVal || '');
+  }
+  function setClaimHref(codeVal){
+    if(isPreview){
+      document.getElementById('acceptBtn').href = '#';
+      return;
+    }
+    const fromEmail = P.get('claim');
+    const emailCode = (P.get('code') || '').trim().toUpperCase();
+    // Prefer the emailed claim URL only while it still matches the confirmed code.
+    if (fromEmail && codeVal && emailCode === String(codeVal).toUpperCase()) {
+      document.getElementById('acceptBtn').href = fromEmail;
+    } else {
+      document.getElementById('acceptBtn').href = joinUrl(codeVal);
+    }
+  }
+  setClaimHref(codeInput.value.trim());
+  document.getElementById('callBtn').href = P.get('call') || 'https://cal.com/ryzn/founder-15min';
 
   // ---------- scroll reveal ----------
   const io = new IntersectionObserver((es)=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }}),{threshold:.15});
@@ -564,48 +603,136 @@
   // ---------- org personalization ----------
   const orgName = (P.get('org') || '').trim();
   if(orgName){
-    const lead = document.querySelector('.hero .lead');
-    if(lead) lead.textContent = first
+    if(leadEl) leadEl.textContent = first
       ? first + ', you were nominated to join the founding mentor Roster for ' + orgName + '.'
       : 'A personal invitation to mentor inside ' + orgName + '. Invitation only.';
   }
 
-  // ---------- code confirm (checks admin-console ledger in localStorage) ----------
-  const checkBtn=document.getElementById('checkBtn'), validMsg=document.getElementById('validMsg'), acceptWrap=document.getElementById('acceptWrap'), codeInput=document.getElementById('codeInput');
-  function readInviteLedger(){
-    try { return JSON.parse(localStorage.getItem('ryzn_teams_invites') || '[]'); }
-    catch { return []; }
-  }
-  function markInviteAccepted(codeVal){
-    try {
-      const list = readInviteLedger();
-      const next = list.map(iv => iv.code === codeVal ? { ...iv, status: 'Accepted', acceptedAt: new Date().toISOString() } : iv);
-      localStorage.setItem('ryzn_teams_invites', JSON.stringify(next));
-    } catch { /* ignore */ }
-  }
-  function confirmCode(){
-    const codeVal = codeInput.value.trim();
-    const formatOk = /^RYZ-INV-/i.test(codeVal);
-    const ledger = readInviteLedger();
-    const listed = ledger.find(iv => iv.code === codeVal);
-    const already = listed && listed.status === 'Accepted';
-    if(!formatOk && !listed){ codeInput.style.borderColor='var(--coral)'; return; }
-    if(already){
-      validMsg.querySelector('span:last-child').textContent = 'This code was already claimed. Sign in to continue.';
-    }
-    checkBtn.textContent='Confirmed'; checkBtn.style.background='var(--teal)';
-    validMsg.classList.add('show'); acceptWrap.classList.add('show');
-    if(listed && !already) markInviteAccepted(codeVal);
-    const teamsClaim = location.origin + '/#/teams?join=' + encodeURIComponent(codeVal);
-    document.getElementById('acceptBtn').href = P.get('claim') || teamsClaim;
-  }
-  checkBtn.addEventListener('click', confirmCode);
-  codeInput.addEventListener('keydown', e=>{ if(e.key==='Enter') confirmCode(); });
+  // ---------- code confirm against Mongo invites via /api/invites/validate ----------
+  // Read-only check. The single-use claim happens later at /app/#/join after sign-up
+  // (POST /api/invites/redeem). Do not mark anything accepted here.
+  const checkBtn = document.getElementById('checkBtn');
+  const validMsg = document.getElementById('validMsg');
+  const validText = document.getElementById('validText');
+  const acceptWrap = document.getElementById('acceptWrap');
+  const acceptBtn = document.getElementById('acceptBtn');
 
-  // Default claim target → Teams app (admin-console connected)
-  if(!P.get('claim')){
-    document.getElementById('acceptBtn').href = location.origin + '/#/teams?join=' + encodeURIComponent(document.getElementById('codeInput').value.trim());
+  const REASON = {
+    not_found: "That code isn't recognized.",
+    revoked: "That invitation was withdrawn.",
+    already_used: "This code was already claimed. Sign in to continue.",
+    expired: "That invitation has expired.",
+  };
+
+  function resetGate(){
+    codeInput.style.borderColor = '';
+    checkBtn.textContent = 'Confirm';
+    checkBtn.style.background = '';
+    checkBtn.disabled = false;
+    validMsg.classList.remove('show');
+    acceptWrap.classList.remove('show');
+    validMsg.querySelector('.tick').style.display = '';
+    acceptBtn.textContent = 'Accept your seat →';
+    setClaimHref(codeInput.value.trim());
   }
+
+  function showPreviewConfirmed(){
+    if(codeFromUrl) codeInput.value = codeFromUrl;
+    else if(!codeInput.value.trim()) codeInput.value = 'RYZ-INV-PREVIEW';
+    checkBtn.textContent = 'Confirmed';
+    checkBtn.style.background = 'var(--teal)';
+    validMsg.querySelector('.tick').style.display = '';
+    validText.textContent = 'Preview only — mint & send a real code to invite them.';
+    validMsg.classList.add('show');
+    acceptWrap.classList.add('show');
+    acceptBtn.textContent = 'Preview only';
+    acceptBtn.href = '#';
+    acceptBtn.onclick = (e) => { e.preventDefault(); };
+  }
+
+  async function confirmCode(){
+    if(isPreview){ showPreviewConfirmed(); return; }
+
+    const codeVal = codeInput.value.trim().toUpperCase();
+    codeInput.value = codeVal;
+    if(!codeVal){
+      codeInput.style.borderColor = 'var(--coral)';
+      return;
+    }
+
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Checking…';
+    codeInput.style.borderColor = '';
+
+    try {
+      const res = await fetch('/api/invites/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ code: codeVal }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if(res.status === 429){
+        codeInput.style.borderColor = 'var(--coral)';
+        validText.textContent = "Too many attempts. Try again shortly.";
+        validMsg.classList.add('show');
+        validMsg.querySelector('.tick').style.display = 'none';
+        checkBtn.textContent = 'Confirm';
+        checkBtn.disabled = false;
+        return;
+      }
+
+      if(!data.valid){
+        codeInput.style.borderColor = 'var(--coral)';
+        validText.textContent = REASON[data.reason] || "That code isn't valid.";
+        validMsg.classList.add('show');
+        validMsg.querySelector('.tick').style.display = 'none';
+        acceptWrap.classList.remove('show');
+        checkBtn.textContent = 'Confirm';
+        checkBtn.style.background = '';
+        checkBtn.disabled = false;
+        // Already-claimed: send them to the app to sign in, not to re-claim.
+        if(data.reason === 'already_used'){
+          acceptBtn.href = location.origin + '/app/';
+          acceptBtn.textContent = 'Sign in to continue →';
+          acceptWrap.classList.add('show');
+        }
+        return;
+      }
+
+      validMsg.querySelector('.tick').style.display = '';
+      validText.textContent = first
+        ? 'Verified and tied to ' + first + '. Setup takes about six minutes.'
+        : 'Verified. Setup takes about six minutes.';
+      checkBtn.textContent = 'Confirmed';
+      checkBtn.style.background = 'var(--teal)';
+      checkBtn.disabled = false;
+      validMsg.classList.add('show');
+      acceptWrap.classList.add('show');
+      acceptBtn.textContent = 'Accept your seat →';
+      setClaimHref(codeVal);
+    } catch {
+      codeInput.style.borderColor = 'var(--coral)';
+      validText.textContent = "Couldn't reach Ryzn. Check your connection and try again.";
+      validMsg.classList.add('show');
+      validMsg.querySelector('.tick').style.display = 'none';
+      checkBtn.textContent = 'Confirm';
+      checkBtn.disabled = false;
+    }
+  }
+
+  checkBtn.addEventListener('click', confirmCode);
+  codeInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); confirmCode(); } });
+  codeInput.addEventListener('input', () => {
+    // Editing after a confirm should require a fresh check against the DB.
+    if(isPreview) return;
+    if(validMsg.classList.contains('show') || acceptWrap.classList.contains('show')) resetGate();
+  });
+
+  // Email deep-links already carry a code — confirm it on load so Accept is one tap.
+  // Preview skips the API and shows the confirmed state with a banner.
+  if(isPreview) showPreviewConfirmed();
+  else if(codeFromUrl) confirmCode();
 </script>
 </body>
 </html>

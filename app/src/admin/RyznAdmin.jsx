@@ -276,14 +276,38 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
     } finally { setBusy(false); }
   };
 
+  const previewName = (() => {
+    const explicit = who.trim();
+    if (explicit) return explicit;
+    const local = to.trim().split("@")[0]?.split(/[._-]/)[0];
+    return local ? local.charAt(0).toUpperCase() + local.slice(1) : "Alex";
+  })();
+
+  const openPreview = () => {
+    const url = buildInviteUrl({
+      code: "RYZ-INV-PREVIEW",
+      name: previewName,
+      email: to.trim(),
+      role: "Mentor",
+      adminName: founderName,
+      preview: true,
+    });
+    window.open(url, "_blank", "noopener");
+  };
+
   // Mentor codes open the branded claim page. Admin codes go to the console's
   // own sign-in, where the code field promotes an existing account.
   const linkFor = (iv) => iv.role === "admin"
     ? `${window.location.origin}/app/#/admin?code=${encodeURIComponent(iv.code)}`
-    // email comes off the row so a code already mailed to someone rebuilds the
-    // same personalized link; it used to be hardcoded empty, so ?name= was
-    // always blank and the invite page could never greet anyone by name.
-    : buildInviteUrl({ code: iv.code, email: iv.sentTo || "", role: "Mentor", adminName: founderName });
+    // Prefer the stored recipient name (set when the invite was mailed). Fall
+    // back to guessing from the address so older rows still personalize.
+    : buildInviteUrl({
+      code: iv.code,
+      email: iv.sentTo || "",
+      name: iv.sentName || "",
+      role: "Mentor",
+      adminName: founderName,
+    });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -333,18 +357,25 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
               style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
           </div>
         </div>
-        <Btn style={{ marginTop: 12, ...(isAdminCode ? { background: C.amber } : null) }} disabled={busy} onClick={mint}>
-          {addressed ? <Send size={15} /> : <Plus size={15} />}
-          {busy
-            ? (addressed ? "Sending…" : "Minting…")
-            : addressed
-              ? `Mint & send to ${to.trim()}`
-              : `Mint ${count} ${role} code${Number(count) === 1 ? "" : "s"}`}
-        </Btn>
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          <Btn style={{ flex: 1, minWidth: 180, ...(isAdminCode ? { background: C.amber } : null) }} disabled={busy} onClick={mint}>
+            {addressed ? <Send size={15} /> : <Plus size={15} />}
+            {busy
+              ? (addressed ? "Sending…" : "Minting…")
+              : addressed
+                ? `Mint & send to ${to.trim()}`
+                : `Mint ${count} ${role} code${Number(count) === 1 ? "" : "s"}`}
+          </Btn>
+          {!isAdminCode && (
+            <Btn kind="ghost" style={{ flex: "0 0 auto" }} onClick={openPreview}>
+              <ExternalLink size={15} /> Preview as {previewName}
+            </Btn>
+          )}
+        </div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10, lineHeight: 1.7 }}>
           {isAdminCode
             ? "CLAIMING AN ADMIN CODE IS THE ONLY WAY TO JOIN THIS CONSOLE WITHOUT TOUCHING SERVER CONFIG."
-            : "EACH CODE OPENS /MENTOR-INVITE.HTML WITH IT PRE-FILLED. CLAIMING IT IS THE ONLY WAY TO BECOME A MENTOR."}
+            : "EACH CODE OPENS /MENTOR-INVITE.HTML PERSONALIZED WITH THEIR NAME. PREVIEW USES THE FIELDS ABOVE — IT DOESN'T MINT A CODE."}
         </div>
       </Card>
 
@@ -362,14 +393,14 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
               <Chip c={STATE_COLOR[iv.state]} bg={iv.state === "claimed" ? C.tealTint : iv.state === "revoked" ? C.coralTint : iv.state === "expired" ? C.surface : C.purpleTint}>{iv.state.toUpperCase()}</Chip>
               <button onClick={() => copyText(linkFor(iv)).then(() => toast(iv.role === "admin" ? "Admin link copied — send it directly" : "Invite link copied"))} title="Copy invite link"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Copy size={13} color={C.gray} /></button>
-              <button onClick={() => window.open(linkFor(iv), "_blank", "noopener")} title="Open invite page"
+              <button onClick={() => window.open(linkFor(iv), "_blank", "noopener")} title={iv.role === "admin" ? "Open admin claim" : `Preview invite${iv.sentName ? ` for ${iv.sentName}` : ""}`}
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><ExternalLink size={13} color={C.gray} /></button>
               {iv.state === "open" && iv.role !== "admin" && (
                 <button onClick={() => {
                   // No address on file means we have nowhere to send it — ask
                   // rather than firing a request that can only 400.
                   const dest = iv.sentTo || window.prompt(`Send ${iv.code} to which email?`, "");
-                  if (dest) onResend(iv.code, dest.trim());
+                  if (dest) onResend(iv.code, dest.trim(), iv.sentName || undefined);
                 }} title={iv.sentTo ? `Resend to ${iv.sentTo}` : "Send to someone"}
                   style={{ border: "none", background: C.purpleTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Send size={13} color={C.purple} /></button>
               )}
@@ -386,8 +417,8 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
             {iv.sentTo && (
               <div style={{ fontFamily: F.mono, fontSize: 9, color: iv.lastSendError ? C.coral : C.teal, marginTop: 4 }}>
                 {iv.lastSendError
-                  ? `SEND FAILED · ${iv.sentTo} · ${iv.lastSendError.toUpperCase()}`
-                  : `SENT TO ${iv.sentTo} · ${fmtDate(iv.sentAt)}${iv.sentCount > 1 ? ` · ${iv.sentCount}×` : ""}`}
+                  ? `SEND FAILED · ${iv.sentName ? iv.sentName.toUpperCase() + " · " : ""}${iv.sentTo} · ${iv.lastSendError.toUpperCase()}`
+                  : `SENT TO ${iv.sentName ? iv.sentName.toUpperCase() + " · " : ""}${iv.sentTo} · ${fmtDate(iv.sentAt)}${iv.sentCount > 1 ? ` · ${iv.sentCount}×` : ""}`}
               </div>
             )}
           </div>
@@ -527,9 +558,9 @@ export default function RyznAdmin() {
     } catch (e) { toast(messageFor(e, "Couldn’t mint those codes.")); }
   };
 
-  const resend = async (code, to) => {
+  const resend = async (code, to, name) => {
     try {
-      const res = await adminResendInvite({ code, to });
+      const res = await adminResendInvite({ code, to, name });
       const { invites: fresh } = await adminInvites();
       setInvites(fresh);
       toast(res.sent ? `Resent to ${res.to}` : (res.sendError || "Couldn’t send that one."));
@@ -582,11 +613,10 @@ export default function RyznAdmin() {
         <Card>
           <Label>Mentor invite page</Label>
           <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55, marginTop: 8 }}>
-            Every code you mint opens the branded claim page with the code pre-filled. Accepting
-            now lands the mentor on sign-up with the code carried through — it used to send them
-            into the Teams demo instead of creating an account.
+            Personalized with the mentor's name, your founder signature, and their code.
+            Preview it from <b>Invites</b> using the name field — that opens the real page in preview mode without minting a code.
           </div>
-          <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => window.open("/mentor-invite.html", "_blank", "noopener")}><ExternalLink size={15} /> Preview the invite page</Btn>
+          <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => setNav("invites")}><Send size={15} /> Go to Invites to preview</Btn>
         </Card>
       </div>
     ),

@@ -36,14 +36,20 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * valid and the founder can still copy the link by hand, so the caller reports
  * the failure and moves on rather than losing the invitation entirely.
  */
-async function deliver({ invites, code, to, name, founder, expiresAt }) {
+async function deliver({ invites, code, to, name, founder }) {
   const url = inviteUrl({ code, name, founder, role: "Mentor" });
+  // Persist who this seat is for even if the send fails — Resend and the
+  // personalized link both need sentName later.
+  await invites.updateOne(
+    { code },
+    { $set: { sentTo: to, sentName: name || null } }
+  );
   try {
-    const msg = inviteEmail({ name, code, url, founder, expiresAt });
+    const msg = inviteEmail({ name, url, founder });
     const res = await sendEmail({ to, ...msg });
     await invites.updateOne(
       { code },
-      { $set: { sentTo: to, sentAt: new Date(), lastSendError: null }, $inc: { sentCount: 1 } }
+      { $set: { sentAt: new Date(), lastSendError: null }, $inc: { sentCount: 1 } }
     );
     // delivered:false means no provider key is configured — the mail was logged,
     // not sent. Say so rather than reporting a success that never left the box.
@@ -88,6 +94,7 @@ async function list(db) {
       redeemedAt: i.redeemedAt || null,
       claimedBy: who ? { name: who.name || "—", email: who.email } : null,
       sentTo: i.sentTo || null,
+      sentName: i.sentName || null,
       sentAt: i.sentAt || null,
       sentCount: i.sentCount || 0,
       lastSendError: i.lastSendError || null,
@@ -145,7 +152,7 @@ async function handler(request, admin) {
     if (to) {
       const name = String(body.name || "").trim() || nameFromEmail(to);
       const out = await deliver({
-        invites, code: created[0], to, name, founder: admin.name || admin.email, expiresAt,
+        invites, code: created[0], to, name, founder: admin.name || admin.email,
       });
       return json({ created, role, expiresAt, to, ...out }, 201);
     }
@@ -178,9 +185,9 @@ async function handler(request, admin) {
       if (!to) return fail(400, "bad_request", "No address on file for that code — enter one.");
       if (!EMAIL_RE.test(to)) return fail(400, "bad_request", "That doesn't look like an email address.");
 
-      const name = String(body.name || "").trim() || nameFromEmail(to);
+      const name = String(body.name || "").trim() || iv.sentName || nameFromEmail(to);
       const out = await deliver({
-        invites, code, to, name, founder: admin.name || admin.email, expiresAt: iv.expiresAt,
+        invites, code, to, name, founder: admin.name || admin.email,
       });
       return json({ ok: true, code, to, ...out });
     }

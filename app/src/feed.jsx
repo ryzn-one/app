@@ -362,7 +362,9 @@ export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadG
 
         {!greetingUp && <GreetingCard onDone={uploadGreeting} userId={userId} />}
 
-        <Composer name={name} userId={userId} onPublish={publish} />
+        <div data-tour="mentor-feed-compose">
+          <Composer name={name} userId={userId} onPublish={publish} />
+        </div>
 
         {feed.length === 0 ? (
           <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>

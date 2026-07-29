@@ -28,7 +28,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
       </div>
       <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
     </div>
-    <Card onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white }}>
+    <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <Label color="#9C93E8">Impact Score</Label>
@@ -204,7 +204,7 @@ export const MentorSessions = ({ u }) => {
   if (sessions.length === 0) return (
     <div>
       <HeaderRow title="Sessions" />
-      <div style={{ padding: "0 20px 20px" }}>
+      <div data-tour="mentor-sessions-list" style={{ padding: "0 20px 20px" }}>
         <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Calendar size={18} color={C.gray} /></div>
@@ -220,7 +220,7 @@ export const MentorSessions = ({ u }) => {
   return (
     <div>
       <HeaderRow title="Sessions" right={<Label>{sessions.length} SCHEDULED</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div data-tour="mentor-sessions-list" style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         {sessions.map(s => (
           <Card key={s.id}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -319,7 +319,7 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
   return (
     <div>
       <HeaderRow title="Your profile" right={
-        <button onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
+        <button data-tour="mentor-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
           {[["studio", "Studio"], ["preview", "Public view"]].map(([id, l]) => (

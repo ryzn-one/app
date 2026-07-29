@@ -35,7 +35,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
         </button>
       </div>
 
-      <Card style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 18 }}>
+      <Card data-tour="mentee-home-progress" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 18 }}>
         <Ring pct={u.fresh ? 0.03 : u.week / 12}>
           <div style={{ fontSize: 22, fontWeight: 700 }}>{u.fresh ? "3%" : `${Math.round((u.week / 12) * 100)}%`}</div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray }}>{u.fresh ? "DAY 1/84" : `WK ${u.week}/12`}</div>
@@ -192,7 +192,7 @@ export const MenteeExercises = ({ u, todayDone, onSubmit, submitting }) => {
               <textarea value={text} onChange={e => { setText(e.target.value); setErr(null); }} placeholder="I’m here because…" rows={4}
                 style={{ width: "100%", marginTop: 12, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
               {err && <div style={{ fontSize: 12.5, color: C.coral, marginTop: 8, lineHeight: 1.4 }}>{err}</div>}
-              <Btn style={{ marginTop: 12 }} disabled={submitting} onClick={async () => {
+              <Btn data-tour="mentee-exercises-submit" style={{ marginTop: 12 }} disabled={submitting} onClick={async () => {
                 try {
                   setErr(null);
                   await onSubmit(text);
@@ -242,7 +242,7 @@ export const MenteeBadges = ({ badges, openBadge, justEarnedId }) => (
               <div style={{ width: 12, height: 12, background: earned ? color : "#D8D6D0", marginTop: 26, transform: "rotate(45deg)" }} />
               {i < badges.length - 1 && <div style={{ width: 2, flex: 1, background: earned ? color : "#DEDDD7", opacity: earned ? 0.35 : 1 }} />}
             </div>
-            <Card onClick={earned ? () => openBadge(b, i) : undefined} style={{ flex: 1, marginBottom: 12, border: `1px solid ${earned ? color : C.line}` }}>
+            <Card data-tour={i === 0 ? "mentee-badges-first" : undefined} onClick={earned ? () => openBadge(b, i) : undefined} style={{ flex: 1, marginBottom: 12, border: `1px solid ${earned ? color : C.line}` }}>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <BadgeTile badge={b} i={i} size={54} justEarned={justEarnedId === b.id} />
                 <div style={{ flex: 1 }}>
@@ -392,7 +392,7 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
 export const MenteeProfile = ({ u, name, badges, openBadge, openOverlay, extraMentors, onPromote, onDrop }) => (
   <div>
     <HeaderRow title="Profile" right={
-      <button onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
+      <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
     <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ display: "flex", gap: 14, alignItems: "center" }}>
         <Monogram name={name || "—"} size={62} bg={C.ink} color={C.white} radius={16} />

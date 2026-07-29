@@ -21,10 +21,13 @@
  * mentor accepting a real invitation ended up in a mock org console instead of
  * creating an account.
  */
-export function buildInviteUrl({ code, email, role, orgName, adminName }) {
+export function buildInviteUrl({ code, email, name, role, orgName, adminName, preview }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "https://ryzn.one";
-  const nameGuess = (email || "").split("@")[0].split(/[._]/)[0];
-  const display = nameGuess ? nameGuess.charAt(0).toUpperCase() + nameGuess.slice(1) : "";
+  const explicit = String(name || "").trim();
+  const nameGuess = (email || "").split("@")[0].split(/[._-]/)[0];
+  const display =
+    explicit ||
+    (nameGuess ? nameGuess.charAt(0).toUpperCase() + nameGuess.slice(1) : "");
 
   const params = new URLSearchParams();
   if (code) params.set("code", code);
@@ -32,7 +35,10 @@ export function buildInviteUrl({ code, email, role, orgName, adminName }) {
   if (adminName) params.set("founder", adminName);
   if (orgName) params.set("org", orgName);
   if (role) params.set("role", role);
-  params.set("claim", `${origin}/app/#/join?code=${encodeURIComponent(code || "")}`);
+  if (preview) params.set("preview", "1");
+  if (code && !preview) {
+    params.set("claim", `${origin}/app/#/join?code=${encodeURIComponent(code)}`);
+  }
 
   return `${origin}/mentor-invite.html?${params.toString()}`;
 }

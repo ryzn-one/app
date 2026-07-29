@@ -30,7 +30,7 @@ export const MeetsScreen = ({ role, u, name, toast }) => (
         </div>
       </Card>
       {role === "mentee" ? (
-        <Card style={{ border: `1.5px dashed #CFCDC7`, background: "#EFEEEA" }}>
+        <Card data-tour="meets-ticket-mentee" style={{ border: `1.5px dashed #CFCDC7`, background: "#EFEEEA" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={18} color={C.gray} /></div>
             <div style={{ flex: 1 }}>
@@ -42,7 +42,7 @@ export const MeetsScreen = ({ role, u, name, toast }) => (
           <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>WEEK {u.week} OF 8</div>
         </Card>
       ) : (
-        <Card>
+        <Card data-tour="meets-ticket-mentor">
           <Label color={C.teal}>Your place</Label>
           <div style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.5 }}>
             Every mentor on the Roster has a seat at Meets. {name ? `We'll confirm yours, ${name.split(" ")[0]}, ` : "Yours will be confirmed "}once a date is set.
@@ -94,7 +94,7 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
    None of them persisted, and there is no notification pipeline for them to
    configure, so every switch promised mail that could never arrive. Gone until
    something actually sends. */
-export const SettingsScreen = ({ back, role, toast, onLogout, user }) => {
+export const SettingsScreen = ({ back, role, toast, onLogout, user, onReplayTour, onResetTabHints }) => {
   return (
     <div>
       <HeaderRow title="Settings" onBack={back} />
@@ -115,6 +115,29 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user }) => {
             </span>
           </div>
         </Card>
+        {(onReplayTour || onResetTabHints) && (
+          <Card>
+            <Label>Tutorial</Label>
+            {onReplayTour && (
+              <div onClick={onReplayTour} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Sparkles size={16} color={C.purple} />
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Replay welcome tour</span>
+                </div>
+                <ChevronRight size={16} color={C.gray} />
+              </div>
+            )}
+            {onResetTabHints && (
+              <div onClick={onResetTabHints} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <RotateCcw size={16} color={C.purple} />
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Reset tab tips</span>
+                </div>
+                <ChevronRight size={16} color={C.gray} />
+              </div>
+            )}
+          </Card>
+        )}
         {/* "Mentor tier & payouts" and "Account and privacy" sat here with a
             chevron each and toasted their own subtitle when tapped. There are no
             payouts, and the export/visibility/deletion the second one promised

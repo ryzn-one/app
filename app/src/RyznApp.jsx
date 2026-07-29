@@ -19,6 +19,7 @@ import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProf
 import { ExploreScreen } from "./explore.jsx";
 import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
+import { IntroTourModal, SpotlightHint, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints } from "./onboarding.jsx";
 
 /* ————————————————— ROOT SHELL —————————————————
 
@@ -116,6 +117,9 @@ function toAppUser(me) {
 export default function RyznComplete() {
   const [inviteCode] = useState(inviteFromHash);
   const [booting, setBooting] = useState(true);
+  const [introTourOpen, setIntroTourOpen] = useState(false);
+  const [spotlightTab, setSpotlightTab] = useState(null);
+  const introCheckedRef = useRef(false);
   const [session, setSession] = useState(null);          // /api/me payload, or null when signed out
   // An invited mentor is a mentor: skip the role picker they were never meant
   // to see, and open on the claim form rather than the splash.
@@ -151,7 +155,12 @@ export default function RyznComplete() {
   const addUserXp = (n) => setUser(u => u && u.xp !== undefined ? { ...u, xp: u.xp + n } : u);
   const addUserImpact = (n) => setUser(u => u && u.impact !== undefined ? { ...u, impact: u.impact + n } : u);
 
-  const resetAppState = () => { setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false); setMidwayEarned(false); setShowMidway(false); setJustEarnedId(null); setWatched({}); setReacted({}); setMenteeAdds(0); };
+  const resetAppState = () => {
+    setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false);
+    setMidwayEarned(false); setShowMidway(false); setJustEarnedId(null);
+    setWatched({}); setReacted({}); setMenteeAdds(0);
+    setIntroTourOpen(false); setSpotlightTab(null); introCheckedRef.current = false;
+  };
 
   /* — session bootstrap —
      One call answers three questions: who are you, what role, and have you set
@@ -307,6 +316,26 @@ export default function RyznComplete() {
     setSession(null); setUser(null); setXp(0); setRoster([]);
     resetAppState(); setPhase("journey"); setStage("welcome");
   };
+
+  /* — first-run tutorial: slideshow once per role, then per-tab spotlights — */
+  useEffect(() => {
+    if (introCheckedRef.current || phase !== "app" || !user) return;
+    introCheckedRef.current = true;
+    if (!hasSeenIntroTour(role)) {
+      const t = setTimeout(() => setIntroTourOpen(true), 500);
+      return () => clearTimeout(t);
+    }
+  }, [phase, user, role]);
+
+  useEffect(() => {
+    if (phase !== "app" || !user) return;
+    if (overlay || badgeModal || showMidway || introTourOpen) { setSpotlightTab(null); return; }
+    if (hasSeenTabHint(role, tab)) { setSpotlightTab(null); return; }
+    const t = setTimeout(() => setSpotlightTab(tab), 400);
+    return () => clearTimeout(t);
+  }, [tab, phase, user, overlay, badgeModal, showMidway, introTourOpen, role]);
+
+  const dismissTabHint = () => { markTabHintSeen(role, tab); setSpotlightTab(null); };
 
   /* — onboarding completion —
      Persist first, then route. If the write fails the answers are still in
@@ -482,7 +511,17 @@ export default function RyznComplete() {
   const overlayContent = () => {
     if (!user || !overlay) return null;
     if (overlay === "notifs") return <NotifsScreen role={role} u={user} back={() => setOverlay(null)} navTo={navTo} />;
-    if (overlay === "settings") return <SettingsScreen role={role} back={() => setOverlay(null)} toast={toast} onLogout={logout} user={session?.user} />;
+    if (overlay === "settings") return (
+      <SettingsScreen
+        role={role}
+        back={() => setOverlay(null)}
+        toast={toast}
+        onLogout={logout}
+        user={session?.user}
+        onReplayTour={() => { setOverlay(null); setIntroTourOpen(true); }}
+        onResetTabHints={() => { resetTabHints(role); toast("Tab tips reset · they'll reappear as you navigate"); }}
+      />
+    );
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
     if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
@@ -630,6 +669,10 @@ export default function RyznComplete() {
 
       {phase === "app" && badgeModal && <BadgeModal badge={badgeModal.b} index={badgeModal.i} close={() => setBadgeModal(null)} toast={toast} />}
       {phase === "app" && showMidway && <MidwayUnlock onClose={() => setShowMidway(false)} toast={toast} />}
+      {phase === "app" && spotlightTab && <SpotlightHint key={spotlightTab} role={role} tab={spotlightTab} onDismiss={dismissTabHint} />}
+      {phase === "app" && introTourOpen && (
+        <IntroTourModal role={role} onDone={() => { markIntroTourSeen(role); setIntroTourOpen(false); }} />
+      )}
 
       {toastMsg && (
         <div className="sheet-up" style={{ position: "fixed", top: "calc(18px + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 90, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
