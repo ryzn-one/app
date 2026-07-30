@@ -585,9 +585,9 @@ export const SessionsScreen = ({
           </Card>
         )}
 
-        {sessions.length > 0 && (
-          <MonthCalendar sessions={sessions} selected={selectedDay} onSelect={setSelectedDay} />
-        )}
+        {/* Always show the month grid — Bilal's ask was a calendar mentors can
+            work from, not a widget that only appears after the first booking. */}
+        <MonthCalendar sessions={sessions} selected={selectedDay} onSelect={setSelectedDay} />
 
         {selectedDay && (
           <>
