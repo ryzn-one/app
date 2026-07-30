@@ -73,7 +73,7 @@ export const TAB_HINTS = {
     feed: { target: "mentor-feed-compose", title: "Your feed", body: "Publish a greeting or a post here. Mentees on your Orbit see what you share.", placement: "bottom" },
     sessions: { target: "mentor-sessions-list", title: "Opening sessions", body: "Each mentee who joins gets an opening session card here. Agree a time in your thread for now.", placement: "bottom" },
     meets: { target: "meets-ticket-mentor", title: "In-person Meets", body: "Your seat at the quarterly event lands here once a date is set.", placement: "bottom" },
-    profile: { target: "mentor-profile-studio", title: "Your profile studio", body: "Strengthen your profile and manage what mentees see. Settings are in the gear up top.", placement: "bottom" },
+    profile: { target: "mentor-profile-program", title: "Design your course", body: "Tap here to open the course designer — add phases from kickoff to graduation, with optional certificates.", placement: "bottom" },
   },
 };
 

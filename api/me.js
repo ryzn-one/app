@@ -4,6 +4,7 @@ import { json, withUser, ageFrom } from "../lib/http.js";
 import { acceptedFor, sideOf } from "../lib/matches.js";
 import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 import { isMentorRole } from "../lib/roles.js";
+import { asLabel } from "../lib/scalars.js";
 
 const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 
@@ -144,7 +145,7 @@ async function handler(request, user) {
         matchId: String(m._id),
         id: m.menteeId,
         name: u?.name || "—",
-        track: p.track ?? null,
+        track: asLabel(p.track),
         goals: p.goals ?? [],
         week: p.week ?? 1,
         streak: p.streak ?? 0,
@@ -197,7 +198,16 @@ async function handler(request, user) {
       /* Resolved from profile / answers / fresh user doc — not cookieCache. */
       onboardingComplete,
     },
-    profile: { ...profile, onboardingComplete, _id: undefined },
+    /* Collapse single-select arrays left over from the chat submit bug so the
+       client never sees track/industry as ["University"] and crashes on
+       `.toUpperCase()`. */
+    profile: {
+      ...profile,
+      track: asLabel(profile?.track) ?? profile?.track ?? null,
+      industry: asLabel(profile?.industry) ?? profile?.industry ?? null,
+      onboardingComplete,
+      _id: undefined,
+    },
     mentor,
     supportMentors,
     cohort,

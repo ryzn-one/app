@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
@@ -16,11 +17,12 @@ import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
 import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
-import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProfile } from "./app-mentor.jsx";
+import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
 import { ExploreScreen } from "./explore.jsx";
 import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
 import { IntroTourModal, SpotlightHint, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints } from "./onboarding.jsx";
+import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
 
 /* ————————————————— ROOT SHELL —————————————————
 
@@ -83,7 +85,7 @@ function toAppUser(me) {
       capacity: p.capacity ?? 4,
       greetingUploaded: !!p.greetingUploaded,
       headline: p.headline ?? null,
-      industry: p.industry ?? null,
+      industry: Array.isArray(p.industry) ? (p.industry[0] ?? null) : (p.industry ?? null),
       why: p.why ?? null,
       // Already shown to strangers in MentorDetailSheet; the mentor's own
       // profile was the one place they weren't rendered.
@@ -110,7 +112,7 @@ function toAppUser(me) {
     // no way to ask for their own mentor's content.
     mentorId: me.mentor?.id ?? null,
     supportMentors: me.supportMentors ?? [],
-    track: p.track ?? null,
+    track: Array.isArray(p.track) ? (p.track[0] ?? null) : (p.track ?? null),
     goals: p.goals ?? [],
     earned: p.earned || {},
   };
@@ -608,6 +610,13 @@ export default function RyznComplete() {
     );
     if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} />;
     if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
+    if (overlay === "course") return (
+      <CourseDesigner
+        phases={program?.phases || []}
+        onSaveProgram={saveProgramPhases}
+        back={() => setOverlay(null)}
+      />
+    );
     if (overlay === "dm") return user.mentorId ? (
       <DMScreen name={user.mentorName} otherId={user.mentorId} sub="DIRECT CONNECT · EARNED AT STAGE 1" back={() => setOverlay(null)} placeholder={`Message ${user.mentorName.split(" ")[0]}…`} />
     ) : null;
@@ -642,7 +651,7 @@ export default function RyznComplete() {
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
       case "sessions": return <MentorSessions u={user} />;
       case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onSaveProgram={saveProgramPhases} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} />;
       default: return null;
     }
   };
@@ -651,6 +660,7 @@ export default function RyznComplete() {
   const mentorNav = [["home", LayoutGrid, "Cohort"], ["feed", Newspaper, "Feed"], ["sessions", Calendar, "Sessions"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
   const nav = role === "mentee" ? menteeNav : mentorNav;
   const isDesktop = useIsDesktop();
+  const reduced = useReducedMotion();
 
   const fullScreenOverlay = Boolean(overlay === "dm" || (overlay && overlay.dmPeer));
   const chatLike = phase === "journey" && ["chat", "matches"].includes(stage);
@@ -675,13 +685,26 @@ export default function RyznComplete() {
           {stage === "unlock" && <UnlockScreen role={role} onNext={() => setStage("matches")} toast={toast} />}
           {useAuthCard ? (
             <AuthCardShell>
-              <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>{journeyContent()}</div>
+              <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div key={stage} variants={fadeSlide} initial="initial" animate="animate" exit="exit" transition={t(reduced, T_BASE)}>
+                    {journeyContent()}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </AuthCardShell>
           ) : (
             <div className="app-scroll" style={{
               height: "100%", boxSizing: "border-box", overflowY: chatLike ? "hidden" : "auto",
               paddingTop: isDesktop ? 0 : "env(safe-area-inset-top, 0px)",
-            }}>{journeyContent()}</div>
+            }}>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div key={stage} variants={fadeSlide} initial="initial" animate="animate" exit="exit" transition={t(reduced, T_BASE)}
+                  style={chatLike ? { height: "100%" } : undefined}>
+                  {journeyContent()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           )}
         </div>
       )}
@@ -695,15 +718,24 @@ export default function RyznComplete() {
             <div style={{ flex: 1, overflow: "hidden" }}>
               <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
                 <div style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 40px" }}>
-                  <SectionBoundary name={tab} resetKey={tab}>{tabContent()}</SectionBoundary>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div key={overlay === "course" ? "course" : tab}
+                      variants={fadeSlide} initial="initial" animate="animate" exit="exit" transition={t(reduced, T_BASE)}>
+                      <SectionBoundary name={overlay === "course" ? "course" : tab} resetKey={overlay === "course" ? "course" : tab}>
+                        {overlay === "course" ? overlayEl : tabContent()}
+                      </SectionBoundary>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
-            {overlayEl && (
-              <ModalShell onClose={() => setOverlay(null)}>
-                <SectionBoundary name="overlay" resetKey={overlay}>{overlayEl}</SectionBoundary>
-              </ModalShell>
-            )}
+            <AnimatePresence>
+              {overlayEl && overlay !== "course" && (
+                <ModalShell onClose={() => setOverlay(null)}>
+                  <SectionBoundary name="overlay" resetKey={overlay}>{overlayEl}</SectionBoundary>
+                </ModalShell>
+              )}
+            </AnimatePresence>
           </div>
         ) : (
           <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
@@ -712,9 +744,19 @@ export default function RyznComplete() {
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
                 paddingTop: "env(safe-area-inset-top, 0px)",
               }}>
-                <SectionBoundary name={overlay ? "overlay" : tab} resetKey={overlay || tab}>
-                  {overlayEl || tabContent()}
-                </SectionBoundary>
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={overlayEl ? `overlay-${typeof overlay === "string" ? overlay : overlay?.dm || overlay?.mentee?.name || "detail"}` : `tab-${tab}`}
+                    variants={overlayEl ? sheet : fadeSlide}
+                    initial="initial" animate="animate" exit="exit"
+                    transition={t(reduced, T_BASE)}
+                    style={fullScreenOverlay ? { height: "100%" } : undefined}
+                  >
+                    <SectionBoundary name={overlay ? "overlay" : tab} resetKey={overlay || tab}>
+                      {overlayEl || tabContent()}
+                    </SectionBoundary>
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
             {!fullScreenOverlay && (
@@ -722,10 +764,15 @@ export default function RyznComplete() {
                 {nav.map(([id, Icon, label]) => {
                   const active = tab === id && !overlay;
                   return (
-                    <button key={id} onClick={() => { setOverlay(null); setTab(id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0" }}>
+                    <motion.button key={id} onClick={() => { setOverlay(null); setTab(id); }} whileTap={reduced ? undefined : { scale: 0.9 }} transition={spring(reduced)}
+                      style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0", position: "relative" }}>
+                      {active && (
+                        <motion.div layoutId="mobile-nav-active" transition={spring(reduced)}
+                          style={{ position: "absolute", top: 0, width: 22, height: 2.5, borderRadius: 2, background: C.purple }} />
+                      )}
                       <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
                       <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
@@ -741,11 +788,20 @@ export default function RyznComplete() {
         <IntroTourModal role={role} onDone={() => { markIntroTourSeen(role); setIntroTourOpen(false); }} />
       )}
 
-      {toastMsg && (
-        <div className="sheet-up" style={{ position: "fixed", top: "calc(18px + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 90, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}>
-          <Zap size={12} /> {toastMsg}
-        </div>
-      )}
+      <AnimatePresence>
+        {toastMsg && (
+          <motion.div
+            key={toastMsg}
+            initial={{ opacity: 0, y: -12, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -8, x: "-50%" }}
+            transition={t(reduced, T_BASE)}
+            style={{ position: "fixed", top: "calc(18px + env(safe-area-inset-top, 0px))", left: "50%", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "9px 16px", borderRadius: 12, zIndex: 90, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis" }}
+          >
+            <Zap size={12} /> {toastMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

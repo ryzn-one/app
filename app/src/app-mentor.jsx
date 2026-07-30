@@ -14,6 +14,100 @@ import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
 import { TagRow } from "./chatmatch.jsx";
 import { fetchMenteeExercises, fetchProgram, setPhaseComplete } from "./lib/auth-client.js";
 
+/* Suggested starter phases — one tap seeds a course so mentors aren't staring
+   at a blank timeline wondering what "phase" means. */
+const STARTER_PHASES = [
+  { title: "Kickoff & goals", duration: "Week 1", description: "Align on career goals, set a weekly cadence, and share your first intro." },
+  { title: "Skill building", duration: "Weeks 2–6", description: "Work through targeted exercises and feedback loops on the skills that matter most." },
+  { title: "Network & practice", duration: "Weeks 7–10", description: "Intros, mock interviews, and real-world practice with your mentor in the loop." },
+  { title: "Graduation", duration: "Weeks 11–12", description: "Ship a final artifact, reflect on wins, and lock next steps after the program." },
+];
+
+/**
+ * Full-screen course designer. Studio only shows a door into this — the phases
+ * live here so "design your course" feels like opening a workspace, not editing
+ * a card buried under profile strength.
+ */
+export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
+  const list = phases || [];
+  const savePhase = (phase) => {
+    const exists = phase.id && list.some((p) => p.id === phase.id);
+    const next = exists ? list.map((p) => (p.id === phase.id ? { ...p, ...phase } : p)) : [...list, phase];
+    onSaveProgram(next);
+  };
+  const deletePhase = (id) => onSaveProgram(list.filter((p) => p.id !== id));
+  const movePhase = (index, dir) => {
+    const j = index + dir;
+    if (j < 0 || j >= list.length) return;
+    const next = [...list];
+    [next[index], next[j]] = [next[j], next[index]];
+    onSaveProgram(next);
+  };
+  const seedStarter = () => {
+    if (list.length > 0 && !window.confirm("Replace your current phases with the starter course?")) return;
+    onSaveProgram(STARTER_PHASES.map((p) => ({ ...p, id: null, reward: null })));
+  };
+
+  return (
+    <div>
+      <HeaderRow title="Design your course" onBack={back} />
+      <div style={{ padding: "0 20px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <Card className="fade-up" style={{ background: C.ink, border: "none", color: C.white, padding: 22 }}>
+          <Label color="#9C93E8">Your mentorship course</Label>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 6, lineHeight: 1.25 }}>
+            Kickoff to graduation, in phases.
+          </div>
+          <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 8, lineHeight: 1.55 }}>
+            Build the roadmap mentees follow. Each phase can unlock a certificate or reward when they finish it.
+          </div>
+          <div style={{ display: "flex", gap: 18, marginTop: 16 }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: "#B7AFF2", lineHeight: 1 }}>{list.length}</div>
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", letterSpacing: 0.8, marginTop: 4 }}>PHASES</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: "#B7AFF2", lineHeight: 1 }}>{list.filter((p) => p.reward).length}</div>
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", letterSpacing: 0.8, marginTop: 4 }}>REWARDS</div>
+            </div>
+          </div>
+        </Card>
+
+        {list.length === 0 && (
+          <Card className="fade-up" style={{ border: `1.5px dashed ${C.purple}`, background: C.purpleTint }}>
+            <Label color={C.purple}>Start here</Label>
+            <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>Add your first phase</div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
+              Or drop in a 4-phase starter (kickoff → skills → network → graduation) and edit from there.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+              <Btn small style={{ width: "auto" }} onClick={seedStarter}><Sparkles size={14} /> Use starter course</Btn>
+            </div>
+          </Card>
+        )}
+
+        <Card className="fade-up" data-tour="mentor-course-phases">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <Label>Phases</Label>
+            {list.length > 0 && <Label color={C.teal}>{list.length} STEP{list.length === 1 ? "" : "S"}</Label>}
+          </div>
+          <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
+            Order matters — mentees see this as their roadmap. Drag isn’t here yet; use the arrows to reorder.
+          </div>
+          <ProgramTimeline
+            phases={list}
+            editable
+            autoOpenNew={list.length === 0}
+            emptyText="No phases yet. Tap Add phase below, or use the starter course above."
+            onSave={savePhase}
+            onDelete={deletePhase}
+            onMove={movePhase}
+          />
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 /* ————————————————— APP: MENTOR ————————————————— */
 
 export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
@@ -335,7 +429,7 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onSaveProgram }) => {
+export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
@@ -343,22 +437,6 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
   const posts = Array.isArray(feed) ? feed : [];
   const cohort = u?.cohort || [];
   const phases = program?.phases || [];
-  /* ProgramTimeline hands back one phase/index at a time; the whole array is
-     what the API persists, so reconstructing it is this screen's job, not
-     the timeline's. */
-  const saveProgramPhase = (phase) => {
-    const exists = phase.id && phases.some((p) => p.id === phase.id);
-    const next = exists ? phases.map((p) => (p.id === phase.id ? { ...p, ...phase } : p)) : [...phases, phase];
-    onSaveProgram(next);
-  };
-  const deleteProgramPhase = (id) => onSaveProgram(phases.filter((p) => p.id !== id));
-  const moveProgramPhase = (index, dir) => {
-    const j = index + dir;
-    if (j < 0 || j >= phases.length) return;
-    const next = [...phases];
-    [next[index], next[j]] = [next[j], next[index]];
-    onSaveProgram(next);
-  };
   const checklist = [
     ["Greeting video for new mentees", greetingUp, "+25 Impact", () => go("feed")],
     ["Why-I-mentor statement", !!u?.why, "done in setup", null],
@@ -386,8 +464,6 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
               <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 2 }}>{[u.headline, u.industry].filter(Boolean).join(" · ")}</div>
             )}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u?.tier || "Scout").toUpperCase()} MENTOR</div>
-            {/* "GRADUATED 11 · COHORTS 4" rendered for a mentor on day one.
-                These come off the real cohort now. */}
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
               {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
                 <div key={l}><div style={{ fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
@@ -421,18 +497,9 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
               <div style={{ marginTop: 12 }}><ProgramTimeline phases={phases} /></div>
             </Card>
           )}
-          {/* The posts and resources, rendered with the same components the
-              mentee's Orbit uses — so this is the real thing, not a mock of it.
-              What sat here before was a single line reading "{n} FEED POSTS". */}
           <ContentTabBar view={contentTab} setView={setContentTab} count={resourceCount} />
           <ContentTabs feed={posts} authorName={name} view={contentTab} readOnly
             emptyText="Nothing on your profile yet. What you post in Feed shows up here." />
-          {/* Public mentor pages and verification QRs aren't built. The card
-              that was here printed a fixed ID (RYZ-M-2026-0087) and a
-              ryzn.one/m/jclarke URL that resolves to nothing. A "Share link"
-              button sat below it and toasted that public pages "open when the
-              founding roster is complete" — it shared nothing. Both come back
-              together, once there is a URL to share. */}
         </>) : (<>
           <Card data-tour="mentor-profile-studio">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -440,8 +507,6 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
               <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: strength === 100 ? C.teal : C.purple }}>{strength}%</span>
             </div>
             <div style={{ marginTop: 8 }}><Bar pct={strength / 100} color={strength === 100 ? C.teal : C.purple} /></div>
-            {/* Every incomplete row is a shortcut to the thing that completes
-                it — they used to be labels you could only read. */}
             {checklist.map(([l, ok, hint, jump]) => (
               <div key={l} onClick={!ok && jump ? jump : undefined}
                 style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 11, cursor: !ok && jump ? "pointer" : "default" }}>
@@ -456,28 +521,37 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 12 }}>STRONG PROFILES GET 3× MORE MENTEE REQUESTS</div>
           </Card>
 
-          {/* The program itself: the phases a mentee actually moves through,
-              and what they earn along the way. This is the piece Studio was
-              missing — everything above it manages a profile, not a program. */}
-          <Card data-tour="mentor-profile-program">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Label>Your program · {phases.length} phase{phases.length === 1 ? "" : "s"}</Label>
+          {/* Door into the course designer — not an inline editor. Mentors open
+              a dedicated workspace to author phases, then come back here. */}
+          <Card data-tour="mentor-profile-program" onClick={() => openOverlay("course")}
+            style={{ border: `1.5px solid ${phases.length ? C.teal : C.purple}`, cursor: "pointer", padding: 18 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: phases.length ? C.tealTint : C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <LayoutGrid size={20} color={phases.length ? C.teal : C.purple} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Label color={phases.length ? C.teal : C.purple}>{phases.length ? "Your course" : "Course design"}</Label>
+                <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, letterSpacing: -0.2 }}>
+                  {phases.length ? `${phases.length} phase${phases.length === 1 ? "" : "s"} · edit course` : "Design your course"}
+                </div>
+                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 5, lineHeight: 1.5 }}>
+                  {phases.length
+                    ? "Open the designer to add phases, reorder steps, and attach certificates."
+                    : "Open the designer — add phases from kickoff to graduation, with optional rewards."}
+                </div>
+              </div>
+              <ChevronRight size={18} color={C.gray} style={{ marginTop: 10, flexShrink: 0 }} />
             </div>
-            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, marginBottom: 14, lineHeight: 1.5 }}>
-              Kickoff to graduation, in steps. Mentees see this as their roadmap — add a certificate or reward to any phase and it shows up once they earn it.
-            </div>
-            <ProgramTimeline
-              phases={phases}
-              editable
-              onSave={saveProgramPhase}
-              onDelete={deleteProgramPhase}
-              onMove={moveProgramPhase}
-            />
+            {phases.length > 0 && (
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
+                <ProgramTimeline phases={phases.slice(0, 3)} />
+                {phases.length > 3 && (
+                  <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>+{phases.length - 3} MORE · OPEN TO EDIT</div>
+                )}
+              </div>
+            )}
           </Card>
 
-          {/* The management surface: pin what a new mentee should see first,
-              delete what shouldn't be there. This is the half of the studio
-              that was missing — the pane held a checklist and a link. */}
           <Card style={{ border: `1.5px solid ${posts.length ? C.teal : C.purple}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Label color={posts.length ? C.teal : C.purple}>Your content · {posts.length}</Label>

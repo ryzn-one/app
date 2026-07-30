@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { fetchMessages, sendMessage } from "./lib/auth-client.js";
 
@@ -398,7 +398,7 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
         <Monogram name={name || "—"} size={62} bg={C.ink} color={C.white} radius={16} />
         <div>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{name || "Your profile"}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{u?.track ? `TRACK · ${u.track.toUpperCase()} · ` : ""}WEEK {u?.week ?? 1}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{labelOf(u?.track) ? `TRACK · ${labelOf(u.track).toUpperCase()} · ` : ""}WEEK {u?.week ?? 1}</div>
         </div>
       </Card>
       {u?.goals?.length > 0 && (

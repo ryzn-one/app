@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Linkedin, Award, Zap, User, MessageCircle,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { logoSrc, Brand } from "./branding.js";
+import { spring, t, modalPop, backdrop, T_FAST, T_SLOW } from "./motion.js";
 
 /* ————— Brand marks (from public/branding/ryzn-brand-kit) ————— */
 export const BrandLogo = ({
@@ -53,9 +55,16 @@ export const BrandIcon = ({ size = 48, light = false, alt = "Ryzn", style, ...re
 );
 
 /* ————— Primitives ————— */
-export const Card = ({ style, children, onClick, ...rest }) => (
-  <div {...rest} onClick={onClick} style={{ background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style }}>{children}</div>
-);
+export const Card = ({ style, children, onClick, className, ...rest }) => {
+  const reduced = useReducedMotion();
+  const base = { background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style };
+  if (!onClick) return <div className={className} style={base} {...rest}>{children}</div>;
+  return (
+    <motion.div className={className} onClick={onClick} whileTap={reduced ? undefined : { scale: 0.985 }}
+      whileHover={reduced ? undefined : { y: -2, boxShadow: "0 12px 28px rgba(26,26,26,.08)" }}
+      transition={spring(reduced)} style={base} {...rest}>{children}</motion.div>
+  );
+};
 export const FormError = ({ children }) => children ? (
   <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
     <span style={{ color: C.coral, fontWeight: 700, lineHeight: 1.3 }}>!</span>
@@ -72,13 +81,17 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
     ghost: { background: "transparent", color: C.ink, border: `1.5px solid ${C.ink}` },
     soft: { background: C.purpleTint, color: C.purple },
   };
+  const reduced = useReducedMotion();
   return (
-    <button {...rest} onClick={disabled ? undefined : onClick} style={{
-      fontFamily: F.sans, fontWeight: 600, border: "none", borderRadius: 12,
-      cursor: disabled ? "default" : "pointer", display: "inline-flex", alignItems: "center",
-      justifyContent: "center", gap: 8, padding: small ? "9px 14px" : "14px 18px",
-      fontSize: small ? 13 : 15, width: small ? "auto" : "100%", ...kinds[kind], ...style,
-    }}>{children}</button>
+    <motion.button {...rest} onClick={disabled ? undefined : onClick}
+      whileTap={disabled || reduced ? undefined : { scale: 0.97 }}
+      transition={spring(reduced)}
+      style={{
+        fontFamily: F.sans, fontWeight: 600, border: "none", borderRadius: 12,
+        cursor: disabled ? "default" : "pointer", display: "inline-flex", alignItems: "center",
+        justifyContent: "center", gap: 8, padding: small ? "9px 14px" : "14px 18px",
+        fontSize: small ? 13 : 15, width: small ? "auto" : "100%", ...kinds[kind], ...style,
+      }}>{children}</motion.button>
   );
 };
 /* Name helpers. Every screen greets people by first name and stamps initials on
@@ -88,6 +101,11 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
 export const firstNameOf = (name) => String(name ?? "").trim().split(/\s+/)[0] || "—";
 export const initialsOf = (name) =>
   (String(name ?? "").trim() || "—").split(/\s+/).map(w => w[0]).slice(0, 2).join("");
+
+/* Single-select onboarding answers used to land on the profile as string[]
+   (chat submits `sel`). Callers that did `track.toUpperCase()` then threw
+   during render and took the screen down via SectionBoundary. Coerce first. */
+export const labelOf = (v) => String(Array.isArray(v) ? (v[0] ?? "") : (v ?? "")).trim();
 
 /* An account with no name on it is a real state — Google sign-in can return
    one, and so can a user bootstrapped from the CLI. This used to be
@@ -235,24 +253,171 @@ const CLOSE_SIZE = 32, CLOSE_INSET = 14, CLOSE_CLEARANCE = 10;
 /* Everything the close button needs to itself, from the modal's right edge. */
 const MODAL_CLOSE_GUTTER = CLOSE_INSET + CLOSE_SIZE + CLOSE_CLEARANCE;
 
-export const ModalShell = ({ children, onClose }) => (
-  <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-    <div onClick={e => e.stopPropagation()} style={{
-      width: "min(94vw, 640px)", height: "min(78vh, 760px)", minHeight: 420,
-      background: C.surface, borderRadius: 24, position: "relative",
-      display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
-    }}>
-      <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: CLOSE_INSET, right: CLOSE_INSET, zIndex: 5, width: CLOSE_SIZE, height: CLOSE_SIZE, borderRadius: CLOSE_SIZE / 2, border: "none", background: "rgba(26,26,26,.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-        <X size={16} color={C.ink} />
-      </button>
-      <div style={{ flex: 1, overflow: "hidden", borderRadius: 24 }}>
-        <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
-          <CloseGutter.Provider value={MODAL_CLOSE_GUTTER}>{children}</CloseGutter.Provider>
+export const ModalShell = ({ children, onClose }) => {
+  const reduced = useReducedMotion();
+  return (
+    <motion.div onClick={onClose} variants={backdrop} initial="initial" animate="animate" exit="exit"
+      transition={t(reduced, T_FAST)}
+      style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <motion.div onClick={e => e.stopPropagation()} variants={modalPop} initial="initial" animate="animate" exit="exit"
+        transition={t(reduced, T_SLOW)}
+        style={{
+          width: "min(94vw, 640px)", height: "min(78vh, 760px)", minHeight: 420,
+          background: C.surface, borderRadius: 24, position: "relative",
+          display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
+        }}>
+        <motion.button onClick={onClose} aria-label="Close" whileTap={reduced ? undefined : { scale: 0.9 }} transition={spring(reduced)}
+          style={{ position: "absolute", top: CLOSE_INSET, right: CLOSE_INSET, zIndex: 5, width: CLOSE_SIZE, height: CLOSE_SIZE, borderRadius: CLOSE_SIZE / 2, border: "none", background: "rgba(26,26,26,.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <X size={16} color={C.ink} />
+        </motion.button>
+        <div style={{ flex: 1, overflow: "hidden", borderRadius: 24 }}>
+          <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
+            <CloseGutter.Provider value={MODAL_CLOSE_GUTTER}>{children}</CloseGutter.Provider>
+          </div>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+export const VideoCaptureModal = ({ title = "Record your video", hint, onClose, onDone }) => {
+  const videoRef = useRef(null);
+  const chunksRef = useRef([]);
+  const recorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [mode, setMode] = useState("choose"); // choose | live | recorded | error
+  const [recording, setRecording] = useState(false);
+  const [secs, setSecs] = useState(0);
+  const [file, setFile] = useState(null); // { url, blob, name }
+  const timerRef = useRef(null);
+
+  const stopStream = () => { streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null; };
+  useEffect(() => () => { stopStream(); clearInterval(timerRef.current); }, []);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = stream;
+      setMode("live");
+      requestAnimationFrame(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = true;
+          videoRef.current.play();
+        }
+      });
+    } catch {
+      setMode("error");
+    }
+  };
+
+  const startRecording = () => {
+    if (!streamRef.current) return;
+    chunksRef.current = [];
+    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+      ? "video/webm;codecs=vp9,opus"
+      : MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : undefined;
+    const rec = mime ? new MediaRecorder(streamRef.current, { mimeType: mime }) : new MediaRecorder(streamRef.current);
+    rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+    rec.onstop = () => {
+      const type = rec.mimeType || "video/webm";
+      const blob = new Blob(chunksRef.current, { type });
+      const ext = type.includes("mp4") ? "mp4" : "webm";
+      const url = URL.createObjectURL(blob);
+      setFile({ url, blob, name: `recording.${ext}` });
+      stopStream();
+      setMode("recorded");
+    };
+    recorderRef.current = rec;
+    rec.start();
+    setRecording(true);
+    setSecs(0);
+    timerRef.current = setInterval(() => setSecs(s => s + 1), 1000);
+  };
+
+  const stopRecording = () => {
+    recorderRef.current?.stop();
+    setRecording(false);
+    clearInterval(timerRef.current);
+  };
+
+  const pickFile = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    setFile({ url, blob: f, name: f.name });
+    stopStream();
+    setMode("recorded");
+  };
+
+  const retake = () => {
+    if (file?.url) URL.revokeObjectURL(file.url);
+    setFile(null);
+    setMode("choose");
+  };
+
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  return (
+    <ModalShell onClose={onClose}>
+      <div style={{ padding: "24px 22px" }}>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>{title}</div>
+        {hint && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>{hint}</div>}
+
+        <div style={{ marginTop: 16, borderRadius: 16, overflow: "hidden", background: C.ink, aspectRatio: "16/10", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          {mode === "choose" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, color: "#B5B3AE" }}>
+              <Play size={28} />
+              <span style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 0.6 }}>NO VIDEO YET</span>
+            </div>
+          )}
+          {mode === "error" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "#E8A5A5", padding: 20, textAlign: "center" }}>
+              <span style={{ fontFamily: F.mono, fontSize: 11 }}>CAMERA UNAVAILABLE</span>
+              <span style={{ fontSize: 12, color: "#B5B3AE" }}>Check browser permissions, or upload a file instead.</span>
+            </div>
+          )}
+          {mode === "live" && (
+            <>
+              <video ref={videoRef} playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {recording && (
+                <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,.5)", padding: "5px 10px", borderRadius: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, background: "#E8544A" }} className="dot" />
+                  <span style={{ fontFamily: F.mono, fontSize: 11, color: C.white }}>{fmt(secs)}</span>
+                </div>
+              )}
+            </>
+          )}
+          {mode === "recorded" && file && (
+            <video src={file.url} controls playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          {mode === "choose" && (<>
+            <Btn style={{ flex: 1 }} onClick={startCamera}><Play size={15} /> Record with camera</Btn>
+            <Btn kind="ghost" style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}><Upload size={15} /> Upload file</Btn>
+          </>)}
+          {mode === "error" && (
+            <Btn style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}><Upload size={15} /> Upload file instead</Btn>
+          )}
+          {mode === "live" && !recording && (
+            <Btn style={{ flex: 1 }} onClick={startRecording}>● Start recording</Btn>
+          )}
+          {mode === "live" && recording && (
+            <Btn kind="dark" style={{ flex: 1 }} onClick={stopRecording}>■ Stop</Btn>
+          )}
+          {mode === "recorded" && (<>
+            <Btn kind="ghost" style={{ flex: 1 }} onClick={retake}>Retake</Btn>
+            <Btn style={{ flex: 1 }} onClick={() => onDone(file)}><Check size={15} /> Use this video</Btn>
+          </>)}
+        </div>
+        <input ref={fileInputRef} type="file" accept="video/*" onChange={pickFile} style={{ display: "none" }} />
       </div>
-    </div>
-  </div>
-);
+    </ModalShell>
+  );
+};
 
 export const AuthCardShell = ({ children }) => (
   <div style={{
@@ -269,7 +434,9 @@ export const AuthCardShell = ({ children }) => (
   </div>
 );
 
-export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole, onSettings, onLogout }) => (
+export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole, onSettings, onLogout }) => {
+  const reduced = useReducedMotion();
+  return (
   <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.line}`, background: C.white, display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ padding: "26px 22px 20px" }}>
       <BrandLogo variant="horizontal" color="purple" height={26} />
@@ -278,26 +445,28 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
       {nav.map(([id, Icon, label]) => {
         const active = tab === id && !overlay;
         return (
-          <button key={id} onClick={() => onSelect(id)} style={{
+          <motion.button key={id} onClick={() => onSelect(id)} whileTap={reduced ? undefined : { scale: 0.98 }} transition={spring(reduced)} style={{
             display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 12,
             border: "none", cursor: "pointer", textAlign: "left", fontFamily: F.sans, fontWeight: 600, fontSize: 14,
             background: active ? C.purpleTint : "transparent", color: active ? C.purple : C.ink, width: "100%",
+            position: "relative",
           }}>
+            {active && (
+              <motion.div layoutId="sidebar-active" transition={spring(reduced)}
+                style={{ position: "absolute", left: 0, top: 10, bottom: 10, width: 3, borderRadius: 2, background: C.purple }} />
+            )}
             <Icon size={18} color={active ? C.purple : C.gray} strokeWidth={active ? 2.4 : 2} />
             {label}
-          </button>
+          </motion.button>
         );
       })}
     </div>
     <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
-      {/* The signed-in account, not a sample one. This rail read "Alex Reyes" /
-          "Jordan Clarke" for every user regardless of who was looking. */}
       <Monogram name={name || "—"} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
       </div>
-      {/* Founder console — mentees never see this door. */}
       {adminConsole && (
         <button onClick={() => window.open("/app/#/admin", "_blank", "noopener")} title="Founder console"
           style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><Shield size={16} color={C.amber} /></button>
@@ -306,7 +475,8 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
       <button onClick={onLogout} title="Log out" style={{ background: "none", border: "none", cursor: "pointer", padding: 6, borderRadius: 8, display: "flex" }}><LogOut size={16} color={C.gray} /></button>
     </div>
   </div>
-);
+  );
+};
 
 /* Containment for a screen that throws while rendering.
 
@@ -435,15 +605,15 @@ const PhaseForm = ({ initial, onCancel, onSave }) => {
  * caller reconstructs the full array and persists it — this component never
  * calls the save API itself.
  */
-export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, emptyText }) => {
-  const [editing, setEditing] = useState(null); // null | "new" | phase
+export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, emptyText, autoOpenNew = false }) => {
+  const [editing, setEditing] = useState(autoOpenNew && phases.length === 0 ? "new" : null); // null | "new" | phase
 
   if (!editable && phases.length === 0) return null;
 
   return (
     <>
       {phases.length === 0 && editable && (
-        <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, padding: "2px 0 16px" }}>
+        <div className="fade-up" style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, padding: "2px 0 16px" }}>
           {emptyText || "No phases yet. Add the first step of your program — what a mentee does from kickoff to graduation."}
         </div>
       )}
@@ -452,7 +622,7 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
         const current = !!completedIds && !done && phases.slice(0, i).every((ph) => completedIds.includes(ph.id));
         const showReward = p.reward && (!completedIds || done);
         return (
-          <div key={p.id} style={{ display: "flex", gap: 12 }}>
+          <div key={p.id} className="fade-up" style={{ display: "flex", gap: 12, animationDelay: `${Math.min(i, 8) * 0.05}s` }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0 }}>
               <div onClick={onToggle ? () => onToggle(p, !done) : undefined} style={{
                 width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 3,

@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter, labelOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
@@ -94,7 +94,13 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName }) => {
     const filledGoals = goals.filter(g => g.trim().length > 2);
     const text = step.type === "goals" ? filledGoals.map((g, i) => `${i + 1}. ${g}`).join("\n")
       : step.type === "write" ? writeText : sel.join(" · ");
-    const value = step.type === "goals" ? filledGoals : step.type === "write" ? writeText : sel;
+    // Single-select must be a string — submitting `sel` (an array) made
+    // track/industry land on profiles as ["University"] and crash any screen
+    // that called `.toUpperCase()` on them.
+    const value = step.type === "goals" ? filledGoals
+      : step.type === "write" ? writeText
+      : step.type === "single" ? (sel[0] ?? "")
+      : sel;
     const next = { ...answers, [step.id]: value };
     setAnswers(next);
     setMsgs(m => [...m, { who: "user", text }, { who: "xp", text: `+${step.xp} ${unit}` }]);
@@ -474,7 +480,7 @@ export const MenteeDetailSheet = ({ m, close, footer }) => (
         <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
-          {m.track && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {m.track.toUpperCase()}</div>}
+          {labelOf(m.track) && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
         </div>
       </div>
     </Card>
@@ -528,14 +534,14 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
 
   const passes = (m) =>
     (filters.tier === "Any" || m.tier === filters.tier) &&
-    (filters.industry === "Any" || m.industry === filters.industry);
+    (filters.industry === "Any" || labelOf(m.industry) === filters.industry);
   const filtered = safeRoster.filter(passes);
   const deck = filtered;
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
 
   // Industries offered as filters are the ones actually present in the roster,
   // so the list never promises a category nobody occupies.
-  const industries = ["Any", ...new Set(safeRoster.map(m => m.industry).filter(Boolean))];
+  const industries = ["Any", ...new Set(safeRoster.map(m => labelOf(m.industry)).filter(Boolean))];
 
   const decide = async (m, dir) => {
     if (dir === "blocked") { toast("All 3 mentor seats are held"); return; }
@@ -696,7 +702,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
   const outbox = safeMatches.filter(m => m.status === "pending" && !m.awaitingYou);
   const taken = accepted.length;
 
-  const passes = (m) => filters.track === "Any" || m.track === filters.track;
+  const passes = (m) => filters.track === "Any" || labelOf(m.track) === filters.track;
   const deck = safeRoster.filter(passes);
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
 
@@ -743,7 +749,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
         <div style={{ height: "42%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
-          {m.track && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {String(m.track).toUpperCase()}</div>}
+          {labelOf(m.track) && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>

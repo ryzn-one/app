@@ -27,12 +27,20 @@ const FIELDS = {
 const MAX_ITEMS = 24;      // a multi-select answer
 const MAX_LEN = 400;       // one written answer or goal
 
+/* Single-select / write answers. Chat used to submit `sel` (an array) for
+   every non-write step, so track/industry landed on profiles as ["University"]
+   and any `.toUpperCase()` in the UI threw during render. */
+const SCALAR = new Set(["track", "industry", "capacity", "role", "why"]);
+
 const cleanString = (v) => (typeof v === "string" ? v.trim().slice(0, MAX_LEN) : null);
 
 const cleanList = (v) =>
   Array.isArray(v)
     ? v.map(cleanString).filter(Boolean).slice(0, MAX_ITEMS)
     : [];
+
+/** First usable string — arrays from single-select chat answers collapse here. */
+const asScalar = (v) => (Array.isArray(v) ? cleanString(v[0]) : cleanString(v));
 
 /** Answers arrive as string | string[] depending on the question type. */
 function sanitise(answers, role) {
@@ -41,12 +49,17 @@ function sanitise(answers, role) {
   for (const key of allowed) {
     const v = answers?.[key];
     if (v === undefined || v === null) continue;
+    if (SCALAR.has(key)) {
+      const s = asScalar(v);
+      if (s) out[key] = s;
+      continue;
+    }
     if (Array.isArray(v)) {
       const list = cleanList(v);
       if (list.length) out[key] = list;
     } else {
       const s = cleanString(v);
-      if (s) out[key] = s;
+      if (s) out[key] = [s];
     }
   }
   return out;

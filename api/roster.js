@@ -3,6 +3,7 @@ import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
 import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
 import { isMentorRole } from "../lib/roles.js";
+import { asLabel } from "../lib/scalars.js";
 
 /**
  * GET /api/roster — the people on the other side of the platform.
@@ -165,7 +166,7 @@ async function handler(request, user) {
         ? {
             ...base,
             headline: p.headline ?? null,
-            industry: p.industry ?? null,
+            industry: asLabel(p.industry),
             tier: p.tier ?? "Scout",
             impact: p.impact ?? 0,
             expertise: p.expertise ?? [],
@@ -175,7 +176,7 @@ async function handler(request, user) {
           }
         : {
             ...base,
-            track: p.track ?? null,
+            track: asLabel(p.track),
             interests: p.interests ?? [],
             skills: p.skills ?? [],
             goals: p.goals ?? [],

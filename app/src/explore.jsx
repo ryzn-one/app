@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, SlidersHorizontal, Crown, School, Check, Clock, X } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Btn, Monogram, HeaderRow, firstNameOf } from "./ui.jsx";
+import { Card, Btn, Monogram, HeaderRow, firstNameOf, labelOf } from "./ui.jsx";
 import {
   FilterSheet, MentorDetailSheet, MenteeDetailSheet, AffinityTag, TagRow, EmptyRoster,
 } from "./chatmatch.jsx";
@@ -37,9 +37,11 @@ function StateChip({ state }) {
 }
 
 function PersonRow({ p, wanted, onOpen }) {
+  const track = labelOf(p.track);
+  const industry = labelOf(p.industry);
   const sub = wanted === "mentor"
-    ? [p.headline, p.industry].filter(Boolean).join(" · ")
-    : [p.track, p.goals?.[0]].filter(Boolean).join(" · ");
+    ? [p.headline, industry].filter(Boolean).join(" · ")
+    : [track, p.goals?.[0]].filter(Boolean).join(" · ");
   const tags = wanted === "mentor" ? p.expertise : p.interests;
   return (
     <Card onClick={() => onOpen(p)} style={{ opacity: p.matchState === "declined" ? 0.62 : 1 }}>
@@ -50,7 +52,7 @@ function PersonRow({ p, wanted, onOpen }) {
             <span style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
             {wanted === "mentor"
               ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, color: C.deep, letterSpacing: 0.8, flexShrink: 0 }}><Crown size={10} />{(p.tier || "Scout").toUpperCase()}</span>
-              : p.track && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, color: C.deep, letterSpacing: 0.8, flexShrink: 0 }}><School size={10} />{p.track.toUpperCase()}</span>}
+              : track && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, color: C.deep, letterSpacing: 0.8, flexShrink: 0 }}><School size={10} />{track.toUpperCase()}</span>}
           </div>
           {sub && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>}
         </div>
@@ -85,7 +87,7 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
     const t = setTimeout(async () => {
       try {
         const { people: rows } = await exploreRoster({ q: q.trim() || undefined });
-        if (!cancelled) { setPeople(rows); setError(null); }
+        if (!cancelled) { setPeople(Array.isArray(rows) ? rows : []); setError(null); }
       } catch (e) {
         if (!cancelled) setError(e?.message || "Couldn’t load the Roster.");
       } finally {
@@ -101,19 +103,19 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
   const sections = useMemo(() => wanted === "mentor"
     ? [
         { key: "tier", label: "Tier", options: ["Any", "Scout", "Pathfinder", "Architect", "Legend"] },
-        { key: "industry", label: "Industry", options: ["Any", ...new Set(people.map(p => p.industry).filter(Boolean))] },
+        { key: "industry", label: "Industry", options: ["Any", ...new Set(people.map(p => labelOf(p.industry)).filter(Boolean))] },
       ]
     : [{ key: "track", label: "Track", options: ["Any", "University", "High school"] }],
     [people, wanted]);
 
-  const passes = (p) => Object.entries(filters).every(([k, v]) => v === "Any" || p[k] === v);
+  const passes = (p) => Object.entries(filters).every(([k, v]) => v === "Any" || labelOf(p[k]) === v);
   const list = people.filter(passes);
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
 
   const act = async (p, fn) => {
     if (busy) return;
     setBusy(true);
-    try { await fn(); setDetail(null); const { people: rows } = await exploreRoster({ q: q.trim() || undefined }); setPeople(rows); }
+    try { await fn(); setDetail(null); const { people: rows } = await exploreRoster({ q: q.trim() || undefined }); setPeople(Array.isArray(rows) ? rows : []); }
     catch (e) { toast(e?.message || "That didn’t go through."); }
     finally { setBusy(false); }
   };

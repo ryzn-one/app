@@ -4,8 +4,17 @@ import {
   Upload, Heart, Eye, Send, Pin, Sparkles,
 } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Label, Btn, Monogram, HeaderRow, Bar } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
+
+/** Turn a VideoCaptureModal result into a real File for uploadMedia. */
+const captureToFile = (captured) => {
+  if (!captured?.blob) return null;
+  if (captured.blob instanceof File) return captured.blob;
+  return new File([captured.blob], captured.name || "recording.webm", {
+    type: captured.blob.type || "video/webm",
+  });
+};
 
 /* ————————————————— ORBIT FEED —————————————————
    One post model, two screens: the mentor writes it (MentorFeed), the cohort
@@ -181,14 +190,12 @@ export const Composer = ({ onPublish, name, userId }) => {
   const [kind, setKind] = useState("status");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
-  /* Was a boolean called `attached` that a button flipped to true. There was no
-     <input type="file"> anywhere in the app, so "Photo attached" was a label
-     over nothing. */
   const [media, setMedia] = useState(null);
   const [fileName, setFileName] = useState("");
   const [progress, setProgress] = useState(null);
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const fileRef = useRef(null);
 
   const needsFile = kind === "photo" || kind === "video" || kind === "resource";
@@ -200,17 +207,21 @@ export const Composer = ({ onPublish, name, userId }) => {
 
   const reset = () => { setText(""); setTitle(""); setMedia(null); setFileName(""); setProgress(null); setErr(null); setKind("status"); };
 
-  const pick = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";           // so re-picking the same file still fires
+  const uploadFile = async (file) => {
     if (!file) return;
     setErr(null); setFileName(file.name); setProgress(0);
     try {
-      setMedia(await uploadMedia(file, kind, setProgress, userId));
+      setMedia(await uploadMedia(file, kind === "video" ? "video" : kind, setProgress, userId));
     } catch (e2) {
       setErr(e2?.message || "That upload didn’t finish.");
       setFileName("");
     } finally { setProgress(null); }
+  };
+
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    await uploadFile(file);
   };
 
   const go = async () => {
@@ -263,13 +274,35 @@ export const Composer = ({ onPublish, name, userId }) => {
               <button onClick={() => { setMedia(null); setFileName(""); }} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: F.mono, fontSize: 9.5, color: C.teal, fontWeight: 700, flexShrink: 0 }}>REMOVE</button>
             </div>
           ) : (
-            <button onClick={() => fileRef.current?.click()} style={{
-              width: "100%", marginTop: 8, border: `1.5px dashed ${C.line}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
-              background: C.surface, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.gray,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            }}><Upload size={14} /> {kind === "photo" ? "Add a photo" : kind === "video" ? "Upload a video" : "Attach a file"}</button>
+            kind === "video" ? (
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button onClick={() => setCaptureOpen(true)} style={{
+                  flex: 1, border: `1.5px dashed ${C.purple}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
+                  background: C.purpleTint, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.purple,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                }}><Play size={14} /> Record or upload</button>
+              </div>
+            ) : (
+              <button onClick={() => fileRef.current?.click()} style={{
+                width: "100%", marginTop: 8, border: `1.5px dashed ${C.line}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
+                background: C.surface, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.gray,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+              }}><Upload size={14} /> {kind === "photo" ? "Add a photo" : "Attach a file"}</button>
+            )
           )}
         </>
+      )}
+
+      {captureOpen && (
+        <VideoCaptureModal
+          title="Add a video to your post"
+          hint="Record with your camera, or upload a clip from your device."
+          onClose={() => setCaptureOpen(false)}
+          onDone={async (captured) => {
+            setCaptureOpen(false);
+            await uploadFile(captureToFile(captured));
+          }}
+        />
       )}
 
       {err && <div style={{ marginTop: 8, fontSize: 12.5, color: C.coral, lineHeight: 1.45 }}>{err}</div>}
@@ -278,9 +311,7 @@ export const Composer = ({ onPublish, name, userId }) => {
         {Object.entries(KIND_META).map(([id, m]) => {
           const on = kind === id, Icon = m.icon;
           return (
-            // Switching kind drops the file: a PDF picked as a "resource" isn't
-            // a valid "photo", and the accept filter has already changed.
-            <button key={id} disabled={uploading} onClick={() => { setKind(id); setMedia(null); setFileName(""); setErr(null); }} style={{
+            <button key={id} disabled={uploading} onClick={() => { setKind(id); setMedia(null); setFileName(""); setErr(null); setCaptureOpen(false); }} style={{
               display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: uploading ? "default" : "pointer", borderRadius: 10,
               padding: "7px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5,
               background: on ? m.bg : "transparent", color: on ? m.c : C.gray, opacity: uploading && !on ? 0.5 : 1,
@@ -306,11 +337,9 @@ export const Composer = ({ onPublish, name, userId }) => {
 function GreetingCard({ onDone, userId }) {
   const [progress, setProgress] = useState(null);
   const [err, setErr] = useState(null);
-  const ref = useRef(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
-  const pick = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
+  const uploadGreetingFile = async (file) => {
     if (!file) return;
     setErr(null); setProgress(0);
     try {
@@ -325,7 +354,6 @@ function GreetingCard({ onDone, userId }) {
     <Card style={{ border: `1.5px dashed ${C.purple}` }}>
       <Label color={C.purple}>Greeting video · pinned to the top of your Orbit</Label>
       <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>60–90 seconds. Who you are, who you help, one honest reason you’re here. Mentees who watch a greeting are twice as likely to finish Stage 1.</div>
-      <input ref={ref} type="file" accept={ACCEPT.video} onChange={pick} style={{ display: "none" }} />
       {progress !== null ? (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.gray }}>
@@ -334,9 +362,20 @@ function GreetingCard({ onDone, userId }) {
           <div style={{ marginTop: 8 }}><Bar pct={progress / 100} /></div>
         </div>
       ) : (
-        <Btn style={{ marginTop: 12 }} onClick={() => ref.current?.click()}><Upload size={15} /> Upload your greeting · +25 Impact</Btn>
+        <Btn style={{ marginTop: 12 }} onClick={() => setCaptureOpen(true)}><Play size={15} /> Record or upload greeting · +25 Impact</Btn>
       )}
       {err && <div style={{ marginTop: 8, fontSize: 12.5, color: C.coral, lineHeight: 1.45 }}>{err}</div>}
+      {captureOpen && (
+        <VideoCaptureModal
+          title="Record your greeting"
+          hint="60–90 seconds. Who you are, who you help, one honest reason you're here."
+          onClose={() => setCaptureOpen(false)}
+          onDone={async (captured) => {
+            setCaptureOpen(false);
+            await uploadGreetingFile(captureToFile(captured));
+          }}
+        />
+      )}
     </Card>
   );
 }
