@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
 import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
@@ -194,7 +194,10 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
 
 export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   const st = STATUS[mentee.status] || STATUS.active;
-  const goal = mentee.goals?.[0] ?? null;
+  const goals = Array.isArray(mentee.goals) ? mentee.goals : [];
+  const skills = Array.isArray(mentee.skills) ? mentee.skills : [];
+  const interests = Array.isArray(mentee.interests) ? mentee.interests : [];
+  const track = labelOf(mentee.track);
   const [exercises, setExercises] = useState([]);
   const [exLoading, setExLoading] = useState(true);
   const [phases, setPhases] = useState([]);
@@ -250,6 +253,19 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
       <HeaderRow title={mentee.name} onBack={back}
         right={<span style={{ fontFamily: F.mono, fontSize: 9.5, background: st.bg, color: st.c, padding: "5px 9px" }}>{st.label.toUpperCase()}</span>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <Monogram name={mentee.name} size={58} bg={C.purple} color={C.white} radius={0} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 19, fontWeight: 700 }}>{mentee.name}</div>
+              {track && (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}>
+                  <School size={11} /> {track.toUpperCase()}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[[`Wk ${mentee.week}`, "program"], [`${mentee.streak}`, "streak"], [`${mentee.badges ?? 0}`, "badges"]].map(([n, l]) => (
             <Card key={l} style={{ padding: 12, textAlign: "center" }}>
@@ -283,16 +299,46 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
           </Card>
         )}
         <Card>
-          <Label>Their goals</Label>
-          {goal ? (
-            <div style={{ borderLeft: `2px solid ${C.purple}`, paddingLeft: 12, marginTop: 12 }}>
-              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>GOAL 1</div>
-              <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 3, fontStyle: "italic" }}>“{goal}”</div>
+          <Label color={C.purple}>Their program goals</Label>
+          {goals.length > 0 ? goals.map((g, i) => (
+            <div key={`${i}-${g}`} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
+              <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.purple, marginTop: 1 }}>0{i + 1}</span>
+              <div style={{ fontSize: 13, lineHeight: 1.45, fontStyle: "italic" }}>“{g}”</div>
             </div>
-          ) : (
+          )) : (
             <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>Nothing written yet.</div>
           )}
         </Card>
+        {skills.length > 0 && (
+          <Card>
+            <Label color={C.teal}>Skills they claim today</Label>
+            <div style={{ marginTop: 10 }}><TagRow items={skills} bg={C.tealTint} color={C.teal} border={false} /></div>
+          </Card>
+        )}
+        {interests.length > 0 && (
+          <Card>
+            <Label color={C.amber}>What pulls at them</Label>
+            <div style={{ marginTop: 10 }}><TagRow items={interests} /></div>
+          </Card>
+        )}
+        {Array.isArray(mentee.influences) && mentee.influences.length > 0 && (
+          <Card>
+            <Label>Who they follow</Label>
+            <div style={{ marginTop: 10 }}><TagRow items={mentee.influences} /></div>
+          </Card>
+        )}
+        {mentee.education && (
+          <Card>
+            <Label>Education</Label>
+            <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{mentee.education}</div>
+          </Card>
+        )}
+        {mentee.experience && (
+          <Card>
+            <Label>Experience & projects</Label>
+            <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{mentee.experience}</div>
+          </Card>
+        )}
         <Card>
           <Label>Exercise journal</Label>
           {exLoading && <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 12, letterSpacing: 0.6 }}>LOADING…</div>}
@@ -316,69 +362,11 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   );
 };
 
-/* Sessions are derived from the real cohort, one opening session per mentee.
-   Scheduling doesn't exist yet, so no date is claimed — the old version printed
-   fixed calendar slots ("Tue Jul 21 · 5:00 PM") for meetings nobody had booked,
-   including for two mentees who weren't real. */
-export const MentorSessions = ({ u }) => {
-  const sessions = (u.cohort || []).map((m, i) => ({
-    id: m.id || i + 1,
-    mentee: m.name,
-    week: m.week || 1,
-    agenda: ["Intro: walk through their goals", "Set the weekly cadence and channel", "Assign the Week 1 exercise track"],
-  }));
-  if (sessions.length === 0) return (
-    <div>
-      <HeaderRow title="Sessions" />
-      <div data-tour="mentor-sessions-list" style={{ padding: "0 20px 20px" }}>
-        <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Calendar size={18} color={C.gray} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>No sessions yet</div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>An opening session appears here for each mentee who joins your cohort.</div>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-  return (
-    <div>
-      <HeaderRow title="Sessions" right={<Label>{sessions.length} SCHEDULED</Label>} />
-      <div data-tour="mentor-sessions-list" style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        {sessions.map(s => (
-          <Card key={s.id}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Monogram name={s.mentee} size={40} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{s.mentee}</div>
-                <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 2 }}>OPENING SESSION · WEEK {s.week} · NOT YET BOOKED</div>
-              </div>
-              <Calendar size={16} color={C.gray} />
-            </div>
-            <div style={{ marginTop: 12, background: C.surface, borderRadius: 12, padding: 12 }}>
-              <Label>Agenda · auto-built from Week {s.week}</Label>
-              {s.agenda.map((a, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, marginTop: 8, fontSize: 13, lineHeight: 1.45 }}>
-                  <span style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 2 }}>{String(i + 1).padStart(2, "0")}</span>{a}
-                </div>
-              ))}
-            </div>
-            {/* Mark complete / Bonus exercise / Leave a note lived here. All
-                three set a local flag and toasted — nothing was assigned to
-                anyone, no note existed to send, and the "+15 Impact" reverted on
-                refresh. Sessions have no scheduling or logging backend yet, so
-                the card says what it is. */}
-            <div style={{ marginTop: 12, fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", letterSpacing: 0.6 }}>
-              BOOKING AND SESSION LOGGING OPEN SOON · AGREE A TIME IN YOUR THREAD FOR NOW
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-};
+/* Sessions moved to sessions.jsx and became real: /api/sessions holds one
+   document per booking, both sides read it, and a date only appears once the
+   other side has picked one of the proposed times. What used to be here derived
+   a card per mentee, printed "NOT YET BOOKED" under every one, and told mentors
+   to agree a time in their thread because nothing could be booked at all. */
 
 /* The quarterly board. Every competitor row was invented — named mentors with
    Impact scores in the 800–1200 range, which also set the implied bar for a
@@ -429,11 +417,13 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program }) => {
+export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
   const [contentTab, setContentTab] = useState("feed");
+  const [editMode, setEditMode] = useState(null);
+  const [editValues, setEditValues] = useState({});
   const posts = Array.isArray(feed) ? feed : [];
   const cohort = u?.cohort || [];
   const phases = program?.phases || [];
@@ -445,6 +435,16 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
   ];
   const strength = checklist.reduce((a, [, ok]) => a + (ok ? 25 : 0), 0);
   const resourceCount = posts.filter(p => p.kind === "video" || p.kind === "resource").length;
+
+  const startEdit = (field) => {
+    setEditMode(field);
+    setEditValues({ [field]: u?.[field] || "" });
+  };
+
+  const cancelEdit = () => {
+    setEditMode(null);
+    setEditValues({});
+  };
   return (
     <div>
       <HeaderRow title="Your profile" right={
@@ -489,6 +489,18 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
             <Card>
               <Label>Who you want to work with</Label>
               <div style={{ marginTop: 10 }}><TagRow items={u.menteeFit} /></div>
+            </Card>
+          )}
+          {u?.education && (
+            <Card>
+              <Label>Education</Label>
+              <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{u.education}</div>
+            </Card>
+          )}
+          {u?.experience && (
+            <Card>
+              <Label>Current role</Label>
+              <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{u.experience}</div>
             </Card>
           )}
           {phases.length > 0 && (
@@ -543,6 +555,49 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
                 {phases.length > 3 && (
                   <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>+{phases.length - 3} MORE · OPEN TO EDIT</div>
                 )}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <Label>Background</Label>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Add your education, current role, or other details to complete your profile.</div>
+
+            {editMode === "education" ? (
+              <div style={{ marginTop: 12 }}>
+                <textarea value={editValues.education || ""} onChange={e => setEditValues({ ...editValues, education: e.target.value })} placeholder="e.g., Stanford University, Computer Science (2015)"
+                  style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
+                  <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("education", editValues.education); setEditMode(null); }}>Save</Btn>
+                </div>
+              </div>
+            ) : (
+              <div onClick={() => startEdit("education")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 12, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>EDUCATION</div>
+                  <div style={{ fontSize: 13.5, marginTop: 4, color: u?.education ? C.ink : C.gray, fontStyle: u?.education ? "normal" : "italic" }}>{u?.education || "Add your education"}</div>
+                </div>
+                <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
+              </div>
+            )}
+
+            {editMode === "experience" ? (
+              <div style={{ marginTop: 12 }}>
+                <textarea value={editValues.experience || ""} onChange={e => setEditValues({ ...editValues, experience: e.target.value })} placeholder="e.g., Senior Product Manager at Meta (2019–present)"
+                  style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
+                  <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("experience", editValues.experience); setEditMode(null); }}>Save</Btn>
+                </div>
+              </div>
+            ) : (
+              <div onClick={() => startEdit("experience")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 10, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>CURRENT ROLE</div>
+                  <div style={{ fontSize: 13.5, marginTop: 4, color: u?.experience ? C.ink : C.gray, fontStyle: u?.experience ? "normal" : "italic" }}>{u?.experience || "Add your current role"}</div>
+                </div>
+                <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
               </div>
             )}
           </Card>

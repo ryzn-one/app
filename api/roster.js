@@ -174,6 +174,8 @@ async function handler(request, user) {
             menteeFit: p.menteeFit ?? [],
             why: p.why ?? null,
             capacity: p.capacity ?? null,
+            education: p.education ?? null,
+            experience: p.experience ?? null,
           }
         : {
             ...base,
@@ -181,6 +183,9 @@ async function handler(request, user) {
             interests: p.interests ?? [],
             skills: p.skills ?? [],
             goals: p.goals ?? [],
+            influences: p.influences ?? [],
+            education: p.education ?? null,
+            experience: p.experience ?? null,
           };
     });
 

@@ -607,12 +607,18 @@ export default function RyznAdmin() {
         <Card>
           <Label color={C.purple}>Ryzn for Teams</Label>
           <div style={{ fontSize: 14, lineHeight: 1.55, marginTop: 8 }}>
-            Not built. The org console that used to sit behind this button was a simulation —
-            a fictional company, invented mentors and mentees, and shared demo passwords in the
-            bundle. <b>/app/#/teams</b> is now the pitch plus a waitlist that writes to the
-            <code style={{ fontFamily: F.mono, fontSize: 12 }}> teams_interest</code> collection.
+            Live. Any mentor can create an organisation at <b>/app/#/teams</b> and owns it: they mint
+            org-scoped mentor codes, seat their own people, promote org admins, and open an Orbit across
+            them. Orgs are in <code style={{ fontFamily: F.mono, fontSize: 12 }}>orgs</code> and
+            <code style={{ fontFamily: F.mono, fontSize: 12 }}> org_members</code>; the waitlist for
+            companies with nobody on Ryzn yet still writes to
+            <code style={{ fontFamily: F.mono, fontSize: 12 }}> teams_interest</code>.
           </div>
-          <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => { window.location.hash = "#/teams"; }}><Building2 size={15} /> View the Teams page</Btn>
+          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.55, marginTop: 10 }}>
+            Org admin is scoped to one organisation and is not this console. An org code grants the
+            <b> mentor</b> role and nothing more — only an admin code minted here opens the founder console.
+          </div>
+          <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => { window.location.hash = "#/teams"; }}><Building2 size={15} /> Open the Teams page</Btn>
         </Card>
         <Card>
           <Label>Mentor invite page</Label>

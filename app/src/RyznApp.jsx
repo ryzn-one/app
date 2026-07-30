@@ -11,18 +11,20 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
-import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction } from "./lib/auth-client.js";
+import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
 import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
 import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
-import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
+import { MentorDash, MenteeDetailScreen, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
+import { SessionsScreen } from "./sessions.jsx";
 import { ExploreScreen } from "./explore.jsx";
 import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
+import { fmtDate } from "./lib/calendar.js";
 
 /* ————————————————— ROOT SHELL —————————————————
 
@@ -55,10 +57,12 @@ export const STAGE_LABEL = { splash: "Splash", role: "Role", welcome: "Welcome",
 /** Progress figures read from the caller's own record. They used to be fixed
     ("34 of 100 days", "2 of 3 milestone exercises") regardless of who was
     looking. */
-export const makeMenteeBadges = (earned = {}, streak = 0, milestones = 0) => BADGE_DEFS.map(b => {
+export const makeMenteeBadges = (earned = {}, streak = 0, milestones = 0, firstSessionLabel = null) => BADGE_DEFS.map(b => {
   const out = { ...b, earned: earned[b.id] || null };
   if (b.id === "midway" && !out.earned) { out.progress = [milestones, 3]; out.progressLabel = `${milestones} of 3 milestone exercises`; }
-  if (b.id === "first" && !out.earned) { out.progress = [0, 1]; out.progressLabel = "Not booked yet"; }
+  // "First Session" now reads a real booking off /api/sessions rather than
+  // always claiming nothing is booked.
+  if (b.id === "first" && !out.earned) { out.progress = [firstSessionLabel ? 1 : 0, 1]; out.progressLabel = firstSessionLabel || "Not booked yet"; }
   if (b.id === "streak100" && !out.earned) { out.progress = [streak, 100]; out.progressLabel = `${streak} of 100 days`; }
   return out;
 });
@@ -91,6 +95,8 @@ function toAppUser(me) {
       // profile was the one place they weren't rendered.
       expertise: p.expertise ?? [],
       menteeFit: p.menteeFit ?? [],
+      education: p.education ?? null,
+      experience: p.experience ?? null,
     };
   }
   return {
@@ -114,6 +120,11 @@ function toAppUser(me) {
     supportMentors: me.supportMentors ?? [],
     track: Array.isArray(p.track) ? (p.track[0] ?? null) : (p.track ?? null),
     goals: p.goals ?? [],
+    skills: p.skills ?? [],
+    interests: p.interests ?? [],
+    influences: p.influences ?? [],
+    education: p.education ?? null,
+    experience: p.experience ?? null,
     earned: p.earned || {},
   };
 }
@@ -159,6 +170,10 @@ export default function RyznComplete() {
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState(null);
+  const [sessionBusy, setSessionBusy] = useState(false);
 
   const toast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2000); };
   const addXp = (n) => { setXp(x => x + n); toast(`+${n} ${role === "mentee" ? "XP" : "IMPACT"}`); };
@@ -343,6 +358,75 @@ export default function RyznComplete() {
     return res;
   };
 
+  /* — 1:1 sessions —
+     Both sides read the same documents, so a booking made by one is visible to
+     the other on their next load. Polled alongside the app being open because a
+     proposal can land while the tab sits there. */
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    setSessionsError(null);
+    try {
+      const { sessions: rows } = await fetchSessions();
+      setSessions(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      console.error("[ryzn] /api/sessions failed:", err);
+      setSessionsError(err);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "app") return;
+    loadSessions();
+    const tick = setInterval(loadSessions, 60_000);
+    const onVis = () => { if (document.visibilityState === "visible") loadSessions(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(tick); document.removeEventListener("visibilitychange", onVis); };
+  }, [phase, loadSessions]);
+
+  /* Who the caller can book with: an accepted pairing on either side. The server
+     enforces the same rule — this only decides what the composer offers. */
+  const sessionPeople = useMemo(() => {
+    if (!user) return [];
+    if (role === "mentor") return (user.cohort || []).map(m => ({ id: m.id, name: m.name, week: m.week }));
+    return [
+      ...(user.mentorId ? [{ id: user.mentorId, name: user.mentorName, week: user.week }] : []),
+      ...(user.supportMentors || []).map(m => ({ id: m.id, name: m.name, week: user.week })),
+    ];
+  }, [user, role]);
+
+  const createSessionHandler = async (body) => {
+    const res = await createSession(body);
+    await loadSessions();
+    const who = (sessionPeople.find(p => p.id === body.otherId)?.name || "them").split(" ")[0];
+    toast(`Times sent to ${who}`);
+    return res;
+  };
+
+  const sessionActionHandler = async (id, action, extra) => {
+    if (sessionBusy) return;
+    setSessionBusy(true);
+    try {
+      const res = await sessionAction(id, action, extra);
+      await loadSessions();
+      const said = {
+        accept: "Booked · add it to your calendar",
+        decline: "Declined",
+        reschedule: "New times sent",
+        cancel: "Session canceled",
+        complete: "Session logged",
+        update: "Session updated",
+      };
+      if (said[action]) toast(said[action]);
+      return res;
+    } catch (e) {
+      toast(e?.message || "Couldn’t save that.");
+    } finally {
+      setSessionBusy(false);
+    }
+  };
+
   /* Every deck decision is a server write. The roster is refetched afterwards
      because it excludes anyone already answered for, so the card leaves the
      deck as a consequence of the write rather than of local bookkeeping. */
@@ -435,11 +519,27 @@ export default function RyznComplete() {
     setStage("unlock");
   };
 
+  /* The First Session badge, derived from real bookings: earned once a session
+     has been logged, in progress once one is on the calendar. */
+  const firstSession = useMemo(() => {
+    if (role !== "mentee") return null;
+    const done = sessions.find(s => s.status === "completed");
+    if (done) return { earned: fmtDate(done.confirmedSlot?.start || done.completedAt) };
+    const next = sessions
+      .filter(s => s.status === "confirmed")
+      .sort((a, b) => new Date(a.confirmedSlot.start) - new Date(b.confirmedSlot.start))[0];
+    return next ? { label: `Booked for ${fmtDate(next.confirmedSlot.start)}` } : null;
+  }, [sessions, role]);
+
   const badges = user && role === "mentee"
     ? makeMenteeBadges(
-        midwayEarned ? { ...user.earned, midway: "Today" } : user.earned,
+        {
+          ...(midwayEarned ? { ...user.earned, midway: "Today" } : user.earned),
+          ...(firstSession?.earned ? { first: firstSession.earned } : {}),
+        },
         user.streak || 0,
-        user.milestones || 0
+        user.milestones || 0,
+        firstSession?.label || null
       )
     : [];
 
@@ -552,8 +652,16 @@ export default function RyznComplete() {
     } catch (e) { toast(e.message || "Couldn’t send that invitation."); }
   };
 
+  const updateUserProfile = async (field, value) => {
+    try {
+      await updateProfile({ [field]: value });
+      await refreshUser();
+      toast("Profile updated");
+    } catch (e) { toast(e.message || "Couldn’t save that."); }
+  };
+
   /* Seats, in one place — Explore and the add decks must agree on whether
-     there's room, and the answer differs per side. */
+     there’s room, and the answer differs per side. */
   const mentorCapacity = session?.profile?.capacity ?? 4;
   const mentorSeatsLeft = 3 - ((user?.mentorName ? 1 : 0) + (user?.supportMentors?.length || 0));
   const cohortSeatsLeft = mentorCapacity - (user?.cohort?.length || 0);
@@ -561,7 +669,10 @@ export default function RyznComplete() {
   /* — notification deep links — */
   const navTo = (to) => {
     setOverlay(null);
-    if (["cohort", "dm", "orbit", "board", "explore"].includes(to)) setTimeout(() => setOverlay(to), 60);
+    // Sessions is a tab on the mentor side and an overlay on the mentee side.
+    const asOverlay = ["cohort", "dm", "orbit", "board", "explore"].includes(to)
+      || (to === "sessions" && role === "mentee");
+    if (asOverlay) setTimeout(() => setOverlay(to), 60);
     else setTab(to);
   };
 
@@ -624,6 +735,7 @@ export default function RyznComplete() {
         role={role}
         u={user}
         matches={matches}
+        sessions={sessions}
         back={() => setOverlay(null)}
         navTo={navTo}
         busy={inviteBusy}
@@ -637,11 +749,21 @@ export default function RyznComplete() {
         toast={toast}
         onLogout={logout}
         user={session?.user}
+        org={session?.org}
         onRedoTour={() => { setOverlay(null); resetTour(role); setComprehensiveTourOpen(true); }}
         onResetTabHints={() => { resetTabHints(role); toast("Tab tips reset · they'll reappear as you navigate"); }}
       />
     );
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
+    /* Mentees reach the same screen from Home — the mentor has a tab for it. */
+    if (overlay === "sessions") return (
+      <SessionsScreen
+        role={role} people={sessionPeople} sessions={sessions}
+        loading={sessionsLoading} error={sessionsError} busy={sessionBusy}
+        onCreate={createSessionHandler} onAction={sessionActionHandler} toast={toast}
+        back={() => setOverlay(null)}
+      />
+    );
     if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "explore") return (
@@ -688,20 +810,26 @@ export default function RyznComplete() {
     if (!user) return null;
     if (role === "mentee") {
       switch (tab) {
-        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} invites={matches.filter(m => m.awaitingYou)} />;
+        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} />;
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} onUpdateProfile={updateUserProfile} />;
         default: return null;
       }
     }
     switch (tab) {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} />;
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
-      case "sessions": return <MentorSessions u={user} />;
+      case "sessions": return (
+        <SessionsScreen
+          role={role} people={sessionPeople} sessions={sessions}
+          loading={sessionsLoading} error={sessionsError} busy={sessionBusy}
+          onCreate={createSessionHandler} onAction={sessionActionHandler} toast={toast}
+        />
+      );
       case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} />;
       default: return null;
     }
   };

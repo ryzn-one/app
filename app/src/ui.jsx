@@ -263,14 +263,14 @@ export const ModalShell = ({ children, onClose }) => {
         transition={t(reduced, T_SLOW)}
         style={{
           width: "min(94vw, 640px)", height: "min(78vh, 760px)", minHeight: 420,
-          background: C.surface, borderRadius: 24, position: "relative",
+          background: C.surface, borderRadius: 24, overflow: "hidden", position: "relative",
           display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
         }}>
         <motion.button onClick={onClose} aria-label="Close" whileTap={reduced ? undefined : { scale: 0.9 }} transition={spring(reduced)}
           style={{ position: "absolute", top: CLOSE_INSET, right: CLOSE_INSET, zIndex: 5, width: CLOSE_SIZE, height: CLOSE_SIZE, borderRadius: CLOSE_SIZE / 2, border: "none", background: "rgba(26,26,26,.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
           <X size={16} color={C.ink} />
         </motion.button>
-        <div style={{ flex: 1, overflow: "hidden", borderRadius: 24 }}>
+        <div style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
           <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
             <CloseGutter.Provider value={MODAL_CLOSE_GUTTER}>{children}</CloseGutter.Provider>
           </div>

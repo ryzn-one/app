@@ -10,10 +10,11 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { fetchMessages, sendMessage } from "./lib/auth-client.js";
+import { countdown, fmtRange } from "./lib/calendar.js";
 
 /* ————————————————— APP: MENTEE ————————————————— */
 
-export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1, mentorSeats, toast, feed = [], watched = {}, invites = [] }) => {
+export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1, mentorSeats, toast, feed = [], watched = {}, invites = [], sessions = [] }) => {
   const nextBadge = badges.find(b => !b.earned);
   const nextIdx = badges.indexOf(nextBadge);
   const todayEx = EXERCISE_TRACK[0];
@@ -22,6 +23,12 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
   const latest = feed.find(p => !p.pinned);
   const unread = feed.filter(p => (p.kind === "video" || p.kind === "resource") && !watched[p.id]).length;
   const pendingInvites = Array.isArray(invites) ? invites : [];
+  /* Real bookings from /api/sessions. A time is only ever shown once both sides
+     have agreed on it — see api/sessions.js. */
+  const needsAnswer = sessions.filter(s => s.awaitingYou);
+  const nextSession = sessions
+    .filter(s => s.status === "confirmed" && new Date(s.confirmedSlot.end).getTime() > Date.now())
+    .sort((a, b) => new Date(a.confirmedSlot.start) - new Date(b.confirmedSlot.start))[0];
   return (
     <div style={{ padding: "18px 20px 20px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -128,6 +135,38 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
               <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Mentors are still being onboarded. Your exercises are open now — the work counts either way.</div>
             </div>
             <ChevronRight size={16} color={C.gray} />
+          </div>
+        </Card>
+      )}
+
+      {/* Sessions. Three honest states: a proposal waiting on you, a booked time,
+          or nothing yet — never an invented slot, which is what this card's
+          ancestor printed under the mentor's name. */}
+      {(u.mentorName || sessions.length > 0) && (
+        <Card
+          onClick={() => openOverlay("sessions")}
+          style={{
+            marginTop: 12,
+            ...(needsAnswer.length > 0 ? { border: `1.5px solid ${C.amber}`, background: C.amberTint } : {}),
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, background: needsAnswer.length ? "#F2E2C4" : C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Calendar size={16} color={needsAnswer.length ? C.amber : C.purple} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
+                {needsAnswer.length > 0
+                  ? `${(needsAnswer[0].person?.name || "Your mentor").split(" ")[0]} proposed a session`
+                  : nextSession ? "Your next session" : "No session booked"}
+              </div>
+              <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
+                {needsAnswer.length > 0
+                  ? "Pick a time that works — that books it"
+                  : nextSession ? `${fmtRange(nextSession.confirmedSlot)} · ${countdown(nextSession.confirmedSlot.start)}` : "Propose a few times to your mentor"}
+              </div>
+            </div>
+            <ChevronRight size={16} color={needsAnswer.length ? C.amber : C.gray} />
           </div>
         </Card>
       )}
@@ -408,7 +447,21 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
   );
 };
 
-export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop, program }) => (
+export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop, program, onUpdateProfile }) => {
+  const [editMode, setEditMode] = useState(null);
+  const [editValues, setEditValues] = useState({});
+
+  const startEdit = (field) => {
+    setEditMode(field);
+    setEditValues({ [field]: u?.[field] || "" });
+  };
+
+  const cancelEdit = () => {
+    setEditMode(null);
+    setEditValues({});
+  };
+
+  return (
   <div>
     <HeaderRow title="Profile" right={
       <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
@@ -447,6 +500,48 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
           ))}
         </div>
         <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", marginTop: 12 }}>EVERY BADGE VERIFIABLE · SHARE TO LINKEDIN FROM DETAIL</div>
+      </Card>
+      <Card>
+        <Label>Background</Label>
+        <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Add your education, projects, or other experience to complete your profile.</div>
+
+        {editMode === "education" ? (
+          <div style={{ marginTop: 12 }}>
+            <textarea value={editValues.education || ""} onChange={e => setEditValues({ ...editValues, education: e.target.value })} placeholder="e.g., Stanford University, Computer Science (Expected 2025)"
+              style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
+              <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("education", editValues.education); setEditMode(null); }}>Save</Btn>
+            </div>
+          </div>
+        ) : (
+          <div onClick={() => startEdit("education")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 12, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>EDUCATION</div>
+              <div style={{ fontSize: 13.5, marginTop: 4, color: u?.education ? C.ink : C.gray, fontStyle: u?.education ? "normal" : "italic" }}>{u?.education || "Add your education"}</div>
+            </div>
+            <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
+          </div>
+        )}
+
+        {editMode === "experience" ? (
+          <div style={{ marginTop: 12 }}>
+            <textarea value={editValues.experience || ""} onChange={e => setEditValues({ ...editValues, experience: e.target.value })} placeholder="e.g., Interned at Google as a Product Manager (Summer 2024)"
+              style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
+              <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("experience", editValues.experience); setEditMode(null); }}>Save</Btn>
+            </div>
+          </div>
+        ) : (
+          <div onClick={() => startEdit("experience")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 10, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>EXPERIENCE & PROJECTS</div>
+              <div style={{ fontSize: 13.5, marginTop: 4, color: u?.experience ? C.ink : C.gray, fontStyle: u?.experience ? "normal" : "italic" }}>{u?.experience || "Add your experience"}</div>
+            </div>
+            <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
+          </div>
+        )}
       </Card>
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -504,5 +599,6 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
       )}
     </div>
   </div>
-);
+  );
+};
 

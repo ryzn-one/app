@@ -10,6 +10,7 @@ lib/email.js       Postmark sender (Resend fallback); logs when no token
 lib/http.js        json/fail helpers, withUser() guard, ageFrom()
 lib/admin.js       withAdmin() guard + invite code minting (founder console)
 lib/ratelimit.js   fixed-window limiter backed by Mongo
+lib/orgs.js        org model helpers: slugs, membership lookup, org-role rules
 
 api/auth-handler.js    every Better Auth endpoint (vercel rewrite /api/auth/*)
 api/me.js              GET  — session + profile (bootstraps profile on first call)
@@ -17,6 +18,8 @@ api/onboarding.js      POST  — persists the Ryzn AI setup answers, sets onboar
 api/roster.js          GET   — the other side of the platform (mentors↔mentees)
 api/matches.js         GET/POST/PATCH — the mentee↔mentor pairing handshake
 api/teams-interest.js  POST  — Ryzn for Teams waitlist (unauthenticated)
+api/orgs.js            GET/POST/PATCH — a mentor's organisation: create, roster,
+                       org-scoped invite codes, org roles, the org Orbit
 api/invites/validate.js POST — read-only code check (unauthenticated, rate-limited)
 api/invites/redeem.js   POST — atomic single-use claim; only path to role=mentor
 api/admin/stats.js     GET   — platform counts, 14-day signups, activation funnel
@@ -54,13 +57,50 @@ To turn it on: grant `role: "admin"` (CLI or invite), or put a mentor email in
 `ADMIN_EMAILS` in the Vercel project. Nothing else — no domain, no DNS, no
 second project.
 
+## Organisations (Ryzn for Teams)
+
+`/app/#/teams` is the org console. A **mentor** creates an organisation there and
+owns it; `api/orgs.js` is the whole surface.
+
+Two role systems, deliberately separate — do not merge them:
+
+| | where | values | means |
+|---|---|---|---|
+| `role` | `user` doc | `mentee` `mentor` `admin` | what the platform does for you |
+| `orgRole` | `org_members` doc | `owner` `admin` `member` | what you may do inside **one** org |
+
+An org owner is an admin of their own roster and nothing else. The founder
+console stays gated by `lib/admin.js` on `role: "admin"`, which no org can grant.
+
+Seats work through the existing invite machinery rather than beside it: an org
+mints an ordinary invite carrying `orgId` + `orgRole`, always with `role:
+"mentor"`. The single atomic claim in `api/invites/redeem.js` still decides the
+platform role; joining the org is a consequence of that claim. `owner` is not
+grantable by invite, and an existing mentor is *not* short-circuited by the
+"already holds this role" check when the code carries an org — otherwise a mentor
+invited by their own company could never take the seat.
+
+The **org Orbit** (`GET /api/posts?scope=org`) is one feed across everyone in the
+org, and it reads `visibility: "public"` posts only. A `cohort` post is written
+for that mentor's own mentees; the Orbit must never widen who can see one. It is
+closed until an owner or org admin opens it.
+
+Membership is one document per person — counts are counted, never cached on the
+org. Slug and `ownerId` are unique indexes, so "one org per owner" and a free
+handle are enforced by the database, not by a check the create path could race.
+
 ## Collections
 
 Better Auth owns `user`, `session`, `account`, `verification` — do not write to
 them directly except the deliberate role promotion in `api/invites/redeem.js`.
 
 Ryzn owns `profiles`, `invites`, `onboarding_answers`, `xp_events`, `matches`,
-`teams_interest`, `posts`, `post_events`, `exercises`, `messages`, `rate_limits`.
+`teams_interest`, `posts`, `post_events`, `exercises`, `messages`, `rate_limits`,
+`events`, `event_responses`, `sessions_1v1`, `orgs`, `org_members`.
+
+`sessions_1v1` is deliberately *not* called `sessions`: Better Auth owns
+`session`, and a one-character difference between an auth collection and a
+product collection is a bug waiting to happen.
 
 ## Three things that are load-bearing
 
@@ -133,6 +173,38 @@ denormalised onto the profile.
 Run `npm run db:setup` before this works properly — the unique index is created
 there, and without it concurrent requests can duplicate a pair.
 
+## 1:1 sessions
+
+`/api/sessions` holds the booking handshake between a matched pair. One document
+in `sessions_1v1` per session, shared by both sides, same shape of guarantee as
+`matches`.
+
+```
+proposed    up to 5 times on the table, waiting on the other side
+confirmed   one slot agreed — the only state that carries a date
+declined    the other side said no to all of them
+canceled    was live, called off by either side
+completed   the mentor logged that it happened
+```
+
+Two rules carry the weight:
+
+**The proposer cannot accept their own proposal.** `proposedBy` records which
+side asked; `accept` and `decline` 403 for that side. Without it a mentor could
+write times into a mentee's calendar unilaterally, which is the same lie as an
+unaccepted match.
+
+**Only an accepted pairing can book.** `POST` checks `hasAcceptedPair()` before
+anything is written, so a session can't be used to reach someone who never
+agreed to work with you.
+
+`reschedule` is a counter-offer from either side: it replaces the slots, clears
+any confirmation, and flips `proposedBy` to the caller — so the turn always
+belongs to the other party. Adding to a calendar is entirely client-side
+(`app/src/lib/calendar.js` builds the `.ics` and the Google template URL from
+the confirmed slot); there is no calendar integration and nothing leaves the
+browser.
+
 ## Not built yet
 
 Screens that depend on these render an explicit empty state. None of them fall
@@ -149,9 +221,10 @@ placeholder mentor or a seeded leaderboard is worse than an empty one.
   XP and a streak day that never reach the server either. Publishing a post and
   watching one *do* now write through `xp_events` and `$inc` the profile, so
   those two are real; everything else that toasts "+XP" still isn't.
-- Messages and session scheduling have no store. Both surfaces say so rather
-  than pretending — the fake compose boxes and the "Mark session complete"
-  button that only flipped a local flag are gone.
+- **Nobody is notified of a proposed session.** Same gap as matches: the
+  proposal sits in the other party's app until they open it. The in-app
+  surfaces (Home card, Notifications, the amber "needs your answer" pile) are
+  the whole delivery mechanism until Postmark is wired up.
 - **Public mentor pages.** A mentor's "Public view" renders exactly what a
   cohort mentee sees, using the same components, but there is no unauthenticated
   `/m/:slug` route and no share link. Building one is a decision about putting
@@ -159,7 +232,8 @@ placeholder mentor or a seeded leaderboard is worse than an empty one.
   it needs to be made deliberately, not as a side effect of a UI change. The
   verification QR stays out until that URL exists and resolves.
 - Cross-user leaderboards (cohort XP, mentor Impact ranking).
-- Ryzn for Teams. `/app/#/teams` is a pitch page plus a waitlist writing to
-  `teams_interest`. The org console it replaced was a simulation.
+- Org-wide programmes. An org has a roster and an Orbit (see below), but cohorts,
+  exercises and matching are still person-to-person — an org does not yet run a
+  programme of its own, and nothing in the console claims it does.
 - Email verification is off (`requireEmailVerification: false`). Turn it on once
   the sending domain / signature is verified in Postmark.

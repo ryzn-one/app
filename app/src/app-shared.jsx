@@ -5,7 +5,7 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search
+  X, SlidersHorizontal, RotateCcw, Search, Building2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
@@ -155,15 +155,27 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
 
    Pending invites (`awaitingYou`) are the one thing that used to go missing:
    a mentor could invite a mentee and the mentee had no surface that showed it. */
-export const NotifsScreen = ({ role, u, matches = [], back, navTo, onRespond, busy }) => {
+export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo, onRespond, busy }) => {
   const inbox = (Array.isArray(matches) ? matches : []).filter(m => m.awaitingYou);
   const items = [];
+  /* A proposed session is a real thing waiting on this person — it belongs at
+     the top of the list, above the derived progress items. */
+  const sessionsToAnswer = (Array.isArray(sessions) ? sessions : []).filter(s => s.awaitingYou);
+  if (sessionsToAnswer.length > 0) {
+    const first = (sessionsToAnswer[0].person?.name || "Someone").split(" ")[0];
+    items.push({
+      icon: Calendar, c: C.amber, bg: C.amberTint,
+      t: sessionsToAnswer.length === 1 ? `${first} proposed a session` : `${sessionsToAnswer.length} sessions need a time`,
+      d: "Pick one of the times they offered — that books it for both of you.",
+      when: "New", to: "sessions",
+    });
+  }
   if (role === "mentee") {
     if (u.mentorName) items.push({ icon: Check, c: C.teal, bg: C.tealTint, t: `${u.mentorName.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" });
     if (u.earned?.goal) items.push({ icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: `Verified and shareable. ${BADGE_DEFS.length - 1} more to go.`, when: u.earned.goal, to: "badges" });
     items.push({ icon: Flame, c: C.coral, bg: C.coralTint, t: u.streak > 0 ? `Streak: day ${u.streak}` : "Start your streak", d: "Today’s exercise takes a few minutes. Finishing it earns XP and unlocks Direct Connect.", when: "Today", to: "exercises" });
   } else {
-    if ((u.cohort || []).length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Their opening sessions are ready to book.`, when: "Recent", to: "sessions" });
+    if ((u.cohort || []).length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Propose times for their opening session.`, when: "Recent", to: "sessions" });
     items.push({ icon: Crown, c: C.amber, bg: C.amberTint, t: `Tier: ${u.tier || "Scout"}`, d: `Impact Score live at ${u.impact ?? 0}. Pathfinder at 400.`, when: "Today", to: "board" });
   }
   return (
@@ -292,7 +304,7 @@ export const InviteAlert = ({ role, invites = [], busy, onRespond }) => {
    None of them persisted, and there is no notification pipeline for them to
    configure, so every switch promised mail that could never arrive. Gone until
    something actually sends. */
-export const SettingsScreen = ({ back, role, toast, onLogout, user, onRedoTour, onResetTabHints }) => {
+export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoTour, onResetTabHints }) => {
   return (
     <div>
       <HeaderRow title="Settings" onBack={back} />
@@ -343,6 +355,26 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, onRedoTour, 
         <Card onClick={() => window.open("/privacy.html", "_blank", "noopener")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>Privacy policy</span><ChevronRight size={16} color={C.gray} />
         </Card>
+        {/* The org console, for whoever has one — and the way in for a mentor
+            who doesn't. A mentee sees neither: organisations are created from
+            the mentor side, and offering the link here would only dead-end. */}
+        {(org || role === "mentor") && (
+          <Card onClick={() => window.open("/app/#/teams", "_blank", "noopener")}
+            style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Building2 size={16} color={C.purple} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {org ? org.name : "Create an organisation"}
+              </div>
+              <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", letterSpacing: 0.6, marginTop: 2 }}>
+                {org
+                  ? `RYZN FOR TEAMS · ${String(org.orgRole || "member").toUpperCase()}${org.orbitActive ? " · ORBIT OPEN" : ""}`
+                  : "RYZN FOR TEAMS · YOUR OWN ROSTER"}
+              </div>
+            </div>
+            <ExternalLink size={15} color={C.gray} />
+          </Card>
+        )}
         {/* Founders only — mentees never get this link (see adminConsole). */}
         {user?.adminConsole && (
           <Card onClick={() => window.open("/app/#/admin", "_blank", "noopener")}

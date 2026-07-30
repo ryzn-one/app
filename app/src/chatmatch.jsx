@@ -11,6 +11,8 @@ import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, B
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
+import { fetchPosts, fetchMenteeExercises } from "./lib/auth-client.js";
+import { ContentTabs, ContentTabBar } from "./feed.jsx";
 
 /* ————————————————— JOURNEY: AI CHAT + UNLOCK + MATCHING ————————————————— */
 
@@ -382,7 +384,7 @@ export const CardGrid = ({ deck, renderCard, stampRight, stampLeft, canRight, on
    gets the full width back — hence NoCloseGutter. Closing is `close` here. */
 export const DetailShell = ({ title, right, close, footer, children }) => (
   <NoCloseGutter>
-    <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column", borderRadius: 24, overflow: "hidden" }}>
       <HeaderRow title={title} onBack={close} right={right} />
       <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>{children}</div>
       <div style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}`, flexShrink: 0 }}>{footer}</div>
@@ -429,86 +431,200 @@ export const EmptyRoster = ({ title, body, action }) => (
   </div>
 );
 
-export const MentorDetailSheet = ({ m, close, footer }) => (
-  <DetailShell title="Mentor profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
-    <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
-          {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{m.headline}</div>}
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
-        {[[m.impact ?? 0, "IMPACT"], [m.industry || "—", "INDUSTRY"]].map(([n, l]) => (
-          <div key={l}><div style={{ fontSize: 18, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
-        ))}
-      </div>
-    </Card>
-    {m.why && (
-      <Card>
-        <Label>Why they mentor</Label>
-        <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.why}</div>
-      </Card>
-    )}
-    {m.expertise?.length > 0 && (
-      <Card>
-        <Label color={C.purple}>What they can teach</Label>
-        <div style={{ marginTop: 10 }}><TagRow items={m.expertise} bg={C.purpleTint} color={C.purple} border={false} /></div>
-      </Card>
-    )}
-    {m.menteeFit?.length > 0 && (
-      <Card>
-        <Label color={C.teal}>Who they want to work with</Label>
-        <div style={{ marginTop: 10 }}><TagRow items={m.menteeFit} bg={C.tealTint} color={C.teal} border={false} /></div>
-      </Card>
-    )}
-    {m.capacity != null && (
-      <Card>
-        <Label color={C.amber}>Cohort capacity</Label>
-        <div style={{ fontSize: 13.5, marginTop: 8 }}>Taking up to {m.capacity} mentee{m.capacity === 1 ? "" : "s"} this cohort.</div>
-      </Card>
-    )}
-  </DetailShell>
-);
+export const MentorDetailSheet = ({ m, close, footer }) => {
+  const [posts, setPosts] = useState([]);
+  const [feedLoading, setFeedLoading] = useState(!!m?.id);
+  const [contentTab, setContentTab] = useState("feed");
+  const paired = m.matchState === "accepted";
 
-export const MenteeDetailSheet = ({ m, close, footer }) => (
-  <DetailShell title="Mentee profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
-    <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
-          {labelOf(m.track) && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
-        </div>
-      </div>
-    </Card>
-    {m.goals?.length > 0 && (
-      <Card>
-        <Label color={C.purple}>Their program goals</Label>
-        {m.goals.map((g, i) => (
-          <div key={g} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
-            <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.purple, marginTop: 1 }}>0{i + 1}</span>
-            <div style={{ fontSize: 13, lineHeight: 1.45, fontStyle: "italic" }}>“{g}”</div>
+  useEffect(() => {
+    if (!m?.id) { setFeedLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      setFeedLoading(true);
+      try {
+        const { posts: rows } = await fetchPosts(
+          paired ? { mentorId: m.id } : { mentorId: m.id, scope: "profile" }
+        );
+        if (!cancelled) setPosts(rows || []);
+      } catch {
+        if (!cancelled) setPosts([]);
+      } finally {
+        if (!cancelled) setFeedLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [m?.id, paired]);
+
+  const resourceCount = posts.filter((p) => p.kind === "video" || p.kind === "resource").length;
+
+  return (
+    <DetailShell title="Mentor profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
+      <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
+            {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{m.headline}</div>}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
           </div>
-        ))}
+        </div>
+        <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
+          {[[m.impact ?? 0, "IMPACT"], [m.industry || "—", "INDUSTRY"]].map(([n, l]) => (
+            <div key={l}><div style={{ fontSize: 18, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
+          ))}
+        </div>
       </Card>
-    )}
-    {m.skills?.length > 0 && (
-      <Card>
-        <Label color={C.teal}>Skills they claim today</Label>
-        <div style={{ marginTop: 10 }}><TagRow items={m.skills} bg={C.tealTint} color={C.teal} border={false} /></div>
+      {m.why && (
+        <Card>
+          <Label>Why they mentor</Label>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.why}</div>
+        </Card>
+      )}
+      {m.expertise?.length > 0 && (
+        <Card>
+          <Label color={C.purple}>What they can teach</Label>
+          <div style={{ marginTop: 10 }}><TagRow items={m.expertise} bg={C.purpleTint} color={C.purple} border={false} /></div>
+        </Card>
+      )}
+      {m.menteeFit?.length > 0 && (
+        <Card>
+          <Label color={C.teal}>Who they want to work with</Label>
+          <div style={{ marginTop: 10 }}><TagRow items={m.menteeFit} bg={C.tealTint} color={C.teal} border={false} /></div>
+        </Card>
+      )}
+      {m.education && (
+        <Card>
+          <Label>Education</Label>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.education}</div>
+        </Card>
+      )}
+      {m.experience && (
+        <Card>
+          <Label>Current role</Label>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.experience}</div>
+        </Card>
+      )}
+      {m.capacity != null && (
+        <Card>
+          <Label color={C.amber}>Cohort capacity</Label>
+          <div style={{ fontSize: 13.5, marginTop: 8 }}>Taking up to {m.capacity} mentee{m.capacity === 1 ? "" : "s"} this cohort.</div>
+        </Card>
+      )}
+      <ContentTabBar view={contentTab} setView={setContentTab} count={resourceCount} />
+      {feedLoading ? (
+        <Card><div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, letterSpacing: 0.6 }}>LOADING FEED…</div></Card>
+      ) : (
+        <ContentTabs
+          feed={posts}
+          authorName={m.name}
+          view={contentTab}
+          readOnly
+          emptyText={`${(m.name || "They").split(" ")[0]} hasn’t put anything on their profile yet.`}
+        />
+      )}
+    </DetailShell>
+  );
+};
+
+export const MenteeDetailSheet = ({ m, close, footer }) => {
+  const influences = Array.isArray(m.influences) ? m.influences : [];
+  const paired = m.matchState === "accepted";
+  const [exercises, setExercises] = useState([]);
+  const [exLoading, setExLoading] = useState(paired && !!m?.id);
+
+  useEffect(() => {
+    if (!paired || !m?.id) { setExLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      setExLoading(true);
+      try {
+        const { exercises: rows } = await fetchMenteeExercises(m.id);
+        if (!cancelled) setExercises(rows || []);
+      } catch {
+        if (!cancelled) setExercises([]);
+      } finally {
+        if (!cancelled) setExLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [m?.id, paired]);
+
+  return (
+    <DetailShell title="Mentee profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
+      <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
+            {labelOf(m.track) && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
+          </div>
+        </div>
       </Card>
-    )}
-    {m.interests?.length > 0 && (
-      <Card>
-        <Label color={C.amber}>What pulls at them</Label>
-        <div style={{ marginTop: 10 }}><TagRow items={m.interests} /></div>
-      </Card>
-    )}
-  </DetailShell>
-);
+      {m.goals?.length > 0 && (
+        <Card>
+          <Label color={C.purple}>Their program goals</Label>
+          {m.goals.map((g, i) => (
+            <div key={g} style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "flex-start" }}>
+              <span style={{ fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.purple, marginTop: 1 }}>0{i + 1}</span>
+              <div style={{ fontSize: 13, lineHeight: 1.45, fontStyle: "italic" }}>“{g}”</div>
+            </div>
+          ))}
+        </Card>
+      )}
+      {m.skills?.length > 0 && (
+        <Card>
+          <Label color={C.teal}>Skills they claim today</Label>
+          <div style={{ marginTop: 10 }}><TagRow items={m.skills} bg={C.tealTint} color={C.teal} border={false} /></div>
+        </Card>
+      )}
+      {m.interests?.length > 0 && (
+        <Card>
+          <Label color={C.amber}>What pulls at them</Label>
+          <div style={{ marginTop: 10 }}><TagRow items={m.interests} /></div>
+        </Card>
+      )}
+      {influences.length > 0 && (
+        <Card>
+          <Label>Who they follow</Label>
+          <div style={{ marginTop: 10 }}><TagRow items={influences} /></div>
+        </Card>
+      )}
+      {m.education && (
+        <Card>
+          <Label>Education</Label>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.education}</div>
+        </Card>
+      )}
+      {m.experience && (
+        <Card>
+          <Label>Experience & projects</Label>
+          <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{m.experience}</div>
+        </Card>
+      )}
+      {paired && (
+        <Card>
+          <Label>Their journal</Label>
+          {exLoading && <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 12, letterSpacing: 0.6 }}>LOADING…</div>}
+          {!exLoading && exercises.length === 0 && (
+            <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>
+              Nothing submitted yet. Their first exercise lands here the moment they write it.
+            </div>
+          )}
+          {exercises.map((ex) => (
+            <div key={ex.id} style={{ borderLeft: `2px solid ${C.purple}`, paddingLeft: 12, marginTop: 14 }}>
+              <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>
+                {(ex.title || "Exercise").toUpperCase()}
+                {ex.dayKey ? ` · ${ex.dayKey}` : ""}
+              </div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 3, fontStyle: "italic" }}>“{ex.text}”</div>
+            </div>
+          ))}
+        </Card>
+      )}
+    </DetailShell>
+  );
+};
 
 /* ————————————————— MENTEE: choosing a mentor ————————————————— */
 

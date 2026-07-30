@@ -3,6 +3,7 @@ import { handleUpload } from "@vercel/blob/client";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser, getUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair } from "../lib/matches.js";
+import { orgContext, orgMemberIds } from "../lib/orgs.js";
 
 /**
  * /api/posts — mentor content, and the only thing that carries it to a mentee.
@@ -140,8 +141,61 @@ async function handler(request, user) {
   /* ————— read ————— */
   if (request.method === "GET") {
     const mentorId = url.searchParams.get("mentorId");
+    const scope = url.searchParams.get("scope");
+
+    /* The org Orbit: everything the org's people have put on their profile, in
+       one feed. Deliberately `public` only — a cohort post is written for that
+       mentor's mentees, and an org feed must not be a back door around the
+       pairing check that carries it. Closed until the owner opens it. */
+    if (scope === "org") {
+      const empty = { watched: [], reacted: [] };
+      const ctx = await orgContext(db, user.id);
+      if (!ctx) return fail(404, "no_org", "You're not in an organisation yet.");
+      if (!ctx.org.orbitActive) {
+        return json({ posts: [], viewerState: empty, orbit: { active: false, org: ctx.org.name } });
+      }
+
+      const memberIds = await orgMemberIds(db, ctx.org._id);
+      const rows = memberIds.length
+        ? await posts
+            .find({ authorId: { $in: memberIds }, deletedAt: null, visibility: "public" })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .toArray()
+        : [];
+
+      const authorIds = [...new Set(rows.map((r) => String(r.authorId)))].filter(ObjectId.isValid);
+      const authors = authorIds.length
+        ? await db.collection(collections.user)
+            .find({ _id: { $in: authorIds.map((id) => new ObjectId(id)) } }, { projection: { name: 1 } })
+            .toArray()
+        : [];
+      const nameById = new Map(authors.map((a) => [String(a._id), a.name]));
+
+      return json({
+        posts: rows.map((p) => ({ ...shape(p), authorName: nameById.get(String(p.authorId)) || "—" })),
+        viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
+        orbit: { active: true, org: ctx.org.name, members: memberIds.length },
+      });
+    }
+
     if (mentorId) {
-      if (mentorId !== user.id && !(await hasAcceptedPair({ menteeId: user.id, mentorId }))) {
+      const paired = mentorId === user.id || (await hasAcceptedPair({ menteeId: user.id, mentorId }));
+      /* Profile previews (match deck / explore) can read posts marked public
+         without a pair. Full Orbit still requires an accepted match. */
+      if (!paired && scope === "profile") {
+        const filter = { authorId: String(mentorId), deletedAt: null, visibility: "public" };
+        const rows = await posts
+          .find(filter)
+          .sort({ pinned: -1, createdAt: -1 })
+          .limit(50)
+          .toArray();
+        return json({
+          posts: rows.map(shape),
+          viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
+        });
+      }
+      if (!paired) {
         return fail(403, "not_paired", "You can only read the feed of a mentor you're working with.");
       }
       return json(await readFeed(db, { authorId: mentorId, viewer: user.id, cohortOnly: mentorId !== user.id }));

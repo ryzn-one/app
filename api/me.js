@@ -5,6 +5,7 @@ import { acceptedFor, sideOf } from "../lib/matches.js";
 import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 import { isMentorRole } from "../lib/roles.js";
 import { asLabel } from "../lib/scalars.js";
+import { orgContext, publicOrg } from "../lib/orgs.js";
 
 const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 
@@ -112,6 +113,12 @@ async function handler(request, user) {
   const age = ageFrom(user.dateOfBirth);
   const isMinor = age !== null && age < 18;
 
+  /* ————— organisation ————— */
+  const orgCtx = await orgContext(db, user.id);
+  const org = orgCtx
+    ? publicOrg(orgCtx.org, { orgRole: orgCtx.membership.orgRole })
+    : null;
+
   /* ————— live pairings ————— */
   const side = sideOf(user);
   const accepted = await acceptedFor(user.id, side);
@@ -147,6 +154,11 @@ async function handler(request, user) {
         name: u?.name || "—",
         track: asLabel(p.track),
         goals: p.goals ?? [],
+        skills: p.skills ?? [],
+        interests: p.interests ?? [],
+        influences: p.influences ?? [],
+        education: p.education ?? null,
+        experience: p.experience ?? null,
         week: p.week ?? 1,
         streak: p.streak ?? 0,
         badges: Object.keys(p.earned || {}).length,
@@ -212,6 +224,10 @@ async function handler(request, user) {
     supportMentors,
     cohort,
     exercise,
+    /* Their organisation, if they're in one — two indexed reads, and it's what
+       lets the app show a way into the org console instead of the Teams pitch.
+       The console itself still reads /api/orgs for the roster and codes. */
+    org,
     compliance: {
       age,
       isMinor,

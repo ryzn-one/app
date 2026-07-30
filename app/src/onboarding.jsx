@@ -82,7 +82,7 @@ export const TAB_HINTS = {
   mentor: {
     home: { target: "mentor-home-impact", title: "Your Impact Score", body: "This grows as your mentees hit milestones — it drives your tier.", placement: "bottom" },
     feed: { target: "mentor-feed-compose", title: "Your feed", body: "Publish a greeting or a post here. Mentees on your Orbit see what you share.", placement: "bottom" },
-    sessions: { target: "mentor-sessions-list", title: "Opening sessions", body: "Each mentee who joins gets an opening session card here. Agree a time in your thread for now.", placement: "bottom" },
+    sessions: { target: "mentor-sessions-list", title: "Book your sessions", body: "Propose a few times to a mentee. When they pick one it's booked, and both of you can add it to your calendar.", placement: "bottom" },
     meets: { target: "meets-ticket-mentor", title: "In-person Meets", body: "Your seat at the quarterly event lands here once a date is set.", placement: "bottom" },
     profile: { target: "mentor-profile-program", title: "Design your course", body: "Tap here to open the course designer — add phases from kickoff to graduation, with optional certificates.", placement: "bottom" },
   },
@@ -104,7 +104,7 @@ export const COMPREHENSIVE_TOUR_STEPS = {
     { type: "intro", icon: Users, title: "Your impact & tier", body: "Track mentee progress, publish content to your feed, and grow your Impact Score. Tier up from Scout to Pathfinder and beyond." },
     { type: "screen", tab: "home", title: "Your dashboard", body: "Your Impact Score, tier, and cohort roster live here. This grows as your mentees hit milestones." },
     { type: "screen", tab: "feed", title: "Your feed", body: "Publish greetings, posts, or resources here. Your mentees on your Orbit see everything you share." },
-    { type: "screen", tab: "sessions", title: "Opening sessions", body: "Each mentee gets an opening session card. Connect in the thread to book your first call." },
+    { type: "screen", tab: "sessions", title: "Sessions", body: "Propose times, your mentee picks one, and the booking lands on the calendar for both of you." },
     { type: "screen", tab: "meets", title: "In-person meets", body: "Your seat at the quarterly event. Track availability, vote on dates, and finalize timing here." },
     { type: "screen", tab: "profile", title: "Design your course", body: "Tap here to build your mentorship program. Add phases from kickoff to graduation with certificates." },
     { type: "outro", icon: Sparkles, title: "You're ready to lead", body: "Show up for your mentees, share your knowledge, and watch your Impact Score grow." },

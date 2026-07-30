@@ -53,6 +53,8 @@ const indexes = [
 
   ["invites", { code: 1 }, { unique: true, name: "code_unique" }],
   ["invites", { redeemedBy: 1 }, { sparse: true, name: "redeemedBy" }],
+  // Org-scoped mentor codes, newest first — the org console's Invites list.
+  ["invites", { orgId: 1, createdAt: -1 }, { sparse: true, name: "org_recent" }],
   ["profiles", { userId: 1 }, { unique: true, name: "userId_unique" }],
   // One document per pair, enforced by the database — this is what stops a
   // double-tap on "Request" from opening two matches between the same people.
@@ -82,6 +84,21 @@ const indexes = [
   ["events", { kind: 1, status: 1, createdAt: -1 }, { name: "kind_status" }],
   ["events", { hostId: 1, createdAt: -1 }, { name: "host_recent" }],
   ["event_responses", { eventId: 1, userId: 1 }, { unique: true, name: "event_user_unique" }],
+  // 1:1 sessions. Named _1v1 so it can never be confused with Better Auth's
+  // `session` collection. Each side reads its own list; the calendar reads by
+  // confirmed start time.
+  ["sessions_1v1", { mentorId: 1, createdAt: -1 }, { name: "mentor_recent" }],
+  ["sessions_1v1", { menteeId: 1, createdAt: -1 }, { name: "mentee_recent" }],
+  ["sessions_1v1", { status: 1, "confirmedSlot.start": 1 }, { name: "status_start" }],
+  // Ryzn for Teams. The org handle is public, so slugs are unique; one org per
+  // owner is enforced by the database rather than by a check the create path
+  // could race past.
+  ["orgs", { slug: 1 }, { unique: true, name: "slug_unique" }],
+  ["orgs", { ownerId: 1 }, { unique: true, name: "owner_unique" }],
+  // One membership per person per org — a double-claimed invite can't seat
+  // someone twice and inflate the roster count.
+  ["org_members", { orgId: 1, userId: 1 }, { unique: true, name: "org_user_unique" }],
+  ["org_members", { userId: 1 }, { name: "userId" }],
 ];
 
 for (const [col, spec, opts] of indexes) {

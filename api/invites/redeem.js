@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { getDb, collections } from "../../lib/db.js";
 import { json, fail, withUser } from "../../lib/http.js";
 import { rateLimit } from "../../lib/ratelimit.js";
+import { GRANTABLE_ORG_ROLES } from "../../lib/orgs.js";
 
 /**
  * POST /api/invites/redeem  { code }   (authenticated)
@@ -45,9 +46,12 @@ async function handler(request, user) {
 
   // Read-only peek, purely to avoid burning a single-use code on someone who
   // already holds what it grants. The claim below is still the atomic one.
-  const peek = await invites.findOne({ code: normalized }, { projection: { role: 1 } });
+  const peek = await invites.findOne({ code: normalized }, { projection: { role: 1, orgId: 1 } });
   const grants = roleOf(peek);
-  if (user.role === grants) {
+  // An org code carries a seat as well as a role, so a mentor who already holds
+  // the role still has something to claim — skipping it here would leave a
+  // mentor invited by their own company permanently outside it.
+  if (user.role === grants && !peek?.orgId) {
     return json({ ok: true, already: true, role: grants });
   }
 
@@ -102,7 +106,36 @@ async function handler(request, user) {
     { upsert: true }
   );
 
-  return json({ ok: true, role: granted });
+  /* An org code seats them in the org that minted it. The seat is a consequence
+     of the claim above, never a second route to a platform role: `orgRole` is
+     scoped to that one organisation, and `role` came off the invite document as
+     it always has. Whitelisted, so a hand-edited invite can't name `owner`. */
+  let org = null;
+  if (claimed.orgId) {
+    const orgDoc = await db.collection(collections.orgs).findOne(
+      { _id: new ObjectId(claimed.orgId) },
+      { projection: { name: 1, slug: 1 } }
+    ).catch(() => null);
+    if (orgDoc) {
+      const orgRole = GRANTABLE_ORG_ROLES.has(claimed.orgRole) ? claimed.orgRole : "member";
+      await db.collection(collections.orgMembers).updateOne(
+        { orgId: String(claimed.orgId), userId: user.id },
+        {
+          $setOnInsert: {
+            orgId: String(claimed.orgId),
+            userId: user.id,
+            joinedAt: new Date(),
+            invitedBy: claimed.createdByUserId ?? null,
+          },
+          $set: { orgRole },
+        },
+        { upsert: true }
+      );
+      org = { id: String(orgDoc._id), name: orgDoc.name, slug: orgDoc.slug, orgRole };
+    }
+  }
+
+  return json({ ok: true, role: granted, org });
 }
 
 export default { fetch: withUser(handler) };

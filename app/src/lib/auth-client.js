@@ -60,6 +60,9 @@ export const fetchMe = () => api("/me");
     what makes that promise true across sessions. */
 export const saveOnboarding = (answers) => api("/onboarding", { method: "POST", body: { answers } });
 
+/** Update profile fields like education, experience, headline, etc. */
+export const updateProfile = (updates) => api("/profile", { method: "PATCH", body: updates });
+
 /** Real people on the other side of the platform — mentors for a mentee,
     mentees for a mentor. Returns `{ role, people }`; `people` is often empty
     in an early cohort, and that is a valid answer, not an error. */
@@ -89,10 +92,17 @@ export const respondToMatch = (id, action) => api("/matches", { method: "PATCH",
    React array that died on refresh and never reached a mentee at all. */
 
 /** Own feed when called bare; a mentor's feed when given their id (requires an
-    accepted match — the server checks, not us). Returns `{posts, viewerState}`;
-    `viewerState` rehydrates what you've already watched and reacted to. */
-export const fetchPosts = ({ mentorId } = {}) =>
-  api(`/posts${mentorId ? `?mentorId=${encodeURIComponent(mentorId)}` : ""}`);
+    accepted match — the server checks, not us). Pass `scope: "profile"` to read
+    only public posts without a pair (match-deck / explore previews).
+    Returns `{posts, viewerState}`; `viewerState` rehydrates what you've already
+    watched and reacted to. */
+export const fetchPosts = ({ mentorId, scope } = {}) => {
+  const qs = new URLSearchParams();
+  if (mentorId) qs.set("mentorId", mentorId);
+  if (scope) qs.set("scope", scope);
+  const q = qs.toString();
+  return api(`/posts${q ? `?${q}` : ""}`);
+};
 export const createPost = (body) => api("/posts", { method: "POST", body });
 /** `action` is "view" or "react". Idempotent — a second call is a no-op, so a
     double tap can't inflate a mentor's numbers or re-award XP. */
@@ -145,8 +155,40 @@ export const createEvent = (body) => api("/events", { method: "POST", body });
 export const eventAction = (id, action, extra = {}) =>
   api("/events", { method: "PATCH", body: { id, action, ...extra } });
 
+/* ————— 1:1 Sessions —————
+   The booking handshake between a matched mentor and mentee: one side proposes
+   up to five times, the other accepts one of them. Only then is a session
+   booked — and only then can it go into anyone's calendar. */
+export const fetchSessions = () => api("/sessions");
+export const createSession = (body) => api("/sessions", { method: "POST", body });
+/** `action` is accept | decline | reschedule | cancel | complete | update. */
+export const sessionAction = (id, action, extra = {}) =>
+  api("/sessions", { method: "PATCH", body: { id, action, ...extra } });
+
 /** Ryzn for Teams waitlist. Unauthenticated by design — see api/teams-interest.js. */
 export const registerTeamsInterest = (body) => api("/teams-interest", { method: "POST", body });
+
+/* ————— Organisations —————
+   A mentor's own company inside Ryzn. Every one of these returns the whole org
+   context — org, people, codes — so a write and a refresh are one round trip and
+   the console can never render a half-updated roster.
+
+   `orgRole` (owner | admin | member) is scoped to the org and is not the
+   platform `role`. Creating an org needs the mentor role; it never grants one. */
+export const fetchOrg = () => api("/orgs");
+export const createOrg = (body) => api("/orgs", { method: "POST", body });
+const orgAction = (action, extra = {}) => api("/orgs", { method: "PATCH", body: { action, ...extra } });
+export const updateOrg = (patch) => orgAction("update", patch);
+/** Opens or closes the org Orbit — the shared feed across everyone in the org. */
+export const setOrgOrbit = (enabled) => orgAction("orbit", { enabled });
+/** Mints org-scoped mentor codes. With `to`, mints exactly one and mails it. */
+export const orgMintInvites = (body) => orgAction("invite", body);
+export const orgRevokeInvite = (code) => orgAction("revoke", { code });
+export const orgSetMemberRole = (userId, orgRole) => orgAction("role", { userId, orgRole });
+export const orgRemoveMember = (userId) => orgAction("remove", { userId });
+export const orgLeave = () => orgAction("leave");
+/** The org Orbit feed: profile-visible posts from everyone in the org. */
+export const fetchOrgOrbit = () => api("/posts?scope=org");
 
 /* Founder console. Every one of these 403s unless the caller is an admin —
    see lib/admin.js. */
