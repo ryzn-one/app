@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
 import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
+import { isMentorRole } from "../lib/roles.js";
 
 /**
  * GET /api/roster — the people on the other side of the platform.
@@ -143,7 +144,7 @@ async function handler(request, user) {
      a mentor's swipe deck. */
   const ready = (u, p) =>
     Boolean(u.onboardingComplete || p.onboardingComplete) ||
-    (wanted === "mentor" && u.role === "mentor");
+    (wanted === "mentor" && isMentorRole(u.role));
 
   const people = users
     .filter((u) => String(u._id) !== user.id && (includeAll || !answeredIds.has(String(u._id))))

@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
+import { appSide } from "../lib/roles.js";
 
 /**
  * POST /api/onboarding — persist the Ryzn AI setup answers.
@@ -84,7 +85,7 @@ async function handler(request, user) {
     return fail(400, "bad_request", "Expected a JSON body.");
   }
 
-  const role = user.role === "mentor" ? "mentor" : "mentee";
+  const role = appSide(user.role);
   const answers = sanitise(body?.answers, role);
   if (!Object.keys(answers).length) {
     return fail(400, "bad_request", "No usable answers in that submission.");

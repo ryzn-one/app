@@ -389,19 +389,19 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
   );
 };
 
-export const MenteeProfile = ({ u, name, badges, openBadge, openOverlay, extraMentors, onPromote, onDrop }) => (
+export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop }) => (
   <div>
     <HeaderRow title="Profile" right={
       <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
     <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-      <Card style={{ display: "flex", gap: 14, alignItems: "center" }}>
+      <Card data-tour="mentee-profile-hero" style={{ display: "flex", gap: 14, alignItems: "center" }}>
         <Monogram name={name || "—"} size={62} bg={C.ink} color={C.white} radius={16} />
         <div>
           <div style={{ fontSize: 19, fontWeight: 700 }}>{name || "Your profile"}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{u.track ? `TRACK · ${u.track.toUpperCase()} · ` : ""}WEEK {u.week}</div>
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{u?.track ? `TRACK · ${u.track.toUpperCase()} · ` : ""}WEEK {u?.week ?? 1}</div>
         </div>
       </Card>
-      {u.goals?.length > 0 && (
+      {u?.goals?.length > 0 && (
         <Card>
           <Label color={C.purple}>Your program goals</Label>
           {u.goals.map((g, i) => (
@@ -413,7 +413,7 @@ export const MenteeProfile = ({ u, name, badges, openBadge, openOverlay, extraMe
         </Card>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {[[Number(u.xp || 0).toLocaleString(), "total XP", C.purple], [`${u.streak || 0}`, "day streak", C.coral], [`${u.week || 1}/12`, "program wk", C.teal]].map(([n, l, c]) => (
+        {[[Number(u?.xp || 0).toLocaleString(), "total XP", C.purple], [`${u?.streak || 0}`, "day streak", C.coral], [`${u?.week || 1}/12`, "program wk", C.teal]].map(([n, l, c]) => (
           <Card key={l} style={{ padding: 12, textAlign: "center" }}>
             <div style={{ fontSize: 19, fontWeight: 700, color: c }}>{n}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>
@@ -432,10 +432,10 @@ export const MenteeProfile = ({ u, name, badges, openBadge, openOverlay, extraMe
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Label>Your mentors</Label>
-          <Label color={(u.mentorName ? 1 : 0) + extraMentors.length >= 3 ? C.teal : C.purple}>{(u.mentorName ? 1 : 0) + extraMentors.length}/3 SEATS</Label>
+          <Label color={(u?.mentorName ? 1 : 0) + extraMentors.length >= 3 ? C.teal : C.purple}>{(u?.mentorName ? 1 : 0) + extraMentors.length}/3 SEATS</Label>
         </div>
         <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", marginTop: 6, letterSpacing: 0.5 }}>ONE ACTIVE ENGAGEMENT AT A TIME — KEEPS IT AUTHENTIC. SUPPORTS STAY IN YOUR CORNER.</div>
-        {u.mentorName ? (
+        {u?.mentorName ? (
           <div onClick={() => openOverlay("orbit")} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, cursor: "pointer" }}>
             <Monogram name={u.mentorName} size={40} bg={C.purple} color={C.white} />
             <div style={{ flex: 1 }}>
@@ -463,8 +463,8 @@ export const MenteeProfile = ({ u, name, badges, openBadge, openOverlay, extraMe
             </div>
           </div>
         ))}
-        {(u.mentorName ? 1 : 0) + extraMentors.length < 3 && (() => {
-          const open = 3 - (u.mentorName ? 1 : 0) - extraMentors.length;
+        {(u?.mentorName ? 1 : 0) + extraMentors.length < 3 && (() => {
+          const open = 3 - (u?.mentorName ? 1 : 0) - extraMentors.length;
           return (
             <div onClick={() => openOverlay("addmentor")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, padding: "10px 0", border: "1.5px dashed #CFCDC7", borderRadius: 12, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 13 }}>
               <Plus size={14} /> Add a mentor · {open} seat{open === 1 ? "" : "s"} open

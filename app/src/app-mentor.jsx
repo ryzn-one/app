@@ -195,7 +195,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
    fixed calendar slots ("Tue Jul 21 · 5:00 PM") for meetings nobody had booked,
    including for two mentees who weren't real. */
 export const MentorSessions = ({ u }) => {
-  const sessions = u.cohort.map((m, i) => ({
+  const sessions = (u.cohort || []).map((m, i) => ({
     id: m.id || i + 1,
     mentee: m.name,
     week: m.week || 1,
@@ -273,9 +273,9 @@ export const MentorBoard = ({ u, back }) => (
       <Card>
         <Label>Your quarter breakdown</Label>
         {[
-          ["Mentees in your cohort", `${u.cohort.length}`, C.teal],
+          ["Mentees in your cohort", `${(u.cohort || []).length}`, C.teal],
           ["Cohort capacity", `${u.capacity ?? "—"}`, C.purple],
-          ["Graduations", u.cohort.length ? "First cohort in progress" : "None yet", C.amber],
+          ["Graduations", (u.cohort || []).length ? "First cohort in progress" : "None yet", C.amber],
         ].map(([l, v, c]) => (
           <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
             <span style={{ fontSize: 13.5 }}>{l}</span>
@@ -303,19 +303,21 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPin, onDelete }) => {
+export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
   const [contentTab, setContentTab] = useState("feed");
+  const posts = Array.isArray(feed) ? feed : [];
+  const cohort = u?.cohort || [];
   const checklist = [
     ["Greeting video for new mentees", greetingUp, "+25 Impact", () => go("feed")],
-    ["Why-I-mentor statement", !!u.why, "done in setup", null],
-    ["First feed post", feed.length >= 1, "+10 Impact", () => go("feed")],
-    ["3+ pieces of content", feed.length >= 3, "3× more requests", () => go("feed")],
+    ["Why-I-mentor statement", !!u?.why, "done in setup", null],
+    ["First feed post", posts.length >= 1, "+10 Impact", () => go("feed")],
+    ["3+ pieces of content", posts.length >= 3, "3× more requests", () => go("feed")],
   ];
   const strength = checklist.reduce((a, [, ok]) => a + (ok ? 25 : 0), 0);
-  const resourceCount = feed.filter(p => p.kind === "video" || p.kind === "resource").length;
+  const resourceCount = posts.filter(p => p.kind === "video" || p.kind === "resource").length;
   return (
     <div>
       <HeaderRow title="Your profile" right={
@@ -331,14 +333,14 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
           <Card style={{ background: C.ink, border: "none", color: C.white, textAlign: "center", padding: 24 }}>
             <Monogram name={name || "—"} size={68} bg={C.purple} color={C.white} radius={0} />
             <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>{name || "Your profile"}</div>
-            {(u.headline || u.industry) && (
+            {(u?.headline || u?.industry) && (
               <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 2 }}>{[u.headline, u.industry].filter(Boolean).join(" · ")}</div>
             )}
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u.tier || "Scout").toUpperCase()} MENTOR</div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u?.tier || "Scout").toUpperCase()} MENTOR</div>
             {/* "GRADUATED 11 · COHORTS 4" rendered for a mentor on day one.
                 These come off the real cohort now. */}
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
-              {[[u.impact, "IMPACT SCORE"], [u.cohort.length, "MENTEES"], [u.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
+              {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
                 <div key={l}><div style={{ fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
               ))}
             </div>
@@ -346,19 +348,19 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 0.5, textAlign: "center" }}>
             EXACTLY WHAT A MENTEE IN YOUR COHORT SEES
           </div>
-          {u.why && (
+          {u?.why && (
             <Card>
               <Label>Why you mentor</Label>
               <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 8 }}>{u.why}</div>
             </Card>
           )}
-          {u.expertise?.length > 0 && (
+          {u?.expertise?.length > 0 && (
             <Card>
               <Label>What you can teach</Label>
               <div style={{ marginTop: 10 }}><TagRow items={u.expertise} /></div>
             </Card>
           )}
-          {u.menteeFit?.length > 0 && (
+          {u?.menteeFit?.length > 0 && (
             <Card>
               <Label>Who you want to work with</Label>
               <div style={{ marginTop: 10 }}><TagRow items={u.menteeFit} /></div>
@@ -368,7 +370,7 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
               mentee's Orbit uses — so this is the real thing, not a mock of it.
               What sat here before was a single line reading "{n} FEED POSTS". */}
           <ContentTabBar view={contentTab} setView={setContentTab} count={resourceCount} />
-          <ContentTabs feed={feed} authorName={name} view={contentTab} readOnly
+          <ContentTabs feed={posts} authorName={name} view={contentTab} readOnly
             emptyText="Nothing on your profile yet. What you post in Feed shows up here." />
           {/* Public mentor pages and verification QRs aren't built. The card
               that was here printed a fixed ID (RYZ-M-2026-0087) and a
@@ -377,7 +379,7 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
               founding roster is complete" — it shared nothing. Both come back
               together, once there is a URL to share. */}
         </>) : (<>
-          <Card>
+          <Card data-tour="mentor-profile-studio">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Label>Profile strength</Label>
               <span style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: strength === 100 ? C.teal : C.purple }}>{strength}%</span>
@@ -402,9 +404,9 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
           {/* The management surface: pin what a new mentee should see first,
               delete what shouldn't be there. This is the half of the studio
               that was missing — the pane held a checklist and a link. */}
-          <Card style={{ border: `1.5px solid ${feed.length ? C.teal : C.purple}` }}>
+          <Card style={{ border: `1.5px solid ${posts.length ? C.teal : C.purple}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Label color={feed.length ? C.teal : C.purple}>Your content · {feed.length}</Label>
+              <Label color={posts.length ? C.teal : C.purple}>Your content · {posts.length}</Label>
               <Label color={C.teal}>+10 IMPACT EACH</Label>
             </div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
@@ -412,10 +414,10 @@ export const MentorProfile = ({ u, name, openOverlay, feed, go, greetingUp, onPi
                 ? "Everything here lands in every mentee’s Orbit — no meeting required. Pin what they should see first."
                 : "Start with a greeting video, then post status, photos, videos and resources. It all lands in your mentees’ Orbit."}
             </div>
-            <Btn style={{ marginTop: 12 }} onClick={() => go("feed")}><Upload size={15} /> {feed.length ? "Post something new" : "Post your first update"}</Btn>
+            <Btn style={{ marginTop: 12 }} onClick={() => go("feed")}><Upload size={15} /> {posts.length ? "Post something new" : "Post your first update"}</Btn>
           </Card>
 
-          {feed.map(p => {
+          {posts.map(p => {
             const m = KIND_META[p.kind] || KIND_META.status, Icon = m.icon;
             return (
               <Card key={p.id} style={{ padding: 13 }}>

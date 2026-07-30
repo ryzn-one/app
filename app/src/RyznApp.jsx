@@ -11,6 +11,7 @@ import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, B
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
 import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise } from "./lib/auth-client.js";
+import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
@@ -67,7 +68,8 @@ export const makeMenteeBadges = (earned = {}, streak = 0, milestones = 0) => BAD
  *  record and neither is invented locally. */
 function toAppUser(me) {
   const p = me.profile || {};
-  const isMentor = (me.user.role || "mentee") === "mentor";
+  // Founders (`admin`) only ever use the mentor product surface.
+  const isMentor = isMentorRole(me.user.role || "mentee");
   // "fresh" means day one: no history to show, so screens render first-run copy
   // rather than a fabricated six weeks of it.
   const fresh = !p.onboardingCompletedAt || (p.week ?? 1) <= 1;
@@ -169,7 +171,7 @@ export default function RyznComplete() {
     try {
       const me = await fetchMe();
       setSession(me);
-      setRole(me.user.role === "mentor" ? "mentor" : "mentee");
+      setRole(appSide(me.user.role));
       return me;
     } catch (err) {
       if (err.status !== 401) console.error("[ryzn] /api/me failed:", err);
@@ -182,22 +184,20 @@ export default function RyznComplete() {
   const applyMe = useCallback((me) => {
     if (!me) return;
     setUser(toAppUser(me));
-    if ((me.user.role || "mentee") !== "mentor") {
+    if (!isMentorRole(me.user.role || "mentee")) {
       setTodayDone(!!me.exercise?.todayDone);
     }
   }, []);
 
-  /* Prefer profile for onboardingComplete — session cookieCache can lag the
-     user document by a few minutes after /api/onboarding, which used to dump
-     people back into the Ryzn AI chat on reload. */
+  /* Onboarding is one-time. /api/me resolves the flag from profile / answers /
+     a fresh user doc (not cookieCache), so a completed setup never restarts. */
   useEffect(() => {
     let alive = true;
     (async () => {
       const me = await loadSession();
       if (!alive) return;
       if (me) {
-        const done = !!(me.user?.onboardingComplete || me.profile?.onboardingComplete);
-        if (done) { applyMe(me); setPhase("app"); }
+        if (isOnboardingDone(me)) { applyMe(me); setPhase("app"); }
         else { setPhase("journey"); setStage("chat"); }
       }
       setBooting(false);
@@ -293,6 +293,15 @@ export default function RyznComplete() {
     applyMe(me);
     setPhase("app");
   };
+
+  /* If a finished account somehow lands on the AI chat stage, bounce to the app. */
+  useEffect(() => {
+    if (booting || phase !== "journey" || stage !== "chat") return;
+    if (!isOnboardingDone(session)) return;
+    enterApp(session);
+  // enterApp is stable enough for this bounce; session/phase/stage are the triggers.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booting, phase, stage, session]);
 
   /* Leaving the deck for the app. Both sides just re-read /api/me: the mentor
      and cohort come back from the matches collection, so nothing needs to be
@@ -487,12 +496,18 @@ export default function RyznComplete() {
     switch (stage) {
       case "role": return <RoleSelect onPick={(r) => { setRole(r); setStage("welcome"); }} />;
       case "welcome": return <Welcome role={role} go={setStage} />;
-      case "register": return <Register role={role} go={setStage} initialInvite={inviteCode} onDone={async () => { addXp(10); await loadSession(); setStage("chat"); }} />;
+      case "register": return <Register role={role} go={setStage} initialInvite={inviteCode} onDone={async () => {
+        addXp(10);
+        const me = await loadSession();
+        // Returning accounts that already finished setup skip the AI chat.
+        if (isOnboardingDone(me)) await enterApp(me);
+        else setStage("chat");
+      }} />;
       case "login": return <Login role={role} go={setStage} onDone={async () => {
         const me = await loadSession();
-        // Signing in mid-setup drops you back into the chat, not past it.
-        if (me && !(me.user?.onboardingComplete || me.profile?.onboardingComplete)) setStage("chat");
-        else await enterApp(me);
+        // Setup is one-time — never re-open the chat for a finished account.
+        if (isOnboardingDone(me)) await enterApp(me);
+        else setStage("chat");
       }} />;
       case "forgot": return <Forgot go={setStage} />;
       case "chat": return <ChatScreen role={role} xp={xp} addXp={addXp} onComplete={completeOnboarding} firstName={session?.user?.name?.split(" ")[0] || ""} />;

@@ -66,14 +66,14 @@ export const TAB_HINTS = {
     exercises: { target: "mentee-exercises-submit", title: "Submit today's exercise", body: "A few minutes a day builds your streak and earns XP toward badges.", placement: "top" },
     badges: { target: "mentee-badges-first", title: "Your badges", body: "Tap an earned badge for QR verification and a one-tap LinkedIn share.", placement: "bottom" },
     meets: { target: "meets-ticket-mentee", title: "In-person Meets", body: "Keep showing up and your ticket unlocks — track your progress here.", placement: "bottom" },
-    profile: { target: "mentee-profile-settings", title: "Settings", body: "Account details and this tour both live here — come back anytime.", placement: "bottom" },
+    profile: { target: "mentee-profile-hero", title: "Your profile", body: "Goals, badges, and mentors live here. Settings (and this tour) are up in the gear.", placement: "bottom" },
   },
   mentor: {
     home: { target: "mentor-home-impact", title: "Your Impact Score", body: "This grows as your mentees hit milestones — it drives your tier.", placement: "bottom" },
     feed: { target: "mentor-feed-compose", title: "Your feed", body: "Publish a greeting or a post here. Mentees on your Orbit see what you share.", placement: "bottom" },
     sessions: { target: "mentor-sessions-list", title: "Opening sessions", body: "Each mentee who joins gets an opening session card here. Agree a time in your thread for now.", placement: "bottom" },
     meets: { target: "meets-ticket-mentor", title: "In-person Meets", body: "Your seat at the quarterly event lands here once a date is set.", placement: "bottom" },
-    profile: { target: "mentor-profile-settings", title: "Settings", body: "Account details and this tour both live here — come back anytime.", placement: "bottom" },
+    profile: { target: "mentor-profile-studio", title: "Your profile studio", body: "Strengthen your profile and manage what mentees see. Settings are in the gear up top.", placement: "bottom" },
   },
 };
 

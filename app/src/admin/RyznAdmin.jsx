@@ -38,11 +38,15 @@ const fmtAgo = (d) => {
 
 const STATE_COLOR = { open: C.purple, claimed: C.teal, expired: C.gray, revoked: C.coral };
 
-/* Clearing the hash drops back to the consumer app on the same bundle — signed
-   in it lands on the app, signed out on the app's own sign-in. The console had
-   no exit at all: once you were on /app/#/admin the only ways out were signing
-   out or editing the URL by hand. */
-const goToApp = () => { window.location.hash = ""; };
+/* Full reload onto the consumer URL so the purple RYZN splash remounts as a
+   buffer, then /api/me re-hydrates the same session into the mentor (or mentee)
+   app — no role picker, no sign-in again. Clearing the hash alone remounted
+   React but still left founders mapped wrong; the hard navigation makes the
+   handoff feel intentional. */
+const goToApp = () => {
+  const { origin, pathname, search } = window.location;
+  window.location.assign(`${origin}${pathname}${search || ""}`);
+};
 
 const Tile = ({ label, value, color = C.ink, sub }) => (
   <Card style={{ padding: 14 }}>

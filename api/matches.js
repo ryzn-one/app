@@ -56,7 +56,7 @@ async function createMatch(request, user) {
     .collection(collections.user)
     .findOne({ _id: new ObjectId(otherId) }, { projection: { role: 1 } });
   if (!other) return fail(404, "not_found", "We couldn't find that person.");
-  const otherSide = other.role === "mentor" ? "mentor" : "mentee";
+  const otherSide = sideOf(other);
   if (otherSide === side) return fail(400, "bad_request", "Matches are between a mentee and a mentor.");
 
   const col = db.collection(collections.matches);

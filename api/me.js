@@ -3,6 +3,7 @@ import { getDb, collections } from "../lib/db.js";
 import { json, withUser, ageFrom } from "../lib/http.js";
 import { acceptedFor, sideOf } from "../lib/matches.js";
 import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
+import { isMentorRole } from "../lib/roles.js";
 
 const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 
@@ -32,6 +33,52 @@ async function peopleById(db, ids) {
   };
 }
 
+/**
+ * Authoritative "setup already done" — never trust Better Auth cookieCache alone.
+ * Order: profile flags → saved answers → fresh user doc → founders always done.
+ * Backfills the profile flag so the next boot is a single read.
+ */
+async function resolveOnboarding(db, user, profile) {
+  if (user.role === "admin") {
+    if (!profile?.onboardingComplete) {
+      const now = new Date();
+      await db.collection(collections.profiles).updateOne(
+        { userId: user.id },
+        { $set: { onboardingComplete: true, onboardingCompletedAt: profile?.onboardingCompletedAt || now, updatedAt: now } }
+      );
+    }
+    return true;
+  }
+
+  let done = !!(profile?.onboardingComplete || profile?.onboardingCompletedAt);
+
+  if (!done) {
+    const answers = await db.collection(collections.onboardingAnswers).findOne(
+      { userId: user.id },
+      { projection: { _id: 1 } }
+    );
+    if (answers) done = true;
+  }
+
+  if (!done) {
+    const fresh = await db.collection(collections.user).findOne(
+      { _id: new ObjectId(user.id) },
+      { projection: { onboardingComplete: 1 } }
+    );
+    if (fresh?.onboardingComplete) done = true;
+  }
+
+  if (done && !profile?.onboardingComplete) {
+    const now = new Date();
+    await db.collection(collections.profiles).updateOne(
+      { userId: user.id },
+      { $set: { onboardingComplete: true, onboardingCompletedAt: profile?.onboardingCompletedAt || now, updatedAt: now } }
+    );
+  }
+
+  return done;
+}
+
 async function handler(request, user) {
   const db = await getDb();
   const profiles = db.collection(collections.profiles);
@@ -43,7 +90,8 @@ async function handler(request, user) {
     updatedAt: new Date(),
     fresh: true,
     onboardingComplete: false,
-    ...(user.role === "mentor"
+    // Founders (`admin`) get a mentor-shaped profile — they never sit on the mentee side.
+    ...(isMentorRole(user.role)
       ? { impact: 0, tier: "Scout", mentorRank: null, cohort: [], greetingUploaded: false }
       : { week: 1, streak: 0, xp: 0, rank: null, mentorUserId: null, supportMentorIds: [], earned: {} }),
   };
@@ -54,7 +102,11 @@ async function handler(request, user) {
     { $setOnInsert: base },
     { upsert: true }
   );
-  const profile = await profiles.findOne({ userId: user.id });
+  let profile = await profiles.findOne({ userId: user.id });
+  const onboardingComplete = await resolveOnboarding(db, user, profile);
+  if (onboardingComplete && !profile?.onboardingComplete) {
+    profile = await profiles.findOne({ userId: user.id });
+  }
 
   const age = ageFrom(user.dateOfBirth);
   const isMinor = age !== null && age < 18;
@@ -142,13 +194,10 @@ async function handler(request, user) {
          email is in ADMIN_EMAILS — promote via admin invite or `admin:grant`. */
       adminConsole: canAccessAdminConsole(user),
       emailVerified: user.emailVerified,
-      /* Prefer the profile row: Better Auth's session cookieCache can keep a
-         stale `user.onboardingComplete: false` for up to five minutes after
-         /api/onboarding flips the user doc, which sent people back through the
-         Ryzn AI chat on every reload. The profile is read fresh above. */
-      onboardingComplete: !!(profile?.onboardingComplete || user.onboardingComplete),
+      /* Resolved from profile / answers / fresh user doc — not cookieCache. */
+      onboardingComplete,
     },
-    profile: { ...profile, _id: undefined },
+    profile: { ...profile, onboardingComplete, _id: undefined },
     mentor,
     supportMentors,
     cohort,
