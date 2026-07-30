@@ -19,7 +19,7 @@ import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
 import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
 import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
 import { ExploreScreen } from "./explore.jsx";
-import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
+import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
@@ -140,6 +140,7 @@ export default function RyznComplete() {
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterError, setRosterError] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   // app state
   const [tab, setTab] = useState("home");
@@ -252,8 +253,23 @@ export default function RyznComplete() {
 
   useEffect(() => { if (stage === "matches" && phase === "journey") loadRoster(); }, [stage, phase, loadRoster]);
   /* Pending invites must reach the in-app Notifications surface, not only the
-     onboarding deck — otherwise a mentor invite sits unanswered with no UI. */
-  useEffect(() => { if (phase === "app") loadMatches(); }, [phase, loadMatches]);
+     onboarding deck — otherwise a mentor invite sits unanswered with no UI.
+     Poll while the app is open so an invite that lands mid-session pops the
+     top-right alert without a refresh. */
+  useEffect(() => {
+    if (phase !== "app") return;
+    loadMatches();
+    const tick = setInterval(loadMatches, 20_000);
+    const onFocus = () => loadMatches();
+    const onVis = () => { if (document.visibilityState === "visible") loadMatches(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(tick);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [phase, loadMatches]);
 
   /* — mentor content —
      A mentor loads their own feed; a mentee loads their active mentor's. Same
@@ -580,6 +596,26 @@ export default function RyznComplete() {
     }
   };
 
+  /* Accept / pass a pending invite from the sticky alert or Notifications. */
+  const respondInvite = useCallback(async (id, action) => {
+    if (inviteBusy) return;
+    setInviteBusy(true);
+    try {
+      await respondToMatch(id, action);
+      const row = matches.find(m => m.id === id);
+      const first = (row?.person?.name || "them").split(" ")[0];
+      await Promise.all([loadMatches(), loadRoster(), refreshUser()]);
+      toast(action === "accept"
+        ? (role === "mentee" ? `You’re matched with ${first}` : `${first} joined your cohort`)
+        : "Declined.");
+      if (action === "accept" && overlay === "notifs") setOverlay(null);
+    } catch (e) {
+      toast(e?.message || "Couldn’t save that.");
+    } finally {
+      setInviteBusy(false);
+    }
+  }, [inviteBusy, matches, loadMatches, loadRoster, refreshUser, role, overlay, toast]);
+
   /* — overlay content (rendered inline on mobile, in a modal on desktop) — */
   const overlayContent = () => {
     if (!user || !overlay) return null;
@@ -590,21 +626,8 @@ export default function RyznComplete() {
         matches={matches}
         back={() => setOverlay(null)}
         navTo={navTo}
-        busy={false}
-        onRespond={async (id, action) => {
-          try {
-            await respondToMatch(id, action);
-            await Promise.all([loadMatches(), loadRoster(), refreshUser()]);
-            const row = matches.find(m => m.id === id);
-            const first = (row?.person?.name || "them").split(" ")[0];
-            toast(action === "accept"
-              ? (role === "mentee" ? `You’re matched with ${first}` : `${first} joined your cohort`)
-              : "Declined.");
-            if (action === "accept") setOverlay(null);
-          } catch (e) {
-            toast(e?.message || "Couldn’t save that.");
-          }
-        }}
+        busy={inviteBusy}
+        onRespond={respondInvite}
       />
     );
     if (overlay === "settings") return (
@@ -817,6 +840,18 @@ export default function RyznComplete() {
       {phase === "app" && comprehensiveTourOpen && (
         <ComprehensiveTour role={role} onDone={() => { setComprehensiveTourOpen(false); }} onNavTo={navTo} />
       )}
+
+      <AnimatePresence>
+        {phase === "app" && overlay !== "notifs" && matches.some(m => m.awaitingYou) && (
+          <InviteAlert
+            key="invite-alert"
+            role={role}
+            invites={matches}
+            busy={inviteBusy}
+            onRespond={respondInvite}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {toastMsg && (

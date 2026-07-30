@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
@@ -205,6 +206,84 @@ export const NotifsScreen = ({ role, u, matches = [], back, navTo, onRespond, bu
         ))}
       </div>
     </div>
+  );
+};
+
+/* Fixed top-right invite alert. Stays put until Accept or Pass — no auto-dismiss,
+   no X. Hidden only while the full Notifications overlay is already open. */
+export const InviteAlert = ({ role, invites = [], busy, onRespond }) => {
+  const inbox = (Array.isArray(invites) ? invites : []).filter(m => m.awaitingYou);
+  if (inbox.length === 0) return null;
+  const m = inbox[0];
+  const first = (m.person?.name || "Someone").split(" ")[0];
+  const more = inbox.length - 1;
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 28, y: -8 }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      style={{
+        position: "fixed",
+        top: "calc(14px + env(safe-area-inset-top, 0px))",
+        right: 14,
+        zIndex: 95,
+        width: "min(340px, calc(100vw - 28px))",
+        background: C.ink,
+        color: C.white,
+        borderRadius: 18,
+        padding: "16px 16px 14px",
+        boxShadow: "0 18px 48px rgba(26,26,26,.35)",
+      }}
+      role="alertdialog"
+      aria-label={role === "mentee" ? `${first} invited you` : `${first} asked to join`}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Bell size={20} color={C.white} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: "#B7AFF2" }}>
+            {role === "mentee" ? "MENTOR INVITE" : "MENTEE REQUEST"}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.3, marginTop: 4, lineHeight: 1.25 }}>
+            {role === "mentee" ? `${first} invited you` : `${first} asked to join`}
+          </div>
+          <div style={{ fontSize: 13, color: "#C9C6C0", marginTop: 4, lineHeight: 1.4 }}>
+            {role === "mentee"
+              ? "Accept to open their Orbit and take a mentor seat."
+              : "Accept to add them to your cohort."}
+            {more > 0 ? ` · ${more} more waiting` : ""}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onRespond?.(m.id, "decline")}
+          style={{
+            flex: 0.7, border: "1.5px solid rgba(255,255,255,.22)", background: "transparent",
+            color: "#C9C6C0", borderRadius: 12, padding: "11px 12px", fontFamily: F.sans,
+            fontWeight: 700, fontSize: 13.5, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1,
+          }}
+        >
+          Pass
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onRespond?.(m.id, "accept")}
+          style={{
+            flex: 1.3, border: "none", background: C.purple, color: C.white, borderRadius: 12,
+            padding: "11px 12px", fontFamily: F.sans, fontWeight: 700, fontSize: 13.5,
+            cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1,
+          }}
+        >
+          Accept {first}
+        </button>
+      </div>
+    </motion.div>
   );
 };
 
