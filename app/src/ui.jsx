@@ -5,7 +5,7 @@ import {
   Plus, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Pencil, Trash2
+  X, SlidersHorizontal, RotateCcw, Search, Pencil, Trash2, Building2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { logoSrc, Brand } from "./branding.js";
@@ -434,8 +434,9 @@ export const AuthCardShell = ({ children }) => (
   </div>
 );
 
-export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole, onSettings, onLogout }) => {
+export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole, org, onSettings, onLogout }) => {
   const reduced = useReducedMotion();
+  const goTeams = () => { window.location.hash = "#/teams"; };
   return (
   <div style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.line}`, background: C.white, display: "flex", flexDirection: "column", height: "100%" }}>
     <div style={{ padding: "26px 22px 20px" }}>
@@ -460,6 +461,23 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
           </motion.button>
         );
       })}
+      {/* Mentors: Teams is a separate hash route (#/teams), so it sits under the
+          in-app tabs as its own door — create org, roster, Activate Orbit. */}
+      {role === "mentor" && (
+        <motion.button type="button" onClick={goTeams} whileTap={reduced ? undefined : { scale: 0.98 }} transition={spring(reduced)}
+          title="Ryzn for Teams"
+          style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 12, marginTop: 8,
+            border: `1px solid ${C.line}`, cursor: "pointer", textAlign: "left", fontFamily: F.sans, fontWeight: 600, fontSize: 14,
+            background: C.surface, color: C.ink, width: "100%",
+          }}>
+          <Building2 size={18} color={C.purple} strokeWidth={2.2} />
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {org?.name || "Teams"}
+          </span>
+          <ExternalLink size={14} color={C.gray} />
+        </motion.button>
+      )}
     </div>
     <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
       <Monogram name={name || "—"} size={36} />

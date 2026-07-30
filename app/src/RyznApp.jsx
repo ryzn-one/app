@@ -819,7 +819,7 @@ export default function RyznComplete() {
       }
     }
     switch (tab) {
-      case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} />;
+      case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
       case "sessions": return (
         <SessionsScreen
@@ -891,6 +891,7 @@ export default function RyznComplete() {
         isDesktop ? (
           <div style={{ display: "flex", height: "100%" }}>
             <Sidebar nav={nav} tab={tab} overlay={overlay} role={role} name={session?.user?.name} adminConsole={session?.user?.adminConsole}
+              org={session?.org}
               onSelect={(id) => { setOverlay(null); setTab(id); }}
               onSettings={() => setOverlay("settings")} onLogout={logout} />
             <div style={{ flex: 1, overflow: "hidden" }}>

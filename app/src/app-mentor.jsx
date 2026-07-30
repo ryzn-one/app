@@ -4,7 +4,7 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2
+  X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
@@ -110,7 +110,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
 
 /* ————————————————— APP: MENTOR ————————————————— */
 
-export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
+export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
   const isDesktop = useIsDesktop();
   const firstName = (name || "").split(" ")[0];
   return (
@@ -122,6 +122,24 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft }) => {
       </div>
       <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
     </div>
+    {/* Same door as the desktop sidebar — mobile has no sidebar, so Teams has
+        to live on Cohort or it stays buried in Settings. */}
+    <Card onClick={() => { window.location.hash = "#/teams"; }} style={{ marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Building2 size={16} color={C.purple} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {org?.name || "Ryzn for Teams"}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>
+            {org ? "Roster, invites, and Orbit" : "Create an organisation for your company"}
+          </div>
+        </div>
+        <ExternalLink size={15} color={C.gray} />
+      </div>
+    </Card>
     <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
