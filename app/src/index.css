@@ -32,6 +32,10 @@ html, body, #root {
 * { -webkit-font-smoothing: antialiased; }
 .full-h { height: 100vh; height: 100dvh; }
 input::placeholder, textarea::placeholder { color: #A5A39D; }
+/* iOS Safari zooms when focusing inputs under 16px and often leaves zoom stuck. */
+@media (hover: none) and (pointer: coarse) {
+  input, textarea, select { font-size: 16px !important; }
+}
 .app-scroll::-webkit-scrollbar { display: none; }
 
 .sheet-up { animation: sheetUp .32s cubic-bezier(.22,1,.36,1); }

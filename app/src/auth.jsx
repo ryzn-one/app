@@ -79,13 +79,13 @@ export const RoleSelect = ({ onPick }) => (
 );
 
 export const Welcome = ({ role, go }) => (
-  <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column" }}>
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+  <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 28 }}>
       <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 18, lineHeight: 1.2 }}>
+      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 28, lineHeight: 1.2 }}>
         {role === "mentee" ? <>You don’t need to figure this out alone.</> : <>You’re exactly who we built this for.</>}
       </div>
-      <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>
+      <div style={{ fontSize: 15, color: C.gray, marginTop: 14, lineHeight: 1.6 }}>
         {role === "mentee"
           ? "We found the people who already did. A hand-picked roster, a 12-week program, and proof you can put on a resume."
           : "20 founding mentors. A public Impact Score, a real talent pipeline, and a movement worth your name. Invitation only."}
@@ -94,21 +94,21 @@ export const Welcome = ({ role, go }) => (
           claims. The numbers that used to sit here ("avg XP / cohort",
           "$56K lifetime earnings lift", "92% graduation rate") described
           outcomes the platform has not produced yet. */}
-      <div style={{ display: "flex", gap: 14, marginTop: 22 }}>
+      <div style={{ display: "flex", gap: 14, marginTop: 36 }}>
         {(role === "mentee"
           ? [["12", "week program"], ["8", "verifiable badges"], ["3", "mentor seats"]]
           : [["20", "founding mentors"], ["12", "week cohort"], ["4", "mentor tiers"]]
         ).map(([n, l]) => (
-          <div key={l}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: C.purple }}>{n}</div>
-            <div style={{ fontFamily: F.mono, fontSize: 8, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase", marginTop: 2 }}>{l}</div>
+          <div key={l} style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.purple, letterSpacing: -0.4, lineHeight: 1 }}>{n}</div>
+            <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, letterSpacing: 0.4, textTransform: "uppercase", marginTop: 8, lineHeight: 1.35 }}>{l}</div>
           </div>
         ))}
       </div>
     </div>
-    <div style={{ paddingBottom: 28, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ paddingBottom: "max(36px, env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 14 }}>
       <Btn onClick={() => go("register")}>{role === "mentee" ? "Apply to the next cohort" : "Enter your invitation"}</Btn>
-      <Btn kind="ghost" onClick={() => go("login")}>Sign in</Btn>
+      <Btn kind="ghost" onClick={() => go("login")} style={{ background: C.white, border: `1.5px solid ${C.line}` }}>Sign in</Btn>
     </div>
   </div>
 );
@@ -206,7 +206,7 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.amberTint, border: `1px solid ${inviteState === "invalid" ? C.coral : C.amber}`, borderRadius: 12, marginTop: 7, padding: "12px 12px" }}>
             <Shield size={15} color={inviteState === "invalid" ? C.coral : C.amber} />
             <input value={inv} onChange={e => setInv(e.target.value)} placeholder="RYZ-INV-…" autoComplete="off" spellCheck={false}
-              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: F.mono, fontSize: 13, color: C.ink, minWidth: 0, textTransform: "uppercase" }} />
+              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: F.mono, fontSize: 16, color: C.ink, minWidth: 0, textTransform: "uppercase" }} />
             {inviteBadge}
           </div>
         </div>
@@ -272,24 +272,30 @@ export const Login = ({ go, onDone, role }) => {
   const google = () => signIn.social({ provider: "google", callbackURL: "/app/" });
 
   return (
-    <div style={{ padding: "0 24px" }}>
-      <button onClick={() => go("welcome")} style={{ background: "none", border: "none", cursor: "pointer", padding: "18px 0 0" }}><ArrowLeft size={20} color={C.ink} /></button>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 12 }}>Welcome back.</div>
-      {/* Was "Day 34 of your streak is waiting." — a specific claim about a
-          person the sign-in screen has not identified yet. */}
-      <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>{role === "mentee" ? "Pick up where you left off." : "Your cohort kept moving. Catch up inside."}</div>
-      <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-      <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password"
-        onKeyDown={e => e.key === "Enter" && submit()}
-        right={<button onClick={() => setShow(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>{show ? <EyeOff size={16} color={C.gray} /> : <Eye size={16} color={C.gray} />}</button>} />
-      <div onClick={() => go("forgot")} style={{ textAlign: "right", fontSize: 12.5, color: C.purple, fontWeight: 600, marginTop: 10, cursor: "pointer" }}>Forgot password?</div>
-      <FormError>{err}</FormError>
-      <Btn style={{ marginTop: 18 }} disabled={busy} onClick={submit}>{busy ? "Signing in…" : "Sign in"}</Btn>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
-        <div style={{ flex: 1, height: 1, background: C.line }} /><Label>or</Label><div style={{ flex: 1, height: 1, background: C.line }} />
+    <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <button onClick={() => go("welcome")} style={{ background: "none", border: "none", cursor: "pointer", padding: "22px 0 0", alignSelf: "flex-start" }}><ArrowLeft size={20} color={C.ink} /></button>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 20 }}>
+        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.2 }}>Welcome back.</div>
+        {/* Was "Day 34 of your streak is waiting." — a specific claim about a
+            person the sign-in screen has not identified yet. */}
+        <div style={{ fontSize: 14.5, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>{role === "mentee" ? "Pick up where you left off." : "Your cohort kept moving. Catch up inside."}</div>
+        <div style={{ marginTop: 10 }}>
+          <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+          <Field label="Password" type={show ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password"
+            onKeyDown={e => e.key === "Enter" && submit()}
+            right={<button onClick={() => setShow(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>{show ? <EyeOff size={16} color={C.gray} /> : <Eye size={16} color={C.gray} />}</button>} />
+        </div>
+        <div onClick={() => go("forgot")} style={{ textAlign: "right", fontSize: 13, color: C.purple, fontWeight: 600, marginTop: 16, cursor: "pointer" }}>Forgot password?</div>
+        <FormError>{err}</FormError>
+        <Btn style={{ marginTop: 24 }} disabled={busy} onClick={submit}>{busy ? "Signing in…" : "Sign in"}</Btn>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "24px 0" }}>
+          <div style={{ flex: 1, height: 1, background: C.line }} /><Label>or</Label><div style={{ flex: 1, height: 1, background: C.line }} />
+        </div>
+        <Btn kind="ghost" onClick={google} style={{ background: C.white, border: `1.5px solid ${C.line}` }}><GoogleMark /> Continue with Google</Btn>
       </div>
-      <Btn kind="ghost" onClick={google}><GoogleMark /> Continue with Google</Btn>
-      <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, marginTop: 12, paddingBottom: 24 }}>New here? <span onClick={() => go("register")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create an account</span></div>
+      <div style={{ paddingBottom: "max(32px, env(safe-area-inset-bottom))", paddingTop: 8, textAlign: "center" }}>
+        <div style={{ fontSize: 13, color: C.gray }}>New here? <span onClick={() => go("register")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create an account</span></div>
+      </div>
     </div>
   );
 };

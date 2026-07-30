@@ -121,11 +121,11 @@ export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, r
    passes onKeyDown for Enter-to-submit. Both used to be destructured away and
    dropped, so Enter did nothing and no password manager could fill the form. */
 export const Field = ({ label, type = "text", right, ...rest }) => (
-  <div style={{ marginTop: 14 }}>
+  <div style={{ marginTop: 18 }}>
     <Label>{label}</Label>
-    <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, marginTop: 7, padding: "0 12px" }}>
+    <div style={{ display: "flex", alignItems: "center", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, marginTop: 8, padding: "0 14px" }}>
       <input type={type} {...rest}
-        style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "13px 2px", fontFamily: F.sans, fontSize: 15, color: C.ink, minWidth: 0 }} />
+        style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "15px 2px", fontFamily: F.sans, fontSize: 16, color: C.ink, minWidth: 0 }} />
       {right}
     </div>
   </div>
