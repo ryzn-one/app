@@ -49,7 +49,7 @@ export const Splash = ({ onEnter, isDesktop }) => (
 );
 
 export const RoleSelect = ({ onPick }) => (
-  <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column" }}>
+  <div style={{ padding: "44px 24px 0", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 18, lineHeight: 1.2 }}>Who’s rising today?</div>
@@ -79,7 +79,7 @@ export const RoleSelect = ({ onPick }) => (
 );
 
 export const Welcome = ({ role, go }) => (
-  <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+  <div style={{ padding: "44px 24px 0", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 28 }}>
       <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 28, lineHeight: 1.2 }}>
