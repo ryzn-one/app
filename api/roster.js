@@ -81,13 +81,14 @@ async function handler(request, user) {
 
   /* What the caller can do about this person right now. `pending_them` is the
      one that matters: they asked first, so the action is accept/decline, not
-     request. */
+     request. `requestedBy` is the side ("mentee"|"mentor"), not a user id —
+     comparing it to user.id made every pending match look like "asked for you". */
   const stateOf = (id) => {
     const m = matchByUser.get(id);
     if (!m) return { matchState: "none", matchId: null };
     if (m.status === MATCH_STATUS.ACCEPTED) return { matchState: "accepted", matchId: String(m._id) };
     if (m.status === MATCH_STATUS.DECLINED) return { matchState: "declined", matchId: String(m._id) };
-    const theyAsked = String(m.requestedBy) !== String(user.id);
+    const theyAsked = m.requestedBy !== viewerRole;
     return { matchState: theyAsked ? "pending_them" : "pending_you", matchId: String(m._id) };
   };
 

@@ -251,6 +251,9 @@ export default function RyznComplete() {
   }, [loadSession, applyMe]);
 
   useEffect(() => { if (stage === "matches" && phase === "journey") loadRoster(); }, [stage, phase, loadRoster]);
+  /* Pending invites must reach the in-app Notifications surface, not only the
+     onboarding deck — otherwise a mentor invite sits unanswered with no UI. */
+  useEffect(() => { if (phase === "app") loadMatches(); }, [phase, loadMatches]);
 
   /* — mentor content —
      A mentor loads their own feed; a mentee loads their active mentor's. Same
@@ -580,7 +583,30 @@ export default function RyznComplete() {
   /* — overlay content (rendered inline on mobile, in a modal on desktop) — */
   const overlayContent = () => {
     if (!user || !overlay) return null;
-    if (overlay === "notifs") return <NotifsScreen role={role} u={user} back={() => setOverlay(null)} navTo={navTo} />;
+    if (overlay === "notifs") return (
+      <NotifsScreen
+        role={role}
+        u={user}
+        matches={matches}
+        back={() => setOverlay(null)}
+        navTo={navTo}
+        busy={false}
+        onRespond={async (id, action) => {
+          try {
+            await respondToMatch(id, action);
+            await Promise.all([loadMatches(), loadRoster(), refreshUser()]);
+            const row = matches.find(m => m.id === id);
+            const first = (row?.person?.name || "them").split(" ")[0];
+            toast(action === "accept"
+              ? (role === "mentee" ? `You’re matched with ${first}` : `${first} joined your cohort`)
+              : "Declined.");
+            if (action === "accept") setOverlay(null);
+          } catch (e) {
+            toast(e?.message || "Couldn’t save that.");
+          }
+        }}
+      />
+    );
     if (overlay === "settings") return (
       <SettingsScreen
         role={role}
@@ -639,7 +665,7 @@ export default function RyznComplete() {
     if (!user) return null;
     if (role === "mentee") {
       switch (tab) {
-        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} />;
+        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} invites={matches.filter(m => m.awaitingYou)} />;
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;

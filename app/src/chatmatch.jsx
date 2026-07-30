@@ -528,6 +528,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   const safeMatches = Array.isArray(matches) ? matches : [];
   const pending = safeMatches.filter(m => m.status === "pending");
   const accepted = safeMatches.filter(m => m.status === "accepted");
+  const inbox = safeMatches.filter(m => m.awaitingYou);
   const requested = [...accepted, ...pending];
   const openReqs = pending.length;
   const activeMentor = accepted.find(m => m.seat === "active") || accepted[0] || null;
@@ -652,6 +653,24 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
         </div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {Math.max(0, 3 - requested.length)} SEAT{3 - requested.length === 1 ? "" : "S"} FREE</div>
       </div>
+      {inbox.length > 0 && (
+        <div style={{ padding: "10px 20px 0" }}>
+          <Label color={C.purple}>Asked for you · {inbox.length}</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {inbox.map(m => (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.purpleTint, borderRadius: 12, padding: "9px 12px" }}>
+                <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
+                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  <div style={{ fontSize: 11.5, color: C.gray }}>Invited you to their cohort</div>
+                </div>
+                <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
+                <Btn small disabled={busy || requested.length >= 3} onClick={() => respond(m, "accept")}>Accept</Btn>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {isDesktop
         ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
         : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
@@ -834,20 +853,40 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
         </div>
       )}
       {isDesktop
-        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
-        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="INVITE" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="INVITE" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
       {(taken >= 1 || outbox.length > 0) && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
           <Btn onClick={() => onEnterApp(accepted)}>Open mentor dashboard · cohort {taken}/{cap}</Btn>
         </div>
       )}
       {detail && (
-        <MenteeDetailSheet m={detail} close={() => setDetail(null)} footer={
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn kind="ghost" style={{ flex: 0.6, borderColor: C.line, color: C.gray }} onClick={() => { const m = detail; setDetail(null); decide(m, "left"); }}>Pass</Btn>
-            <Btn style={{ flex: 1 }} disabled={taken >= cap} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>{taken >= cap ? `Cohort full · ${cap} seats` : "Accept · +30 Impact"}</Btn>
-          </div>
-        } />
+        <MenteeDetailSheet m={detail} close={() => setDetail(null)} footer={(() => {
+          const first = (detail.name || "them").split(" ")[0];
+          const pendingOut = outbox.find(m => m.person?.id === detail.id);
+          const pendingIn = inbox.find(m => m.person?.id === detail.id);
+          const already = accepted.find(m => m.person?.id === detail.id);
+          if (already) {
+            return <Btn kind="soft" disabled>{first} is in your cohort</Btn>;
+          }
+          if (pendingOut) {
+            return <Btn disabled>Invitation sent · waiting on {first}</Btn>;
+          }
+          if (pendingIn) {
+            return (
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn kind="ghost" style={{ flex: 0.6, borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => { setDetail(null); respond(pendingIn, "decline"); }}>Pass</Btn>
+                <Btn style={{ flex: 1 }} disabled={busy || taken >= cap} onClick={() => { setDetail(null); respond(pendingIn, "accept"); }}>{taken >= cap ? `Cohort full · ${cap} seats` : `Accept ${first}`}</Btn>
+              </div>
+            );
+          }
+          return (
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn kind="ghost" style={{ flex: 0.6, borderColor: C.line, color: C.gray }} onClick={() => { const m = detail; setDetail(null); decide(m, "left"); }}>Pass</Btn>
+              <Btn style={{ flex: 1 }} disabled={taken >= cap} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>{taken >= cap ? `Cohort full · ${cap} seats` : `Invite ${first}`}</Btn>
+            </div>
+          );
+        })()} />
       )}
       <FilterSheet open={showFilter} close={() => setShowFilter(false)} values={filters} setValues={setFilters} count={deck.length} countLabel="mentee"
         sections={[{ key: "track", label: "Track", options: ["Any", "University", "High school"] }]} />

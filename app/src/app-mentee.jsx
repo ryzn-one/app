@@ -13,7 +13,7 @@ import { fetchMessages, sendMessage } from "./lib/auth-client.js";
 
 /* ————————————————— APP: MENTEE ————————————————— */
 
-export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1, mentorSeats, toast, feed = [], watched = {} }) => {
+export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1, mentorSeats, toast, feed = [], watched = {}, invites = [] }) => {
   const nextBadge = badges.find(b => !b.earned);
   const nextIdx = badges.indexOf(nextBadge);
   const todayEx = EXERCISE_TRACK[0];
@@ -21,6 +21,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
   const firstName = (name || "").split(" ")[0];
   const latest = feed.find(p => !p.pinned);
   const unread = feed.filter(p => (p.kind === "video" || p.kind === "resource") && !watched[p.id]).length;
+  const pendingInvites = Array.isArray(invites) ? invites : [];
   return (
     <div style={{ padding: "18px 20px 20px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -31,9 +32,28 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
         </div>
         <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer", position: "relative" }}>
           <Bell size={18} color={C.ink} />
-          <div style={{ position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: 4, background: C.coral }} />
+          {pendingInvites.length > 0 && <div style={{ position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: 4, background: C.coral }} />}
         </button>
       </div>
+
+      {pendingInvites.length > 0 && (
+        <Card onClick={() => openOverlay("notifs")} style={{ marginTop: 14, background: C.purpleTint, border: `1px solid ${C.purple}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 36, height: 36, background: C.purple, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Users size={16} color={C.white} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
+                {pendingInvites.length === 1
+                  ? `${(pendingInvites[0].person?.name || "A mentor").split(" ")[0]} invited you`
+                  : `${pendingInvites.length} mentor invites waiting`}
+              </div>
+              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2 }}>Tap to accept or pass</div>
+            </div>
+            <ChevronRight size={16} color={C.purple} />
+          </div>
+        </Card>
+      )}
 
       <Card data-tour="mentee-home-progress" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 18 }}>
         <Ring pct={u.fresh ? 0.03 : u.week / 12}>

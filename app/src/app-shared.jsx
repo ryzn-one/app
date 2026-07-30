@@ -150,8 +150,12 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
 /* Derived from state the client actually holds — a real match, a real badge, a
    real cohort. There is no notification service yet, so nothing is invented to
    fill the list: it previously shipped a six-item history including messages
-   quoted from a mentor who didn't exist and a session on a date nobody set. */
-export const NotifsScreen = ({ role, u, back, navTo }) => {
+   quoted from a mentor who didn't exist and a session on a date nobody set.
+
+   Pending invites (`awaitingYou`) are the one thing that used to go missing:
+   a mentor could invite a mentee and the mentee had no surface that showed it. */
+export const NotifsScreen = ({ role, u, matches = [], back, navTo, onRespond, busy }) => {
+  const inbox = (Array.isArray(matches) ? matches : []).filter(m => m.awaitingYou);
   const items = [];
   if (role === "mentee") {
     if (u.mentorName) items.push({ icon: Check, c: C.teal, bg: C.tealTint, t: `${u.mentorName.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" });
@@ -165,6 +169,27 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
     <div>
       <HeaderRow title="Notifications" onBack={back} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {inbox.map(m => {
+          const first = (m.person?.name || "Someone").split(" ")[0];
+          return (
+            <Card key={m.id} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={16} color={C.purple} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13.5 }}>{role === "mentee" ? `${first} invited you` : `${first} asked to join`}</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", whiteSpace: "nowrap" }}>NEW</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
+                  {role === "mentee" ? "Accept to open their Orbit and take a mentor seat." : "Accept to add them to your cohort."}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => onRespond?.(m.id, "decline")}>Pass</Btn>
+                  <Btn small disabled={busy} onClick={() => onRespond?.(m.id, "accept")}>Accept {first}</Btn>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
         {items.map((n, i) => (
           <Card key={i} onClick={() => navTo(n.to)} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <div style={{ width: 36, height: 36, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><n.icon size={16} color={n.c} /></div>
