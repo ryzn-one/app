@@ -524,23 +524,18 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
           {/* Door into the course designer — not an inline editor. Mentors open
               a dedicated workspace to author phases, then come back here. */}
           <Card data-tour="mentor-profile-program" onClick={() => openOverlay("course")}
-            style={{ border: `1.5px solid ${phases.length ? C.teal : C.purple}`, cursor: "pointer", padding: 18 }}>
+            style={{ border: `1.5px solid ${C.teal}`, cursor: "pointer", padding: 18, background: C.tealTint }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: phases.length ? C.tealTint : C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <LayoutGrid size={20} color={phases.length ? C.teal : C.purple} />
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <LayoutGrid size={20} color={C.white} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Label color={phases.length ? C.teal : C.purple}>{phases.length ? "Your course" : "Course design"}</Label>
-                <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, letterSpacing: -0.2 }}>
+                <Label color={C.teal}>Course design</Label>
+                <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, letterSpacing: -0.2, color: C.teal }}>
                   {phases.length ? `${phases.length} phase${phases.length === 1 ? "" : "s"} · edit course` : "Design your course"}
                 </div>
-                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 5, lineHeight: 1.5 }}>
-                  {phases.length
-                    ? "Open the designer to add phases, reorder steps, and attach certificates."
-                    : "Open the designer — add phases from kickoff to graduation, with optional rewards."}
-                </div>
               </div>
-              <ChevronRight size={18} color={C.gray} style={{ marginTop: 10, flexShrink: 0 }} />
+              <ChevronRight size={18} color={C.teal} style={{ marginTop: 10, flexShrink: 0 }} />
             </div>
             {phases.length > 0 && (
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
