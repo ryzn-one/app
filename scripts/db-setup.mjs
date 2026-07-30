@@ -78,6 +78,10 @@ const indexes = [
   ["messages", { senderId: 1, createdAt: -1 }, { name: "sender_recent" }],
   ["rate_limits", { key: 1, windowStart: 1 }, { name: "key_window" }],
   ["rate_limits", { expiresAt: 1 }, { expireAfterSeconds: 0, name: "expiresAt_ttl" }],
+  // Mentor Meets events
+  ["events", { kind: 1, status: 1, createdAt: -1 }, { name: "kind_status" }],
+  ["events", { hostId: 1, createdAt: -1 }, { name: "host_recent" }],
+  ["event_responses", { eventId: 1, userId: 1 }, { unique: true, name: "event_user_unique" }],
 ];
 
 for (const [col, spec, opts] of indexes) {

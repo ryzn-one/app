@@ -10,7 +10,7 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
-import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise } from "./lib/auth-client.js";
+import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction } from "./lib/auth-client.js";
 import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
@@ -151,6 +151,10 @@ export default function RyznComplete() {
   const [reacted, setReacted] = useState({});
   const [mentorFeed, setMentorFeed] = useState([]);
   const [menteeAdds, setMenteeAdds] = useState(0);
+  const [program, setProgram] = useState({ phases: [], completedPhaseIds: [] });
+  const [events, setEvents] = useState([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventsError, setEventsError] = useState(null);
 
   const toast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(null), 2000); };
   const addXp = (n) => { setXp(x => x + n); toast(`+${n} ${role === "mentee" ? "XP" : "IMPACT"}`); };
@@ -268,6 +272,54 @@ export default function RyznComplete() {
   /* Derived, not stored: the greeting *is* a post, so the feed is the only
      thing that can answer whether one exists. */
   const greetingUp = mentorFeed.some(p => p.greeting);
+
+  /* The mentor's authored program: same "own vs. paired party's" shape as the
+     feed above. A mentee with no active mentor yet has nothing to load. */
+  const loadProgram = useCallback(async () => {
+    if (role === "mentee" && !mentorId) { setProgram({ phases: [], completedPhaseIds: [] }); return; }
+    try {
+      const data = await fetchProgram(role === "mentee" ? { mentorId } : {});
+      setProgram({ phases: data.phases || [], completedPhaseIds: data.completedPhaseIds || [] });
+    } catch (err) {
+      console.error("[ryzn] /api/program failed:", err);
+    }
+  }, [role, mentorId]);
+
+  useEffect(() => { if (phase === "app") loadProgram(); }, [phase, loadProgram]);
+
+  const saveProgramPhases = async (phases) => {
+    try { await saveProgram(phases); await loadProgram(); }
+    catch (e) { toast(e.message || "Couldn't save that."); }
+  };
+
+  /* Mentor Meets events: lazy-loaded when the meets tab is first visited. */
+  const loadEvents = useCallback(async () => {
+    setEventsLoading(true);
+    setEventsError(null);
+    try {
+      const { events: rows } = await fetchEvents();
+      setEvents(rows || []);
+    } catch (err) {
+      console.error("[ryzn] /api/events failed:", err);
+      setEventsError(err);
+    } finally {
+      setEventsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (phase === "app" && tab === "meets") loadEvents(); }, [phase, tab, loadEvents]);
+
+  const createEventHandler = async (body) => {
+    const res = await createEvent(body);
+    await loadEvents();
+    return res;
+  };
+
+  const eventActionHandler = async (id, action, extra) => {
+    const res = await eventAction(id, action, extra);
+    await loadEvents();
+    return res;
+  };
 
   /* Every deck decision is a server write. The roster is refetched afterwards
      because it excludes anyone already answered for, so the card leaves the
@@ -580,8 +632,8 @@ export default function RyznComplete() {
         case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} />;
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
-        case "meets": return <MeetsScreen role={role} u={user} toast={toast} />;
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} />;
+        case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} />;
         default: return null;
       }
     }
@@ -589,8 +641,8 @@ export default function RyznComplete() {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} />;
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
       case "sessions": return <MentorSessions u={user} />;
-      case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} />;
+      case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onSaveProgram={saveProgramPhases} />;
       default: return null;
     }
   };

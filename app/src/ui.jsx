@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
-  Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
+  Plus, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search
+  X, SlidersHorizontal, RotateCcw, Search, Pencil, Trash2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { logoSrc, Brand } from "./branding.js";
@@ -344,4 +344,171 @@ export const TypingDots = () => (
     {[0, 1, 2].map(i => <span key={i} className="dot" style={{ width: 6, height: 6, borderRadius: 3, background: "#B3AEE6", animationDelay: `${i * 0.15}s` }} />)}
   </div>
 );
+
+/* ————— Program timeline —————
+   A mentor's authored phases, LinkedIn-timeline-styled (a vertical rail —
+   visual inspiration only, no external LinkedIn integration). One component
+   for three places: the Studio builder (editable), the mentor's own public
+   preview (read-only, no one mentee's progress to show), and a mentee's own
+   profile (read-only, with completedIds driving the checkmarks). */
+const REWARD_COLOR = { purple: C.purple, teal: C.teal, coral: C.coral, amber: C.amber };
+const REWARD_TINT = { purple: C.purpleTint, teal: C.tealTint, coral: C.coralTint, amber: C.amberTint };
+const iconBtnStyle = { background: "none", border: "none", cursor: "pointer", padding: 5, display: "flex" };
+
+const Textarea = ({ label, ...rest }) => (
+  <div style={{ marginTop: 14 }}>
+    <Label>{label}</Label>
+    <textarea {...rest} style={{
+      width: "100%", boxSizing: "border-box", border: `1px solid ${C.line}`, borderRadius: 12,
+      marginTop: 7, padding: 12, fontFamily: F.sans, fontSize: 14, color: C.ink, resize: "vertical",
+    }} />
+  </div>
+);
+
+const PhaseForm = ({ initial, onCancel, onSave }) => {
+  const [title, setTitle] = useState(initial.title || "");
+  const [description, setDescription] = useState(initial.description || "");
+  const [duration, setDuration] = useState(initial.duration || "");
+  const [hasReward, setHasReward] = useState(!!initial.reward);
+  const [rewardLabel, setRewardLabel] = useState(initial.reward?.label || "");
+  const [rewardDesc, setRewardDesc] = useState(initial.reward?.description || "");
+  const [rewardColor, setRewardColor] = useState(initial.reward?.color || "purple");
+
+  const save = () => {
+    if (!title.trim()) return;
+    onSave({
+      id: initial.id || null,
+      title: title.trim(),
+      description: description.trim(),
+      duration: duration.trim(),
+      reward: hasReward && rewardLabel.trim()
+        ? { label: rewardLabel.trim(), description: rewardDesc.trim(), color: rewardColor }
+        : null,
+    });
+  };
+
+  return (
+    <div style={{ padding: "20px 24px 24px" }}>
+      <div style={{ fontSize: 18, fontWeight: 700 }}>{initial.id ? "Edit phase" : "Add phase"}</div>
+      <Field label="Phase title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Kickoff & goal-setting" />
+      <Field label="Duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Weeks 1–2" />
+      <Textarea label="Description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)}
+        placeholder="What a mentee does in this phase." />
+      <div onClick={() => setHasReward((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, cursor: "pointer" }}>
+        <div style={{ width: 20, height: 20, background: hasReward ? C.tealTint : "#EFEEEA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {hasReward && <Check size={12} color={C.teal} strokeWidth={3} />}
+        </div>
+        <span style={{ fontSize: 13.5, fontWeight: 600 }}>Award a certificate or reward on completion</span>
+      </div>
+      {hasReward && (<>
+        <Field label="Reward name" value={rewardLabel} onChange={(e) => setRewardLabel(e.target.value)} placeholder="Product Fundamentals Certificate" />
+        <Textarea label="Reward description" rows={2} value={rewardDesc} onChange={(e) => setRewardDesc(e.target.value)}
+          placeholder="What earning this means." />
+        <div style={{ marginTop: 14 }}>
+          <Label>Accent color</Label>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            {Object.keys(REWARD_COLOR).map((c) => (
+              <button key={c} type="button" onClick={() => setRewardColor(c)} aria-label={c} style={{
+                width: 26, height: 26, borderRadius: "50%", background: REWARD_COLOR[c], cursor: "pointer",
+                border: rewardColor === c ? `2px solid ${C.ink}` : "2px solid transparent", padding: 0,
+              }} />
+            ))}
+          </div>
+        </div>
+      </>)}
+      <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+        <Btn kind="ghost" style={{ flex: 1 }} onClick={onCancel}>Cancel</Btn>
+        <Btn style={{ flex: 1 }} disabled={!title.trim()} onClick={save}>Save phase</Btn>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * `completedIds`: null when there's no single mentee to track progress for
+ * (Studio builder, mentor's own public preview) — phases render numbered
+ * instead of checked. An array (possibly empty) means real progress: checks,
+ * a highlighted "current" phase, and reward pills only for phases actually
+ * completed.
+ *
+ * `onSave`/`onDelete`/`onMove` receive one phase (or index) at a time; the
+ * caller reconstructs the full array and persists it — this component never
+ * calls the save API itself.
+ */
+export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, emptyText }) => {
+  const [editing, setEditing] = useState(null); // null | "new" | phase
+
+  if (!editable && phases.length === 0) return null;
+
+  return (
+    <>
+      {phases.length === 0 && editable && (
+        <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, padding: "2px 0 16px" }}>
+          {emptyText || "No phases yet. Add the first step of your program — what a mentee does from kickoff to graduation."}
+        </div>
+      )}
+      {phases.map((p, i) => {
+        const done = !!completedIds?.includes(p.id);
+        const current = !!completedIds && !done && phases.slice(0, i).every((ph) => completedIds.includes(ph.id));
+        const showReward = p.reward && (!completedIds || done);
+        return (
+          <div key={p.id} style={{ display: "flex", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0 }}>
+              <div onClick={onToggle ? () => onToggle(p, !done) : undefined} style={{
+                width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 3,
+                background: done ? C.teal : current ? C.purple : "#E6E5E1",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: onToggle ? "pointer" : "default",
+              }}>
+                {done
+                  ? <Check size={11} color={C.white} strokeWidth={3} />
+                  : !completedIds
+                    ? <span style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, color: C.gray }}>{i + 1}</span>
+                    : null}
+              </div>
+              {i < phases.length - 1 && (
+                <div style={{ width: 2, flex: 1, minHeight: 22, marginTop: 2, background: done ? C.teal : "#E6E5E1", opacity: done ? 0.4 : 1 }} />
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, paddingBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{p.title}</div>
+                {editable && (
+                  <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
+                    {onMove && i > 0 && <button style={iconBtnStyle} onClick={() => onMove(i, -1)}><ChevronUp size={13} color={C.gray} /></button>}
+                    {onMove && i < phases.length - 1 && <button style={iconBtnStyle} onClick={() => onMove(i, 1)}><ChevronDown size={13} color={C.gray} /></button>}
+                    <button style={iconBtnStyle} onClick={() => setEditing(p)}><Pencil size={13} color={C.gray} /></button>
+                    <button style={iconBtnStyle} onClick={() => { if (window.confirm(`Delete "${p.title}"?`)) onDelete(p.id); }}><Trash2 size={13} color={C.coral} /></button>
+                  </div>
+                )}
+              </div>
+              {p.duration && <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 0.5, marginTop: 3 }}>{p.duration.toUpperCase()}</div>}
+              {p.description && <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>{p.description}</div>}
+              {showReward && (
+                <div style={{ marginTop: 9 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: REWARD_TINT[p.reward.color], color: REWARD_COLOR[p.reward.color], padding: "6px 10px", borderRadius: 10 }}>
+                    <Award size={12} /><span style={{ fontSize: 12, fontWeight: 700 }}>{p.reward.label}</span>
+                  </div>
+                  {p.reward.description && <div style={{ fontSize: 11.5, color: C.gray, marginTop: 5, lineHeight: 1.4 }}>{p.reward.description}</div>}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {editable && (
+        <Btn kind="soft" small onClick={() => setEditing("new")}><Plus size={14} /> Add phase</Btn>
+      )}
+      {editing && (
+        <ModalShell onClose={() => setEditing(null)}>
+          <PhaseForm
+            initial={editing === "new" ? {} : editing}
+            onCancel={() => setEditing(null)}
+            onSave={(phase) => { onSave(phase); setEditing(null); }}
+          />
+        </ModalShell>
+      )}
+    </>
+  );
+};
 

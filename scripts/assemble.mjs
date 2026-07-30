@@ -20,4 +20,13 @@ if (existsSync(brandingSrc)) {
   cpSync(brandingSrc, join(dist, "branding"), { recursive: true });
 }
 
+/* Browsers still request /favicon.ico by default even when <link rel="icon"> is set. */
+const faviconSrc = join(root, "site", "favicon.ico");
+const faviconFromKit = join(root, "site", "branding", "ryzn-brand-kit", "icon", "favicon.ico");
+if (existsSync(faviconSrc)) {
+  copyFileSync(faviconSrc, join(dist, "favicon.ico"));
+} else if (existsSync(faviconFromKit)) {
+  copyFileSync(faviconFromKit, join(dist, "favicon.ico"));
+}
+
 console.log("Assembled site + branding + /app into dist/");

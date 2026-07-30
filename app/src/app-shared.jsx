@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
@@ -10,48 +10,142 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { BADGE_DEFS } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
+import { isMentorRole } from "./lib/roles.js";
+import { EventComposer, EventCard } from "./events.jsx";
 
 /* ————————————————— APP: SHARED ————————————————— */
 
-/* Mentor Meets. The whole screen used to describe an event that has not been
-   scheduled: a dated Toronto venue with a live countdown, a three-person
-   speaker lineup, a confirmed ticket with a QR and a seat number, and two past
-   events with attendance figures. None of it existed. What remains is the
-   badge-gated eligibility rule, which is real program design. */
-export const MeetsScreen = ({ role, u, name, toast }) => (
-  <div>
-    <HeaderRow title="Mentor Meets" right={<Label color={C.coral}>QUARTERLY</Label>} />
-    <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-      <Card style={{ background: C.coral, border: "none", color: C.white, padding: 20 }}>
-        <Label color="#F6D3C4">Next event</Label>
-        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>Not scheduled yet</div>
-        <div style={{ fontSize: 13.5, marginTop: 6, opacity: 0.92, lineHeight: 1.5 }}>
-          Meets run quarterly, in person, once the founding cohort is underway. Date and city land here — and in your inbox — as soon as they're set.
-        </div>
-      </Card>
-      {role === "mentee" ? (
-        <Card data-tour="meets-ticket-mentee" style={{ border: `1.5px dashed #CFCDC7`, background: "#EFEEEA" }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={18} color={C.gray} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Tickets unlock at Week 8</div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Eligibility comes with the <b>Mentor Approved</b> badge. You’re in Week {u.week} of 12.</div>
+export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, eventsError, isAdmin, userId, onCreateEvent, onEventAction }) => {
+  const quarterlyEvent = events?.find(e => e.kind === "quarterly");
+  const otherEvents = events?.filter(e => e.kind !== "quarterly") || [];
+
+  const handleRsvp = async (eventId, status) => {
+    try {
+      await onEventAction(eventId, "rsvp", { status });
+      toast(`RSVP: ${status}`);
+    } catch (e) {
+      toast(e?.message || "Couldn’t RSVP.");
+    }
+  };
+
+  const handleVote = async (eventId, slotIds) => {
+    try {
+      await onEventAction(eventId, "vote", { availableSlotIds: slotIds });
+      toast("Availability saved");
+    } catch (e) {
+      toast(e?.message || "Couldn’t save availability.");
+    }
+  };
+
+  const handleFinalize = async (eventId, slotId) => {
+    try {
+      await onEventAction(eventId, "finalize", { slotId });
+      toast("Time finalized");
+    } catch (e) {
+      toast(e?.message || "Couldn’t finalize.");
+    }
+  };
+
+  const handleCancel = async (eventId) => {
+    try {
+      await onEventAction(eventId, "cancel", {});
+      toast("Event canceled");
+    } catch (e) {
+      toast(e?.message || "Couldn’t cancel event.");
+    }
+  };
+
+  return (
+    <div>
+      <HeaderRow title="Mentor Meets" right={<Label color={C.coral}>QUARTERLY</Label>} />
+      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Featured quarterly event or placeholder */}
+        <Card style={{ background: C.coral, border: "none", color: C.white, padding: 20 }}>
+          <Label color="#F6D3C4">Next event</Label>
+          {quarterlyEvent ? (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>{quarterlyEvent.title}</div>
+              {quarterlyEvent.location?.label && (
+                <div style={{ fontSize: 13.5, marginTop: 4, opacity: 0.9 }}>{quarterlyEvent.location.label}</div>
+              )}
+              {quarterlyEvent.slots?.[0] && (
+                <div style={{ fontSize: 13.5, marginTop: 2, opacity: 0.9 }}>
+                  {new Date(quarterlyEvent.slots[0].start).toLocaleDateString()}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>Not scheduled yet</div>
+              <div style={{ fontSize: 13.5, marginTop: 6, opacity: 0.92, lineHeight: 1.5 }}>
+                Meets run quarterly, in person, once the founding cohort is underway. Date and city land here — and in your inbox — as soon as they’re set.
+              </div>
+            </>
+          )}
+        </Card>
+
+        {/* Ticket eligibility cards */}
+        {role === "mentee" ? (
+          <Card data-tour="meets-ticket-mentee" style={{ border: `1.5px dashed #CFCDC7`, background: "#EFEEEA" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={18} color={C.gray} /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>Tickets unlock at Week 8</div>
+                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Eligibility comes with the <b>Mentor Approved</b> badge. You’re in Week {u.week} of 12.</div>
+              </div>
             </div>
+            <div style={{ marginTop: 12 }}><Bar pct={Math.min(1, (u.week || 1) / 8)} color={C.coral} /></div>
+            <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>WEEK {u.week} OF 8</div>
+          </Card>
+        ) : (
+          <Card data-tour="meets-ticket-mentor">
+            <Label color={C.teal}>Your place</Label>
+            <div style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.5 }}>
+              Every mentor on the Roster has a seat at Meets. {name ? `We’ll confirm yours, ${name.split(" ")[0]}, ` : "Yours will be confirmed "}once a date is set.
+            </div>
+          </Card>
+        )}
+
+        {/* Event composer for mentors/admins */}
+        {isMentorRole(role) && (
+          <EventComposer
+            isAdmin={isAdmin}
+            onCreateEvent={onCreateEvent}
+            onError={e => toast(e?.message || "Error creating event")}
+          />
+        )}
+
+        {/* Other events list */}
+        {eventsLoading && <div style={{ padding: "20px", textAlign: "center", color: C.gray }}>Loading events…</div>}
+        {eventsError && <div style={{ padding: "20px", textAlign: "center", color: C.coral }}>Couldn’t load events</div>}
+
+        {otherEvents.length > 0 && (
+          <div>
+            <Label style={{ paddingLeft: 4, marginBottom: 12 }}>Upcoming</Label>
+            {otherEvents.map(event => (
+              <EventCard
+                key={event.id}
+                event={event}
+                userId={userId}
+                isAdmin={isAdmin}
+                onRsvp={status => handleRsvp(event.id, status)}
+                onVote={slotIds => handleVote(event.id, slotIds)}
+                onFinalize={slotId => handleFinalize(event.id, slotId)}
+                onCancel={() => handleCancel(event.id)}
+              />
+            ))}
           </div>
-          <div style={{ marginTop: 12 }}><Bar pct={Math.min(1, (u.week || 1) / 8)} color={C.coral} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>WEEK {u.week} OF 8</div>
-        </Card>
-      ) : (
-        <Card data-tour="meets-ticket-mentor">
-          <Label color={C.teal}>Your place</Label>
-          <div style={{ fontSize: 13.5, marginTop: 8, lineHeight: 1.5 }}>
-            Every mentor on the Roster has a seat at Meets. {name ? `We'll confirm yours, ${name.split(" ")[0]}, ` : "Yours will be confirmed "}once a date is set.
-          </div>
-        </Card>
-      )}
+        )}
+
+        {!eventsLoading && otherEvents.length === 0 && !isMentorRole(role) && (
+          <Card style={{ textAlign: "center", padding: 20, background: C.surface }}>
+            <div style={{ fontSize: 13, color: C.gray }}>No upcoming events yet</div>
+          </Card>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* Derived from state the client actually holds — a real match, a real badge, a
    real cohort. There is no notification service yet, so nothing is invented to

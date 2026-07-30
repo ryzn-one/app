@@ -101,6 +101,20 @@ export const postAction = (id, action) => api("/posts", { method: "PATCH", body:
 export const updatePost = (id, patch) => api("/posts", { method: "PATCH", body: { id, ...patch } });
 export const deletePost = (id) => api(`/posts?id=${encodeURIComponent(id)}`, { method: "DELETE" });
 
+/* ————— Program —————
+   A mentor's authored phases, and a mentee's progress against them. Progress
+   lives on the shared match record server-side, not here — this is just the
+   thin fetch wrapper, same shape as the other domain calls. */
+export const fetchProgram = ({ mentorId, menteeId } = {}) => {
+  const qs = new URLSearchParams(
+    Object.entries({ mentorId, menteeId }).filter(([, v]) => v)
+  ).toString();
+  return api(`/program${qs ? `?${qs}` : ""}`);
+};
+export const saveProgram = (phases) => api("/program", { method: "PUT", body: { phases } });
+export const setPhaseComplete = ({ menteeId, phaseId, completed }) =>
+  api("/program", { method: "PATCH", body: { menteeId, phaseId, completed } });
+
 /* ————— Daily exercises —————
    Mentee writes today's paragraph; the server stores it, awards XP, bumps
    streak, and flips stage1Complete so Direct Connect opens. Mentors read a
@@ -117,6 +131,19 @@ export const fetchMessages = (otherId) =>
   api(`/messages?otherId=${encodeURIComponent(otherId)}`);
 export const sendMessage = (otherId, text) =>
   api("/messages", { method: "POST", body: { otherId, text } });
+
+/* ————— Mentor Meets —————
+   Events are either quarterly platform-wide Meets (admin-created) or mentor-hosted
+   events (fixed-time or poll availability). Both mentors/admins and mentees can
+   see and respond to visible events: RSVPing for fixed events or voting on poll
+   availability. Hosts can finalize polls and cancel events. */
+export const fetchEvents = (params = {}) => {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== "" && v !== false));
+  return api(`/events${qs.toString() ? `?${qs}` : ""}`);
+};
+export const createEvent = (body) => api("/events", { method: "POST", body });
+export const eventAction = (id, action, extra = {}) =>
+  api("/events", { method: "PATCH", body: { id, action, ...extra } });
 
 /** Ryzn for Teams waitlist. Unauthenticated by design — see api/teams-interest.js. */
 export const registerTeamsInterest = (body) => api("/teams-interest", { method: "POST", body });

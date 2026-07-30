@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline } from "./ui.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { fetchMessages, sendMessage } from "./lib/auth-client.js";
 
@@ -389,7 +389,7 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
   );
 };
 
-export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop }) => (
+export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop, program }) => (
   <div>
     <HeaderRow title="Profile" right={
       <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
@@ -472,6 +472,17 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
           );
         })()}
       </Card>
+      {program?.phases?.length > 0 && (
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Label>Your program</Label>
+            <Label color={C.teal}>{(program.completedPhaseIds || []).length} OF {program.phases.length} DONE</Label>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <ProgramTimeline phases={program.phases} completedIds={program.completedPhaseIds || []} />
+          </div>
+        </Card>
+      )}
     </div>
   </div>
 );

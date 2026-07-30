@@ -7,12 +7,12 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
 import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
 import { TagRow } from "./chatmatch.jsx";
-import { fetchMenteeExercises } from "./lib/auth-client.js";
+import { fetchMenteeExercises, fetchProgram, setPhaseComplete } from "./lib/auth-client.js";
 
 /* ————————————————— APP: MENTOR ————————————————— */
 
@@ -103,6 +103,8 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   const goal = mentee.goals?.[0] ?? null;
   const [exercises, setExercises] = useState([]);
   const [exLoading, setExLoading] = useState(true);
+  const [phases, setPhases] = useState([]);
+  const [completedIds, setCompletedIds] = useState([]);
 
   useEffect(() => {
     if (!mentee.id) { setExLoading(false); return; }
@@ -120,6 +122,34 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
     })();
     return () => { cancelled = true; };
   }, [mentee.id]);
+
+  /* This mentor's own phases, plus this specific mentee's progress against
+     them — fetched here rather than lifted to root state, same as the
+     exercise journal above. */
+  useEffect(() => {
+    if (!mentee.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { phases: rows, completedPhaseIds } = await fetchProgram({ menteeId: mentee.id });
+        if (!cancelled) { setPhases(rows || []); setCompletedIds(completedPhaseIds || []); }
+      } catch {
+        if (!cancelled) { setPhases([]); setCompletedIds([]); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mentee.id]);
+
+  const togglePhase = async (phase, completed) => {
+    const prev = completedIds;
+    setCompletedIds(completed ? [...prev, phase.id] : prev.filter((id) => id !== phase.id));
+    try {
+      const { completedPhaseIds } = await setPhaseComplete({ menteeId: mentee.id, phaseId: phase.id, completed });
+      setCompletedIds(completedPhaseIds || []);
+    } catch {
+      setCompletedIds(prev);
+    }
+  };
 
   return (
     <div>
@@ -146,16 +176,18 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
             {mentee.stage1 && <Btn small style={{ background: C.teal }} onClick={() => openDm(mentee)}><MessageCircle size={13} /> Message</Btn>}
           </div>
         </Card>
-        <Card>
-          <Label>Milestone timeline</Label>
-          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-            {BADGE_DEFS.map((b, i) => {
-              const hit = i < (mentee.badges ?? 0);
-              return <div key={b.id} title={b.name} style={{ flex: 1, height: 26, background: hit ? TIER_COLOR[b.tier] : "#E6E5E1", display: "flex", alignItems: "center", justifyContent: "center" }}>{hit && <Check size={12} color={C.white} strokeWidth={3} />}</div>;
-            })}
-          </div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 8 }}>{(mentee.badges ?? 0) === 0 ? "NO MILESTONES YET" : `${mentee.badges} OF ${BADGE_DEFS.length} EARNED`}</div>
-        </Card>
+        {phases.length > 0 && (
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Label>Your program</Label>
+              <Label color={C.teal}>{completedIds.length} OF {phases.length} DONE</Label>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <ProgramTimeline phases={phases} completedIds={completedIds} onToggle={togglePhase} />
+            </div>
+            <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>TAP A STEP TO MARK IT DONE FOR {mentee.name.split(" ")[0].toUpperCase()}</div>
+          </Card>
+        )}
         <Card>
           <Label>Their goals</Label>
           {goal ? (
@@ -303,13 +335,30 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete }) => {
+export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onSaveProgram }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
   const [contentTab, setContentTab] = useState("feed");
   const posts = Array.isArray(feed) ? feed : [];
   const cohort = u?.cohort || [];
+  const phases = program?.phases || [];
+  /* ProgramTimeline hands back one phase/index at a time; the whole array is
+     what the API persists, so reconstructing it is this screen's job, not
+     the timeline's. */
+  const saveProgramPhase = (phase) => {
+    const exists = phase.id && phases.some((p) => p.id === phase.id);
+    const next = exists ? phases.map((p) => (p.id === phase.id ? { ...p, ...phase } : p)) : [...phases, phase];
+    onSaveProgram(next);
+  };
+  const deleteProgramPhase = (id) => onSaveProgram(phases.filter((p) => p.id !== id));
+  const moveProgramPhase = (index, dir) => {
+    const j = index + dir;
+    if (j < 0 || j >= phases.length) return;
+    const next = [...phases];
+    [next[index], next[j]] = [next[j], next[index]];
+    onSaveProgram(next);
+  };
   const checklist = [
     ["Greeting video for new mentees", greetingUp, "+25 Impact", () => go("feed")],
     ["Why-I-mentor statement", !!u?.why, "done in setup", null],
@@ -366,6 +415,12 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
               <div style={{ marginTop: 10 }}><TagRow items={u.menteeFit} /></div>
             </Card>
           )}
+          {phases.length > 0 && (
+            <Card>
+              <Label>The program</Label>
+              <div style={{ marginTop: 12 }}><ProgramTimeline phases={phases} /></div>
+            </Card>
+          )}
           {/* The posts and resources, rendered with the same components the
               mentee's Orbit uses — so this is the real thing, not a mock of it.
               What sat here before was a single line reading "{n} FEED POSTS". */}
@@ -399,6 +454,25 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
               </div>
             ))}
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 12 }}>STRONG PROFILES GET 3× MORE MENTEE REQUESTS</div>
+          </Card>
+
+          {/* The program itself: the phases a mentee actually moves through,
+              and what they earn along the way. This is the piece Studio was
+              missing — everything above it manages a profile, not a program. */}
+          <Card data-tour="mentor-profile-program">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Label>Your program · {phases.length} phase{phases.length === 1 ? "" : "s"}</Label>
+            </div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, marginBottom: 14, lineHeight: 1.5 }}>
+              Kickoff to graduation, in steps. Mentees see this as their roadmap — add a certificate or reward to any phase and it shows up once they earn it.
+            </div>
+            <ProgramTimeline
+              phases={phases}
+              editable
+              onSave={saveProgramPhase}
+              onDelete={deleteProgramPhase}
+              onMove={moveProgramPhase}
+            />
           </Card>
 
           {/* The management surface: pin what a new mentee should see first,
