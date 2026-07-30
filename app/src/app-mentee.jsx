@@ -73,7 +73,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
               {nextBadge.progress ? <>
                 <div style={{ marginTop: 8 }}><Bar pct={nextBadge.progress[0] / nextBadge.progress[1]} /></div>
                 <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 5 }}>{nextBadge.progressLabel}</div>
-              </> : <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4 }}>{nextBadge.req}</div>}
+              </> : null}
             </div>
             <ChevronRight size={18} color={C.gray} />
           </div>
@@ -251,7 +251,6 @@ export const MenteeBadges = ({ badges, openBadge, justEarnedId }) => (
                     <div style={{ fontFamily: F.mono, fontSize: 10, color, marginTop: 2 }}>EARNED {b.earned.toUpperCase()} · VERIFIED</div>
                     <div style={{ fontSize: 11.5, color: C.gray, marginTop: 3 }}>Tap for QR verification + LinkedIn share</div>
                   </> : <>
-                    <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2 }}>{b.req}</div>
                     {b.progress && <><div style={{ marginTop: 7 }}><Bar pct={b.progress[0] / b.progress[1]} color={color} /></div>
                       <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 4 }}>{b.progressLabel.toUpperCase()}</div></>}
                   </>}

@@ -188,7 +188,7 @@ export const NotifsScreen = ({ role, u, back, navTo }) => {
    None of them persisted, and there is no notification pipeline for them to
    configure, so every switch promised mail that could never arrive. Gone until
    something actually sends. */
-export const SettingsScreen = ({ back, role, toast, onLogout, user, onReplayTour, onResetTabHints }) => {
+export const SettingsScreen = ({ back, role, toast, onLogout, user, onRedoTour, onResetTabHints }) => {
   return (
     <div>
       <HeaderRow title="Settings" onBack={back} />
@@ -209,14 +209,14 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, onReplayTour
             </span>
           </div>
         </Card>
-        {(onReplayTour || onResetTabHints) && (
+        {(onRedoTour || onResetTabHints) && (
           <Card>
             <Label>Tutorial</Label>
-            {onReplayTour && (
-              <div onClick={onReplayTour} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, cursor: "pointer" }}>
+            {onRedoTour && (
+              <div onClick={onRedoTour} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <Sparkles size={16} color={C.purple} />
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Replay welcome tour</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>Redo the tour</span>
                 </div>
                 <ChevronRight size={16} color={C.gray} />
               </div>

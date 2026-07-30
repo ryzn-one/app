@@ -21,7 +21,7 @@ import { MentorDash, MenteeDetailScreen, MentorSessions, MentorBoard, MentorProf
 import { ExploreScreen } from "./explore.jsx";
 import { MeetsScreen, NotifsScreen, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
-import { IntroTourModal, SpotlightHint, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints } from "./onboarding.jsx";
+import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
 
 /* ————————————————— ROOT SHELL —————————————————
@@ -122,6 +122,7 @@ export default function RyznComplete() {
   const [inviteCode] = useState(inviteFromHash);
   const [booting, setBooting] = useState(true);
   const [introTourOpen, setIntroTourOpen] = useState(false);
+  const [comprehensiveTourOpen, setComprehensiveTourOpen] = useState(false);
   const [spotlightTab, setSpotlightTab] = useState(null);
   const introCheckedRef = useRef(false);
   const [session, setSession] = useState(null);          // /api/me payload, or null when signed out
@@ -384,8 +385,8 @@ export default function RyznComplete() {
   useEffect(() => {
     if (introCheckedRef.current || phase !== "app" || !user) return;
     introCheckedRef.current = true;
-    if (!hasSeenIntroTour(role)) {
-      const t = setTimeout(() => setIntroTourOpen(true), 500);
+    if (!hasCompletedTour(role)) {
+      const t = setTimeout(() => setComprehensiveTourOpen(true), 500);
       return () => clearTimeout(t);
     }
   }, [phase, user, role]);
@@ -587,7 +588,7 @@ export default function RyznComplete() {
         toast={toast}
         onLogout={logout}
         user={session?.user}
-        onReplayTour={() => { setOverlay(null); setIntroTourOpen(true); }}
+        onRedoTour={() => { setOverlay(null); resetTour(role); setComprehensiveTourOpen(true); }}
         onResetTabHints={() => { resetTabHints(role); toast("Tab tips reset · they'll reappear as you navigate"); }}
       />
     );
@@ -786,6 +787,9 @@ export default function RyznComplete() {
       {phase === "app" && spotlightTab && <SpotlightHint key={spotlightTab} role={role} tab={spotlightTab} onDismiss={dismissTabHint} />}
       {phase === "app" && introTourOpen && (
         <IntroTourModal role={role} onDone={() => { markIntroTourSeen(role); setIntroTourOpen(false); }} />
+      )}
+      {phase === "app" && comprehensiveTourOpen && (
+        <ComprehensiveTour role={role} onDone={() => { setComprehensiveTourOpen(false); }} onNavTo={navTo} />
       )}
 
       <AnimatePresence>

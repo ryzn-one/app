@@ -11,6 +11,7 @@ import { Btn } from "./ui.jsx";
 const LS_KEYS = {
   tour: "ryzn_onboarding_tour_v1",
   hints: "ryzn_onboarding_hints_v1",
+  comprehensiveTour: "ryzn_comprehensive_tour_v1",
 };
 
 function readLS(key, fallback) {
@@ -45,6 +46,16 @@ export const resetTabHints = (role) => {
   writeLS(LS_KEYS.hints, { ...all, [role]: {} });
 };
 
+export const hasCompletedTour = (role) => Boolean(readLS(LS_KEYS.comprehensiveTour, {})[role]);
+export const markTourCompleted = (role) => {
+  const seen = readLS(LS_KEYS.comprehensiveTour, {});
+  writeLS(LS_KEYS.comprehensiveTour, { ...seen, [role]: true });
+};
+export const resetTour = (role) => {
+  const seen = readLS(LS_KEYS.comprehensiveTour, {});
+  writeLS(LS_KEYS.comprehensiveTour, { ...seen, [role]: false });
+};
+
 /* ————— content ————— */
 
 export const TOUR_STEPS = {
@@ -75,6 +86,29 @@ export const TAB_HINTS = {
     meets: { target: "meets-ticket-mentor", title: "In-person Meets", body: "Your seat at the quarterly event lands here once a date is set.", placement: "bottom" },
     profile: { target: "mentor-profile-program", title: "Design your course", body: "Tap here to open the course designer — add phases from kickoff to graduation, with optional certificates.", placement: "bottom" },
   },
+};
+
+export const COMPREHENSIVE_TOUR_STEPS = {
+  mentee: [
+    { type: "intro", icon: Sparkles, title: "Welcome to Ryzn", body: "You've been matched with a mentor who wants to see you win. This tour walks you through the full app." },
+    { type: "intro", icon: Users, title: "How mentorship works", body: "Show up daily for exercises to build your streak, earn XP, and unlock badges. Your mentor shares guidance in their Orbit feed." },
+    { type: "screen", tab: "home", title: "Your dashboard", body: "This is your home — check your daily progress, streak, and XP. Your mentor's name appears here once you're matched." },
+    { type: "screen", tab: "exercises", title: "Daily exercises", body: "A few minutes a day builds your streak and earns XP. Complete one now to start unlocking features." },
+    { type: "screen", tab: "badges", title: "Your badges", body: "Earn badges as you hit milestones. Tap one to verify with QR and share to LinkedIn." },
+    { type: "screen", tab: "meets", title: "In-person meets", body: "Quarterly events for the cohort. Your ticket unlocks at Week 8 — track your progress here." },
+    { type: "screen", tab: "profile", title: "Your profile", body: "Your goals, mentors, and settings live here. Come back anytime to update or explore more." },
+    { type: "outro", icon: Sparkles, title: "You're all set", body: "Dive in and show up daily. Your streak and engagement unlock new features over time." },
+  ],
+  mentor: [
+    { type: "intro", icon: Sparkles, title: "Welcome, mentor", body: "Your cohort is counting on you. This tour shows you around and how to guide your mentees." },
+    { type: "intro", icon: Users, title: "Your impact & tier", body: "Track mentee progress, publish content to your feed, and grow your Impact Score. Tier up from Scout to Pathfinder and beyond." },
+    { type: "screen", tab: "home", title: "Your dashboard", body: "Your Impact Score, tier, and cohort roster live here. This grows as your mentees hit milestones." },
+    { type: "screen", tab: "feed", title: "Your feed", body: "Publish greetings, posts, or resources here. Your mentees on your Orbit see everything you share." },
+    { type: "screen", tab: "sessions", title: "Opening sessions", body: "Each mentee gets an opening session card. Connect in the thread to book your first call." },
+    { type: "screen", tab: "meets", title: "In-person meets", body: "Your seat at the quarterly event. Track availability, vote on dates, and finalize timing here." },
+    { type: "screen", tab: "profile", title: "Design your course", body: "Tap here to build your mentorship program. Add phases from kickoff to graduation with certificates." },
+    { type: "outro", icon: Sparkles, title: "You're ready to lead", body: "Show up for your mentees, share your knowledge, and watch your Impact Score grow." },
+  ],
 };
 
 /* ————— intro slideshow ————— */
@@ -186,4 +220,129 @@ export const SpotlightHint = ({ role, tab, onDismiss }) => {
       </div>
     </div>
   );
+};
+
+/* ————— comprehensive tour ————— */
+
+export const ComprehensiveTour = ({ role, onDone, onNavTo }) => {
+  const steps = COMPREHENSIVE_TOUR_STEPS[role] || COMPREHENSIVE_TOUR_STEPS.mentee;
+  const [stepIdx, setStepIdx] = useState(0);
+  const [showHint, setShowHint] = useState(false);
+  const [rect, setRect] = useState(null);
+  const step = steps[stepIdx];
+  const isLast = stepIdx === steps.length - 1;
+  const isIntro = step.type === "intro";
+  const isOutro = step.type === "outro";
+  const isScreen = step.type === "screen";
+  const hint = isScreen ? (TAB_HINTS[role] || TAB_HINTS.mentee)[step.tab] : null;
+
+  const finish = () => {
+    markTourCompleted(role);
+    onDone();
+  };
+
+  const handleNext = () => {
+    if (isLast) {
+      finish();
+    } else {
+      setStepIdx(stepIdx + 1);
+      setShowHint(false);
+      setRect(null);
+    }
+  };
+
+  const handleBack = () => {
+    if (stepIdx > 0) {
+      setStepIdx(stepIdx - 1);
+      setShowHint(false);
+      setRect(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!isScreen || !step.tab) return;
+    onNavTo(step.tab);
+    const t = setTimeout(() => setShowHint(true), 300);
+    return () => clearTimeout(t);
+  }, [stepIdx, isScreen, step.tab, onNavTo]);
+
+  useEffect(() => {
+    if (!hint || !showHint) return;
+    let tries = 0, timer;
+    const tick = () => {
+      const el = document.querySelector(`[data-tour="${hint.target}"]`);
+      if (el) { setRect(el.getBoundingClientRect()); return; }
+      if (++tries < 10) timer = setTimeout(tick, 150);
+    };
+    tick();
+    return () => clearTimeout(timer);
+  }, [hint, showHint, stepIdx]);
+
+  const Icon = step.icon;
+
+  if (isIntro || isOutro) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.55)", zIndex: 95, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div key={stepIdx} className="sheet-up" style={{ width: "min(94vw, 420px)", background: C.white, borderRadius: 22, padding: "28px 24px 22px", boxSizing: "border-box", textAlign: "center" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, background: C.purpleTint, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon size={28} color={C.purple} />
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 18 }}>{step.title}</div>
+          <div style={{ fontSize: 14, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>{step.body}</div>
+
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
+            {steps.map((_, d) => (
+              <div key={d} style={{ width: 6, height: 6, borderRadius: 3, background: d <= stepIdx ? C.purple : "#E2E0F5", transition: "background .2s" }} />
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
+            {stepIdx > 0 && <Btn kind="ghost" style={{ flex: 1 }} onClick={handleBack}>Back</Btn>}
+            <Btn style={{ flex: 1 }} onClick={handleNext}>{isLast ? "Finish" : "Next"}</Btn>
+          </div>
+          {!isLast && (
+            <button onClick={finish} style={{ background: "none", border: "none", color: C.gray, fontFamily: F.sans, fontSize: 13, cursor: "pointer", marginTop: 12, padding: 4 }}>
+              Skip tour
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isScreen) {
+    if (!showHint || !hint || !rect) return null;
+    const PAD = 6;
+
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 85, pointerEvents: "none" }}>
+        <div style={{
+          position: "absolute", top: rect.top - PAD, left: rect.left - PAD,
+          width: rect.width + PAD * 2, height: rect.height + PAD * 2, borderRadius: 14,
+          boxShadow: "0 0 0 9999px rgba(20,16,40,.55)",
+        }} />
+        <div className="badge-pop" style={{
+          position: "absolute", ...bubblePosition(rect, hint.placement),
+          pointerEvents: "auto", background: C.ink, color: C.white, borderRadius: 14,
+          padding: "12px 14px", boxSizing: "border-box",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5, flex: 1 }}>{step.title}</div>
+            <div style={{ fontFamily: F.mono, fontSize: 10, color: "#A9A6D6" }}>{stepIdx}/{steps.length}</div>
+          </div>
+          <div style={{ fontSize: 12.5, color: "#D9D6F2", lineHeight: 1.45 }}>{step.body}</div>
+          <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+            <button onClick={handleBack} style={{ flex: 1, background: "none", border: "1px solid #55508C", color: C.white, borderRadius: 8, padding: "5px 10px", fontFamily: F.sans, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              Back
+            </button>
+            <button onClick={handleNext} style={{ flex: 1, background: C.purple, border: "none", color: C.white, borderRadius: 8, padding: "5px 10px", fontFamily: F.sans, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              {isLast ? "Finish" : "Next"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
