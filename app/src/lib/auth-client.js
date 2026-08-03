@@ -96,10 +96,11 @@ export const respondToMatch = (id, action) => api("/matches", { method: "PATCH",
     only public posts without a pair (match-deck / explore previews).
     Returns `{posts, viewerState}`; `viewerState` rehydrates what you've already
     watched and reacted to. */
-export const fetchPosts = ({ mentorId, scope } = {}) => {
+export const fetchPosts = ({ mentorId, scope, id } = {}) => {
   const qs = new URLSearchParams();
   if (mentorId) qs.set("mentorId", mentorId);
   if (scope) qs.set("scope", scope);
+  if (id) qs.set("id", id);
   const q = qs.toString();
   return api(`/posts${q ? `?${q}` : ""}`);
 };
@@ -107,6 +108,10 @@ export const createPost = (body) => api("/posts", { method: "POST", body });
 /** `action` is "view" or "react". Idempotent — a second call is a no-op, so a
     double tap can't inflate a mentor's numbers or re-award XP. */
 export const postAction = (id, action) => api("/posts", { method: "PATCH", body: { id, action } });
+/** Comment thread for a post the caller can already see. */
+export const fetchComments = (id) => api(`/posts?id=${encodeURIComponent(id)}&comments=1`);
+export const addComment = (id, text) =>
+  api("/posts", { method: "PATCH", body: { id, action: "comment", text } });
 /** Pin, change visibility, or edit the copy. Author only. */
 export const updatePost = (id, patch) => api("/posts", { method: "PATCH", body: { id, ...patch } });
 export const deletePost = (id) => api(`/posts?id=${encodeURIComponent(id)}`, { method: "DELETE" });

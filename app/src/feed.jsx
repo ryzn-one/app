@@ -1,11 +1,13 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Check, Lock, Crown, Plus, Image as ImageIcon, MessageCircle, Play, FileText,
-  Upload, Heart, Eye, Send, Pin, Sparkles,
+  Upload, Heart, Eye, Send, Pin, Sparkles, Share2,
 } from "lucide-react";
 import { C, F } from "./theme.js";
 import { Card, Label, Btn, Monogram, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
+import { fetchComments, addComment } from "./lib/auth-client.js";
+import { sharePostLink } from "./lib/share.js";
 
 /** Turn a VideoCaptureModal result into a real File for uploadMedia. */
 const captureToFile = (captured) => {
@@ -123,18 +125,101 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
   );
 };
 
-/** One post. `mine` renders the mentor's own view (stats, no XP button). */
-export const PostCard = ({ post, author, tier, mine, reacted, onReact, onOpen, done }) => {
+/** One post. `mine` renders the mentor's own view (stats; likes stay read-only). */
+export const PostCard = ({
+  post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
+  onAuthor, onShare, toast, highlight,
+}) => {
   const meta = KIND_META[post.kind] || KIND_META.status;
   const Icon = meta.icon;
   const openable = post.kind === "video" || post.kind === "resource";
+  const [commentsOpen, setCommentsOpen] = useState(!!highlight);
+  const [thread, setThread] = useState(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.comments ?? 0);
+  const [sharing, setSharing] = useState(false);
+
+  useEffect(() => { setCommentCount(post.comments ?? 0); }, [post.comments]);
+
+  const loadThread = async () => {
+    setLoadingComments(true);
+    try {
+      const { comments } = await fetchComments(post.id);
+      setThread(comments || []);
+    } catch (e) {
+      toast?.(e.message || "Couldn’t load comments.");
+      setThread([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const toggleComments = () => {
+    const next = !commentsOpen;
+    setCommentsOpen(next);
+    if (next && thread === null) loadThread();
+  };
+
+  const submitComment = async () => {
+    const text = draft.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try {
+      const { comment, comments } = await addComment(post.id, text);
+      setThread((t) => [...(t || []), comment]);
+      setCommentCount(comments ?? (commentCount + 1));
+      setDraft("");
+    } catch (e) {
+      toast?.(e.message || "Couldn’t post that comment.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const share = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      if (onShare) await onShare(post);
+      else {
+        const how = await sharePostLink(post.id, {
+          title: post.title || "Ryzn post",
+          text: post.text || `${author} on Ryzn`,
+        });
+        toast?.(how === "copied" ? "Link copied — share it with your Orbit" : "Shared");
+      }
+    } catch (e) {
+      toast?.(e.message || "Couldn’t share that.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const openAuthor = () => onAuthor?.({ id: authorId || post.authorId, name: author });
+
   return (
-    <Card style={{ padding: 14 }}>
+    <Card style={{
+      padding: 14,
+      ...(highlight ? { boxShadow: `0 0 0 2px ${C.purple}` } : null),
+    }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Monogram name={author} size={38} bg={C.purple} color={C.white} />
+        <button type="button" onClick={openAuthor} disabled={!onAuthor}
+          style={{ border: "none", background: "none", padding: 0, cursor: onAuthor ? "pointer" : "default", flexShrink: 0 }}>
+          <Monogram name={author} size={38} bg={C.purple} color={C.white} />
+        </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>{author}{mine && " · you"}</span>
+            {onAuthor ? (
+              <button type="button" onClick={openAuthor} style={{
+                border: "none", background: "none", padding: 0, cursor: "pointer",
+                fontWeight: 700, fontSize: 14, color: C.ink, fontFamily: F.sans, textAlign: "left",
+              }}>{author}</button>
+            ) : (
+              <span style={{ fontWeight: 700, fontSize: 14 }}>{author}</span>
+            )}
+            {mine && <span style={{ fontSize: 13, color: C.gray, fontWeight: 600 }}>· you</span>}
             {tier && <Crown size={11} color={C.purple} />}
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
@@ -152,35 +237,87 @@ export const PostCard = ({ post, author, tier, mine, reacted, onReact, onOpen, d
           count as a view of it. */}
       <MediaBlock post={post} onEngage={mine ? undefined : () => !done && onOpen?.(post)} />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
         {/* On your own post this is a read-out, not a control — you can't react
-            to yourself. It used to render as a <button> with no handler. */}
+            to yourself. */}
         {React.createElement(mine ? "span" : "button", {
-          ...(mine ? {} : { onClick: () => onReact(post.id) }),
+          ...(mine ? {} : { type: "button", onClick: () => onReact?.(post.id) }),
           style: {
             display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
-            cursor: mine ? "default" : "pointer", padding: 0, fontFamily: F.mono, fontSize: 11, fontWeight: 700,
+            cursor: mine ? "default" : "pointer", padding: "6px 10px", borderRadius: 10,
+            fontFamily: F.mono, fontSize: 11, fontWeight: 700,
             color: reacted ? C.coral : C.gray,
           },
         },
-          <Heart key="h" size={14} color={reacted ? C.coral : "#A5A39D"} fill={reacted ? C.coral : "none"} />,
+          <Heart key="h" size={15} color={reacted ? C.coral : "#A5A39D"} fill={reacted ? C.coral : "none"} />,
           post.reactions + (reacted ? 1 : 0)
         )}
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.mono, fontSize: 11, color: C.gray }}>
+        <button type="button" onClick={toggleComments} style={{
+          display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: commentsOpen ? C.purpleTint : "none",
+          cursor: "pointer", padding: "6px 10px", borderRadius: 10,
+          fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: commentsOpen ? C.purple : C.gray,
+        }}>
+          <MessageCircle size={15} color={commentsOpen ? C.purple : "#A5A39D"} /> {commentCount}
+        </button>
+        <button type="button" onClick={share} disabled={sharing} style={{
+          display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
+          cursor: sharing ? "default" : "pointer", padding: "6px 10px", borderRadius: 10,
+          fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.gray,
+        }}>
+          <Share2 size={15} color="#A5A39D" /> Share
+        </button>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", fontFamily: F.mono, fontSize: 11, color: C.gray, padding: "6px 4px" }}>
           <Eye size={14} color="#A5A39D" /> {post.views}
         </span>
         {!mine && openable && (
-          <button onClick={() => onOpen(post)} style={{
-            marginLeft: "auto", fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer",
+          <button type="button" onClick={() => onOpen(post)} style={{
+            fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer",
             padding: "7px 11px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap",
           }}>{done ? "✓ DONE" : `${post.kind === "video" ? "WATCH" : "OPEN"} · +${post.xp} XP`}</button>
         )}
-        {/* Visibility is the useful signal on your own post, not a "NEW" chip
-            that was set on publish and never cleared. */}
         {mine && post.visibility === "public" && (
-          <span style={{ marginLeft: "auto", fontFamily: F.mono, fontSize: 8, background: C.tealTint, color: C.teal, padding: "3px 6px", fontWeight: 700, letterSpacing: 0.6 }}>ON PROFILE</span>
+          <span style={{ fontFamily: F.mono, fontSize: 8, background: C.tealTint, color: C.teal, padding: "3px 6px", fontWeight: 700, letterSpacing: 0.6 }}>ON PROFILE</span>
         )}
       </div>
+
+      {commentsOpen && (
+        <div style={{ marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
+          {loadingComments && (
+            <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, letterSpacing: 0.6 }}>LOADING…</div>
+          )}
+          {!loadingComments && thread && thread.length === 0 && (
+            <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 10 }}>No comments yet — start the thread.</div>
+          )}
+          {!loadingComments && thread?.map((c) => (
+            <div key={c.id} style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              <Monogram name={c.authorName} size={28} bg={C.surface} color={C.ink} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{c.authorName}</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>{relTime(c.createdAt)}</span>
+                </div>
+                <div style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 2, color: C.ink }}>{c.text}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
+              maxLength={500}
+              placeholder="Write a comment…"
+              style={{
+                flex: 1, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 12px",
+                fontFamily: F.sans, fontSize: 13.5, background: C.surface, outline: "none", color: C.ink,
+              }}
+            />
+            <Btn small disabled={!draft.trim() || busy} onClick={submitComment}>
+              <Send size={13} /> {busy ? "…" : "Post"}
+            </Btn>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };
@@ -382,7 +519,7 @@ function GreetingCard({ onDone, userId }) {
 
 /* ————————————————— MENTOR: your feed ————————————————— */
 
-export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadGreeting }) => {
+export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadGreeting, toast, onAuthor, highlightPostId }) => {
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
   const reach = u.cohort ? u.cohort.length : 0;
@@ -412,7 +549,10 @@ export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadG
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>Your first post lands in every mentee’s Orbit — no message required, no meeting needed.</div>
           </Card>
         ) : (
-          feed.map(p => <PostCard key={p.id} post={p} author={name} tier mine />)
+          feed.map(p => (
+            <PostCard key={p.id} post={p} author={name} authorId={userId} tier mine
+              toast={toast} onAuthor={onAuthor} highlight={highlightPostId === p.id} />
+          ))
         )}
       </div>
     </div>
@@ -433,7 +573,10 @@ export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadG
  * `readOnly` drops the XP buttons and reactions — a mentor looking at their own
  * profile can't collect XP for their own content.
  */
-export const ContentTabs = ({ feed = [], authorName, view, watched = {}, onWatch, reacted = {}, onReact, emptyText, readOnly }) => {
+export const ContentTabs = ({
+  feed = [], authorName, authorId, view, watched = {}, onWatch, reacted = {}, onReact,
+  emptyText, readOnly, toast, onAuthor, highlightPostId,
+}) => {
   const resources = feed.filter(p => p.kind === "video" || p.kind === "resource");
   const list = view === "feed" ? feed : resources;
 
@@ -446,9 +589,10 @@ export const ContentTabs = ({ feed = [], authorName, view, watched = {}, onWatch
   );
 
   if (view === "feed") return list.map(p => (
-    <PostCard key={p.id} post={p} author={authorName} tier mine={readOnly}
+    <PostCard key={p.id} post={p} author={authorName} authorId={authorId || p.authorId} tier mine={readOnly}
       reacted={!!reacted[p.id]} onReact={onReact}
-      onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]} />
+      onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]}
+      toast={toast} onAuthor={onAuthor} highlight={highlightPostId === p.id} />
   ));
 
   return list.map(p => {
@@ -482,7 +626,7 @@ export const ContentTabBar = ({ view, setView, count }) => (
   </div>
 );
 
-export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, onReact, openDm, back, go }) => {
+export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, onReact, openDm, back, go, toast, onAuthor, highlightPostId }) => {
   const [view, setView] = useState("feed");
   if (!u.mentorName) return (
     <div>
@@ -499,11 +643,19 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
   const resources = useMemo(() => feed.filter(p => p.kind === "video" || p.kind === "resource"), [feed]);
   const reviewed = resources.filter(p => watched[p.id]).length;
 
+  const openMentorProfile = () => onAuthor?.({
+    id: u.mentorId,
+    name: u.mentorName,
+    headline: u.mentorTitle,
+    tier: u.mentorTier,
+    matchState: "accepted",
+  });
+
   return (
     <div>
       <HeaderRow title={`${first}’s Orbit`} onBack={back} right={<Label color={C.teal}>{reviewed}/{resources.length} REVIEWED</Label>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
+        <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20, cursor: onAuthor ? "pointer" : "default" }} onClick={openMentorProfile}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <Monogram name={u.mentorName} size={54} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -546,7 +698,9 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
 
         <ContentTabBar view={view} setView={setView} count={resources.length} />
 
-        <ContentTabs feed={feed} authorName={u.mentorName} view={view} watched={watched} onWatch={onWatch} reacted={reacted} onReact={onReact}
+        <ContentTabs feed={feed} authorName={u.mentorName} authorId={u.mentorId} view={view}
+          watched={watched} onWatch={onWatch} reacted={reacted} onReact={onReact}
+          toast={toast} onAuthor={onAuthor} highlightPostId={highlightPostId}
           emptyText={`${first} hasn’t posted yet. Everything they share lands here first.`} />
       </div>
     </div>

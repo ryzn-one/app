@@ -528,7 +528,7 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
             </Card>
           )}
           <ContentTabBar view={contentTab} setView={setContentTab} count={resourceCount} />
-          <ContentTabs feed={posts} authorName={name} view={contentTab} readOnly
+          <ContentTabs feed={posts} authorName={name} authorId={u?.id} view={contentTab} readOnly
             emptyText="Nothing on your profile yet. What you post in Feed shows up here." />
         </>) : (<>
           <Card data-tour="mentor-profile-studio">

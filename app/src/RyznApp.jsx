@@ -14,7 +14,7 @@ import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
 import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
 import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
-import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen } from "./chatmatch.jsx";
+import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen, MentorDetailSheet } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
 import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
 import { MentorDash, MenteeDetailScreen, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
@@ -49,6 +49,14 @@ function inviteFromHash() {
   if (!hash.startsWith("#/join")) return null;
   const code = new URLSearchParams(hash.split("?")[1] || "").get("code");
   return code ? code.trim().toUpperCase() : null;
+}
+
+/** Share deep link: /app/#/post/{id} — cleared once handled. */
+function postIdFromHash() {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash || "";
+  const m = hash.match(/^#\/post\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
 }
 
 export const JOURNEY_STAGES = ["splash", "role", "welcome", "auth", "chat", "unlock", "matches", "app"];
@@ -165,6 +173,7 @@ export default function RyznComplete() {
   const [watched, setWatched] = useState({});
   const [reacted, setReacted] = useState({});
   const [mentorFeed, setMentorFeed] = useState([]);
+  const [highlightPostId, setHighlightPostId] = useState(null);
   const [menteeAdds, setMenteeAdds] = useState(0);
   const [program, setProgram] = useState({ phases: [], completedPhaseIds: [] });
   const [events, setEvents] = useState([]);
@@ -305,6 +314,44 @@ export default function RyznComplete() {
   }, [role, mentorId]);
 
   useEffect(() => { if (phase === "app") loadFeed(); }, [phase, loadFeed]);
+
+  /* Share deep link: open the post the recipient is allowed to see. */
+  useEffect(() => {
+    if (phase !== "app" || !user) return;
+    const id = postIdFromHash();
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { post } = await fetchPosts({ id });
+        if (cancelled || !post) return;
+        setHighlightPostId(post.id);
+        if (role === "mentee") {
+          setOverlay("orbit");
+        } else if (String(post.authorId) === String(session?.user?.id)) {
+          setTab("feed");
+          setOverlay(null);
+        } else {
+          setOverlay({
+            mentorProfile: {
+              id: post.authorId,
+              name: "Mentor",
+              matchState: "accepted",
+            },
+          });
+        }
+        toast("Opened shared post");
+      } catch (e) {
+        toast(e.message || "That shared post isn’t available to you.");
+      } finally {
+        if (window.location.hash.startsWith("#/post/")) {
+          history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, user?.mentorId, role, session?.user?.id]);
 
   /* Derived, not stored: the greeting *is* a post, so the feed is the only
      thing that can answer whether one exists. */
@@ -593,11 +640,46 @@ export default function RyznComplete() {
   const reactToPost = async (id) => {
     if (reacted[id]) return;
     setReacted(r => ({ ...r, [id]: true }));
-    try { await postAction(id, "react"); toast("Reaction sent"); }
+    try { await postAction(id, "react"); toast("Liked"); }
     catch (e) {
       setReacted(r => { const n = { ...r }; delete n[id]; return n; });
       toast(e.message || "Couldn’t send that.");
     }
+  };
+
+  const openAuthorProfile = (person) => {
+    if (!person?.id && !person?.name) return;
+    // Own name on your feed → Profile tab.
+    if (session?.user?.id && person.id && String(person.id) === String(session.user.id)) {
+      setOverlay(null);
+      setTab("profile");
+      return;
+    }
+    const from = overlay === "orbit" ? "orbit" : undefined;
+    // Active mentor from Orbit / post header.
+    if (role === "mentee" && user?.mentorId && String(person.id) === String(user.mentorId)) {
+      setOverlay({
+        mentorProfile: {
+          id: user.mentorId,
+          name: user.mentorName,
+          headline: user.mentorTitle,
+          tier: user.mentorTier,
+          matchState: "accepted",
+        },
+        from,
+      });
+      return;
+    }
+    setOverlay({
+      mentorProfile: {
+        id: person.id,
+        name: person.name || "Mentor",
+        headline: person.headline,
+        tier: person.tier,
+        matchState: person.matchState || (user?.mentorId && String(person.id) === String(user.mentorId) ? "accepted" : undefined),
+      },
+      from,
+    });
   };
 
   const pinPost = async (id, pinned) => {
@@ -780,7 +862,7 @@ export default function RyznComplete() {
         }}
       />
     );
-    if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} />;
+    if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId} />;
     if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
     if (overlay === "course") return (
       <CourseDesigner
@@ -802,6 +884,13 @@ export default function RyznComplete() {
       />
     );
     if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dmPeer: m, from: { mentee: m } })} />;
+    if (overlay.mentorProfile) return (
+      <MentorDetailSheet
+        m={overlay.mentorProfile}
+        close={() => setOverlay(overlay.from || null)}
+        footer={<Btn kind="dark" onClick={() => setOverlay(overlay.from || null)}>Done</Btn>}
+      />
+    );
     return null;
   };
 
@@ -820,7 +909,7 @@ export default function RyznComplete() {
     }
     switch (tab) {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
-      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} />;
+      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}
@@ -840,7 +929,11 @@ export default function RyznComplete() {
   const isDesktop = useIsDesktop();
   const reduced = useReducedMotion();
 
-  const fullScreenOverlay = Boolean(overlay === "dm" || (overlay && overlay.dmPeer));
+  const fullScreenOverlay = Boolean(
+    overlay === "dm"
+    || (overlay && overlay.dmPeer)
+    || (overlay && overlay.mentorProfile)
+  );
   const chatLike = phase === "journey" && ["chat", "matches"].includes(stage);
   const useAuthCard = isDesktop && phase === "journey" && ["role", "welcome", "register", "login", "forgot"].includes(stage);
 

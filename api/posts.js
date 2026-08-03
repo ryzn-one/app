@@ -10,9 +10,11 @@ import { orgContext, orgMemberIds } from "../lib/orgs.js";
  *
  *   GET    /api/posts                own posts (mentor)
  *   GET    /api/posts?mentorId=…     that mentor's cohort posts (mentee, paired only)
+ *   GET    /api/posts?id=…           one post (access-checked; for share deep links)
+ *   GET    /api/posts?id=…&comments=1  comment thread for that post
  *   POST   /api/posts                publish
  *   POST   /api/posts?upload=1       Vercel Blob upload token
- *   PATCH  /api/posts {id, action}   record a view or a reaction
+ *   PATCH  /api/posts {id, action}   record a view, reaction, or comment
  *   PATCH  /api/posts {id, …fields}  edit / pin / change visibility (author only)
  *   DELETE /api/posts?id=…           soft delete (author only)
  *
@@ -30,6 +32,7 @@ const KINDS = new Set(["status", "photo", "video", "resource"]);
 const VISIBILITY = new Set(["cohort", "public"]);
 const MAX_TEXT = 4000;
 const MAX_TITLE = 160;
+const MAX_COMMENT = 500;
 
 /* Impact is awarded server-side, on the write. It used to be a number in React
    state that reset on refresh, so the "+10 Impact" toast was describing
@@ -97,10 +100,56 @@ const shape = (p) => ({
   xp: p.xp ?? 5,
   views: p.views ?? 0,
   reactions: p.reactions ?? 0,
+  comments: p.comments ?? 0,
   // ISO, not "2d ago": a relative string computed here would be wrong for
   // anyone in another timezone and impossible to cache. The client formats it.
   createdAt: p.createdAt,
 });
+
+/**
+ * Author, accepted mentee of the author, or org peer reading a profile-visible
+ * post. Same gate for deep links, reactions, and comments — a share link is not
+ * a back door around pairing.
+ */
+async function canAccessPost(db, user, post) {
+  if (!post || post.deletedAt) return false;
+  if (String(post.authorId) === String(user.id)) return true;
+  if (await hasAcceptedPair({ menteeId: user.id, mentorId: post.authorId })) return true;
+  if (post.visibility === "public") {
+    const ctx = await orgContext(db, user.id);
+    if (ctx?.org?.orbitActive) {
+      const members = await orgMemberIds(db, ctx.org._id);
+      if (members.includes(String(post.authorId))) return true;
+    }
+  }
+  return false;
+}
+
+const shapeComment = (c, nameById) => ({
+  id: String(c._id),
+  postId: String(c.postId),
+  authorId: c.authorId,
+  authorName: nameById.get(String(c.authorId)) || "—",
+  text: c.text,
+  createdAt: c.createdAt,
+});
+
+async function loadComments(db, postId) {
+  const rows = await db
+    .collection(collections.postComments)
+    .find({ postId })
+    .sort({ createdAt: 1 })
+    .limit(100)
+    .toArray();
+  const authorIds = [...new Set(rows.map((r) => String(r.authorId)))].filter(ObjectId.isValid);
+  const authors = authorIds.length
+    ? await db.collection(collections.user)
+        .find({ _id: { $in: authorIds.map((id) => new ObjectId(id)) } }, { projection: { name: 1 } })
+        .toArray()
+    : [];
+  const nameById = new Map(authors.map((a) => [String(a._id), a.name]));
+  return rows.map((c) => shapeComment(c, nameById));
+}
 
 /** The caller's own view/react history for these posts, so a refresh doesn't
     re-offer XP they already collected. */
@@ -142,6 +191,21 @@ async function handler(request, user) {
   if (request.method === "GET") {
     const mentorId = url.searchParams.get("mentorId");
     const scope = url.searchParams.get("scope");
+    const postIdParam = url.searchParams.get("id");
+
+    /* Deep-link / share target: one post the caller is allowed to see. */
+    if (postIdParam) {
+      let _id;
+      try { _id = new ObjectId(String(postIdParam)); } catch { return fail(400, "bad_request", "Which post?"); }
+      const post = await posts.findOne({ _id, deletedAt: null });
+      if (!post || !(await canAccessPost(db, user, post))) {
+        return fail(404, "not_found", "That post isn’t available.");
+      }
+      if (url.searchParams.get("comments") === "1") {
+        return json({ comments: await loadComments(db, _id) });
+      }
+      return json({ post: shape(post), viewerState: await viewerState(db, user.id, [_id]) });
+    }
 
     /* The org Orbit: everything the org's people have put on their profile, in
        one feed. Deliberately `public` only — a cohort post is written for that
@@ -243,6 +307,7 @@ async function handler(request, user) {
       xp: 5,
       views: 0,
       reactions: 0,
+      comments: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -267,7 +332,7 @@ async function handler(request, user) {
     return json({ post: shape({ ...doc, _id: insertedId }), impact }, 201);
   }
 
-  /* ————— view / react / edit ————— */
+  /* ————— view / react / comment / edit ————— */
   if (request.method === "PATCH") {
     let body = {};
     try { body = await request.json(); } catch { return fail(400, "bad_request", "Expected a JSON body."); }
@@ -278,9 +343,36 @@ async function handler(request, user) {
     const post = await posts.findOne({ _id, deletedAt: null });
     if (!post) return fail(404, "not_found", "That post is gone.");
 
+    if (body.action === "comment") {
+      if (!(await canAccessPost(db, user, post))) {
+        return fail(403, "not_paired", "That isn’t a post you can comment on.");
+      }
+      const text = String(body.text || "").trim().slice(0, MAX_COMMENT);
+      if (!text) return fail(400, "empty_comment", "Write a comment first.");
+
+      const doc = {
+        postId: _id,
+        authorId: user.id,
+        text,
+        createdAt: new Date(),
+      };
+      const { insertedId } = await db.collection(collections.postComments).insertOne(doc);
+      await posts.updateOne({ _id }, { $inc: { comments: 1 } });
+
+      const nameById = new Map([[String(user.id), user.name || "—"]]);
+      return json({
+        comment: shapeComment({ ...doc, _id: insertedId }, nameById),
+        comments: (post.comments ?? 0) + 1,
+      }, 201);
+    }
+
     if (body.action === "view" || body.action === "react") {
-      if (post.authorId !== user.id && !(await hasAcceptedPair({ menteeId: user.id, mentorId: post.authorId }))) {
-        return fail(403, "not_paired", "That isn't your mentor's post.");
+      if (!(await canAccessPost(db, user, post))) {
+        return fail(403, "not_paired", "That isn’t a post you can engage with.");
+      }
+      // Authors don’t collect view XP / self-likes on their own posts.
+      if (String(post.authorId) === String(user.id) && body.action === "react") {
+        return json({ ok: true, already: true, xp: 0 });
       }
       // Insert-then-increment: the unique index makes the second attempt fail,
       // so the counter only moves the first time. A duplicate is success, not
@@ -296,7 +388,7 @@ async function handler(request, user) {
       const field = body.action === "view" ? "views" : "reactions";
       await posts.updateOne({ _id }, { $inc: { [field]: 1 } });
 
-      const xp = body.action === "view" ? (post.xp ?? 5) : 0;
+      const xp = body.action === "view" && String(post.authorId) !== String(user.id) ? (post.xp ?? 5) : 0;
       if (xp) {
         await Promise.all([
           db.collection(collections.profiles).updateOne({ userId: user.id }, { $inc: { xp } }),

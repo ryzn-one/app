@@ -73,6 +73,9 @@ const indexes = [
   // One view and one reaction per person per post, enforced by the database —
   // this is what stops a double-tap inflating a mentor's numbers.
   ["post_events", { postId: 1, userId: 1, type: 1 }, { unique: true, name: "viewer_unique" }],
+  // Comments under a post, oldest first for the thread.
+  ["post_comments", { postId: 1, createdAt: 1 }, { name: "post_thread" }],
+  ["post_comments", { authorId: 1, createdAt: -1 }, { name: "author_recent" }],
   // One daily exercise per mentee — double-submit can't double-award XP.
   ["exercises", { userId: 1, dayKey: 1 }, { unique: true, name: "user_day_unique" }],
   ["exercises", { userId: 1, createdAt: -1 }, { name: "user_recent" }],

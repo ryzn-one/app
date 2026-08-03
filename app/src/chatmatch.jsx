@@ -518,6 +518,7 @@ export const MentorDetailSheet = ({ m, close, footer }) => {
         <ContentTabs
           feed={posts}
           authorName={m.name}
+          authorId={m.id}
           view={contentTab}
           readOnly
           emptyText={`${(m.name || "They").split(" ")[0]} hasn’t put anything on their profile yet.`}

@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from "react";
 import {
   Building2, Users, Send, Settings, Radio, Copy, ExternalLink, Plus, ChevronLeft,
-  Check, Shield, Trash2, RotateCcw, Globe, Pin,
+  Check, Shield, Trash2, RotateCcw, Globe,
 } from "lucide-react";
 import { C, F } from "../theme.js";
 import { Card, Label, Btn, Field, FormError, Monogram, firstNameOf } from "../ui.jsx";
 import { useIsDesktop } from "../useIsDesktop.js";
 import { buildInviteUrl, copyText } from "../lib/invite-url.js";
-import { relTime, KIND_META } from "../feed.jsx";
+import { PostCard } from "../feed.jsx";
 import {
   updateOrg, setOrgOrbit, orgMintInvites, orgRevokeInvite,
-  orgSetMemberRole, orgRemoveMember, orgLeave, fetchOrgOrbit, messageFor,
+  orgSetMemberRole, orgRemoveMember, orgLeave, fetchOrgOrbit, messageFor, postAction,
 } from "../lib/auth-client.js";
 
 /* ————————————————— ORG CONSOLE —————————————————
@@ -260,18 +260,35 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
 }
 
 /* ————— orbit ————— */
-function Orbit({ org, canManage, onOrbit, busy }) {
+function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
   const [state, setState] = useState({ loading: true, posts: [], error: null, members: 0 });
+  const [reacted, setReacted] = useState({});
 
   useEffect(() => {
     let cancelled = false;
     if (!org.orbitActive) { setState({ loading: false, posts: [], error: null, members: 0 }); return; }
     setState((s) => ({ ...s, loading: true }));
     fetchOrgOrbit()
-      .then((res) => { if (!cancelled) setState({ loading: false, posts: res.posts || [], error: null, members: res.orbit?.members || 0 }); })
+      .then((res) => {
+        if (cancelled) return;
+        setState({ loading: false, posts: res.posts || [], error: null, members: res.orbit?.members || 0 });
+        setReacted(Object.fromEntries((res.viewerState?.reacted || []).map((id) => [id, true])));
+      })
       .catch((e) => { if (!cancelled) setState({ loading: false, posts: [], members: 0, error: messageFor(e, "Couldn’t load the Orbit.") }); });
     return () => { cancelled = true; };
   }, [org.orbitActive, org.id]);
+
+  const onReact = async (id) => {
+    if (reacted[id]) return;
+    setReacted((r) => ({ ...r, [id]: true }));
+    try {
+      await postAction(id, "react");
+      toast?.("Liked");
+    } catch (e) {
+      setReacted((r) => { const n = { ...r }; delete n[id]; return n; });
+      toast?.(e.message || "Couldn’t like that.");
+    }
+  };
 
   if (!org.orbitActive) {
     return (
@@ -325,34 +342,18 @@ function Orbit({ org, canManage, onOrbit, busy }) {
         </Card>
       )}
 
-      {state.posts.map((p) => {
-        const meta = KIND_META[p.kind] || KIND_META.status;
-        const Icon = meta.icon;
-        return (
-          <Card key={p.id}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Monogram name={p.authorName} size={36} bg={C.purple} color={C.white} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.authorName}</div>
-                <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
-                  {p.pinned && <Pin size={9} color={C.purple} />}{relTime(p.createdAt).toUpperCase()} · {meta.label.toUpperCase()}
-                </div>
-              </div>
-              <div style={{ width: 28, height: 28, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Icon size={13} color={meta.c} />
-              </div>
-            </div>
-            {p.title && <div style={{ fontWeight: 700, fontSize: 15, marginTop: 11 }}>{p.title}</div>}
-            {p.text && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: C.gray, marginTop: p.title ? 4 : 11 }}>{p.text}</div>}
-            {p.media?.url && (
-              <button onClick={() => window.open(p.media.url, "_blank", "noopener")} style={{
-                marginTop: 12, fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer",
-                padding: "8px 12px", borderRadius: 10, background: meta.bg, color: meta.c,
-              }}>{p.kind === "video" ? "WATCH" : "OPEN"}{p.mins ? ` · ${p.mins}` : p.fileKind ? ` · ${p.fileKind}` : ""}</button>
-            )}
-          </Card>
-        );
-      })}
+      {state.posts.map((p) => (
+        <PostCard
+          key={p.id}
+          post={p}
+          author={p.authorName}
+          authorId={p.authorId}
+          mine={meId && String(p.authorId) === String(meId)}
+          reacted={!!reacted[p.id]}
+          onReact={onReact}
+          toast={toast}
+        />
+      ))}
     </div>
   );
 }
@@ -488,7 +489,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
     invites: <Invites org={org} invites={invites} busy={busy} toast={toast} onMint={mint}
       inviterName={me?.user?.name || org.name}
       onRevoke={(code) => run(() => orgRevokeInvite(code), `${code} revoked`)} />,
-    orbit: <Orbit org={org} canManage={canManage} busy={busy}
+    orbit: <Orbit org={org} canManage={canManage} busy={busy} toast={toast} meId={me?.user?.id}
       onOrbit={(v) => run(() => setOrgOrbit(v), v ? "Orbit is open" : "Orbit closed")} />,
     settings: <OrgSettings org={org} canManage={canManage} isOwner={isOwner} busy={busy}
       onSave={(patch) => run(() => updateOrg(patch), "Saved")}

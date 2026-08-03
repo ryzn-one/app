@@ -95,7 +95,7 @@ Better Auth owns `user`, `session`, `account`, `verification` — do not write t
 them directly except the deliberate role promotion in `api/invites/redeem.js`.
 
 Ryzn owns `profiles`, `invites`, `onboarding_answers`, `xp_events`, `matches`,
-`teams_interest`, `posts`, `post_events`, `exercises`, `messages`, `rate_limits`,
+`teams_interest`, `posts`, `post_events`, `post_comments`, `exercises`, `messages`, `rate_limits`,
 `events`, `event_responses`, `sessions_1v1`, `orgs`, `org_members`.
 
 `sessions_1v1` is deliberately *not* called `sessions`: Better Auth owns
@@ -227,10 +227,14 @@ placeholder mentor or a seeded leaderboard is worse than an empty one.
   the whole delivery mechanism until Postmark is wired up.
 - **Public mentor pages.** A mentor's "Public view" renders exactly what a
   cohort mentee sees, using the same components, but there is no unauthenticated
-  `/m/:slug` route and no share link. Building one is a decision about putting
-  adults' names on the open internet alongside a platform containing minors —
-  it needs to be made deliberately, not as a side effect of a UI change. The
-  verification QR stays out until that URL exists and resolves.
+  `/m/:slug` route. In-app share uses authenticated deep links
+  (`/app/#/post/{id}`) so paired mentees and org peers can open a post after
+  signing in — not a public URL on the open internet. Building a true public
+  page is a decision about putting adults' names alongside a platform containing
+  minors — it needs to be made deliberately, not as a side effect of a UI change.
+  The verification QR stays out until that URL exists and resolves.
+- Post comments live in `post_comments` (count denormalised on `posts.comments`).
+  Like / comment / share are on `PostCard`; share copies or OS-shares the deep link.
 - Cross-user leaderboards (cohort XP, mentor Impact ranking).
 - Org-wide programmes. An org has a roster and an Orbit (see below), but cohorts,
   exercises and matching are still person-to-person — an org does not yet run a
