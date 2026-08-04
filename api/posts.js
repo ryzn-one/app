@@ -5,6 +5,7 @@ import { json, fail, withUser, getUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair } from "../lib/matches.js";
 import { orgContext, orgMemberIds } from "../lib/orgs.js";
 import { makeSlug, originOf, isCrawler, renderPostPage, renderMissingPage } from "../lib/post-page.js";
+import { ensureHandle, RESERVED_HANDLES } from "../lib/handles.js";
 
 /**
  * /api/posts — mentor content, and the only thing that carries it to a mentee.
@@ -13,10 +14,11 @@ import { makeSlug, originOf, isCrawler, renderPostPage, renderMissingPage } from
  *   GET    /api/posts?mentorId=…     that mentor's cohort posts (mentee, paired only)
  *   GET    /api/posts?id=…           one post (access-checked; for share deep links)
  *   GET    /api/posts?id=…&comments=1  comment thread for that post
- *   GET    /api/posts?share=<slug>   the public page — no session (see /p/:slug)
+ *   GET    /api/posts?share=<slug>   the public page — no session
+ *          (&handle=<handle> for /{handle}/{slug}; /p/:slug still works)
  *   POST   /api/posts                publish
  *   POST   /api/posts?upload=1       Vercel Blob upload token
- *   PATCH  /api/posts {id, action}   record a view, reaction, or comment
+ *   PATCH  /api/posts {id, action}   record a view, reaction, comment, or comment_react
  *   PATCH  /api/posts {id, …fields}  edit / pin / change visibility (author only)
  *   DELETE /api/posts?id=…           soft delete (author only)
  *
@@ -102,9 +104,11 @@ const asMins = (sec) =>
 
 const shape = (p) => ({
   id: String(p._id),
-  /* The public link's last segment — "run-on-bos-x7k2q". The client builds
-     ryzn.one/p/<slug> from it; null only for a post whose backfill hasn't run. */
+  /* The public link's last segment — "healing-and-unlock-x7k2q". The client
+     builds ryzn.one/{handle}/{slug} from it; null only for a post whose
+     backfill hasn't run. */
   slug: p.slug ?? null,
+  authorHandle: p.authorHandle ?? null,
   authorId: p.authorId,
   kind: p.kind,
   text: p.text ?? null,
@@ -179,16 +183,20 @@ async function canAccessPost(db, user, post) {
   return false;
 }
 
-const shapeComment = (c, nameById) => ({
+const shapeComment = (c, nameById, viewerId) => ({
   id: String(c._id),
   postId: String(c.postId),
   authorId: c.authorId,
   authorName: nameById.get(String(c.authorId)) || "—",
   text: c.text,
+  reactions: c.reactions ?? 0,
+  reacted: Array.isArray(c.likedBy) && viewerId
+    ? c.likedBy.some((id) => String(id) === String(viewerId))
+    : false,
   createdAt: c.createdAt,
 });
 
-async function loadComments(db, postId) {
+async function loadComments(db, postId, viewerId) {
   const rows = await db
     .collection(collections.postComments)
     .find({ postId })
@@ -202,7 +210,7 @@ async function loadComments(db, postId) {
         .toArray()
     : [];
   const nameById = new Map(authors.map((a) => [String(a._id), a.name]));
-  return rows.map((c) => shapeComment(c, nameById));
+  return rows.map((c) => shapeComment(c, nameById, viewerId));
 }
 
 /** The caller's own view/react history for these posts, so a refresh doesn't
@@ -256,7 +264,7 @@ async function handler(request, user) {
         return fail(404, "not_found", "That post isn’t available.");
       }
       if (url.searchParams.get("comments") === "1") {
-        return json({ comments: await loadComments(db, _id) });
+        return json({ comments: await loadComments(db, _id, user.id) });
       }
       if (!post.slug) await assignSlug(db, post);
       return json({ post: shape(post), viewerState: await viewerState(db, user.id, [_id]) });
@@ -350,8 +358,20 @@ async function handler(request, user) {
       );
     }
 
+    // Stamp the author's public handle on the post so share URLs don't need a
+    // second lookup, and so a renamed handle later doesn't break old links
+    // until we choose to rewrite them.
+    let authorHandle = null;
+    try {
+      const profile = await ensureHandle(db, user, await db.collection(collections.profiles).findOne({ userId: user.id }));
+      authorHandle = profile?.handle || null;
+    } catch (err) {
+      console.error("[api:posts] handle:", err);
+    }
+
     const doc = {
       authorId: user.id,
+      authorHandle,
       kind,
       text: text || null,
       title: title || null,
@@ -424,6 +444,8 @@ async function handler(request, user) {
         postId: _id,
         authorId: user.id,
         text,
+        reactions: 0,
+        likedBy: [],
         createdAt: new Date(),
       };
       const { insertedId } = await db.collection(collections.postComments).insertOne(doc);
@@ -431,9 +453,35 @@ async function handler(request, user) {
 
       const nameById = new Map([[String(user.id), user.name || "—"]]);
       return json({
-        comment: shapeComment({ ...doc, _id: insertedId }, nameById),
+        comment: shapeComment({ ...doc, _id: insertedId }, nameById, user.id),
         comments: (post.comments ?? 0) + 1,
       }, 201);
+    }
+
+    if (body.action === "comment_react") {
+      if (!(await canAccessPost(db, user, post))) {
+        return fail(403, "not_paired", "That isn’t a post you can engage with.");
+      }
+      let commentId;
+      try { commentId = new ObjectId(String(body.commentId)); }
+      catch { return fail(400, "bad_request", "Which comment?"); }
+
+      const comments = db.collection(collections.postComments);
+      const comment = await comments.findOne({ _id: commentId, postId: _id });
+      if (!comment) return fail(404, "not_found", "That comment is gone.");
+
+      // Idempotent: likedBy is the ledger, reactions is the denormalised count.
+      const res = await comments.updateOne(
+        { _id: commentId, likedBy: { $ne: user.id } },
+        { $inc: { reactions: 1 }, $addToSet: { likedBy: user.id } }
+      );
+      const fresh = await comments.findOne({ _id: commentId }, { projection: { reactions: 1, likedBy: 1 } });
+      return json({
+        ok: true,
+        already: res.modifiedCount === 0,
+        reactions: fresh?.reactions ?? 0,
+        reacted: true,
+      });
     }
 
     if (body.action === "view" || body.action === "react") {
@@ -442,7 +490,7 @@ async function handler(request, user) {
       }
       // Authors don’t collect view XP / self-likes on their own posts.
       if (String(post.authorId) === String(user.id) && body.action === "react") {
-        return json({ ok: true, already: true, xp: 0 });
+        return json({ ok: true, self: true, already: true, xp: 0 });
       }
       // Insert-then-increment: the unique index makes the second attempt fail,
       // so the counter only moves the first time. A duplicate is success, not
@@ -553,9 +601,9 @@ async function upload(request) {
 const html = (body, status, headers = {}) =>
   new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", ...headers } });
 
-/** Name, face and headline of whoever wrote it — the byline on the public page. */
+/** Name, face, handle and headline of whoever wrote it — the byline on the public page. */
 async function publicAuthor(db, authorId) {
-  const fallback = { name: "A Ryzn mentor", avatarUrl: null, headline: null };
+  const fallback = { name: "A Ryzn mentor", avatarUrl: null, headline: null, handle: null };
   if (!ObjectId.isValid(String(authorId))) return fallback;
   const [account, profile] = await Promise.all([
     db.collection(collections.user).findOne(
@@ -564,14 +612,20 @@ async function publicAuthor(db, authorId) {
     ),
     db.collection(collections.profiles).findOne(
       { userId: String(authorId) },
-      { projection: { avatarUrl: 1, headline: 1, tier: 1 } }
+      { projection: { avatarUrl: 1, headline: 1, tier: 1, handle: 1 } }
     ),
   ]);
+  let handle = profile?.handle || null;
+  if (!handle && account) {
+    const ensured = await ensureHandle(db, { id: String(authorId), name: account.name, email: null }, profile || { userId: String(authorId) });
+    handle = ensured?.handle || null;
+  }
   return {
     name: account?.name || fallback.name,
     avatarUrl: profile?.avatarUrl || account?.image || null,
     headline: profile?.headline || null,
     tier: profile?.tier || null,
+    handle,
   };
 }
 
@@ -581,11 +635,19 @@ async function publicAuthor(db, authorId) {
  * Only `public` posts render. A cohort post is written for one mentor's mentees
  * and the pairing check is what carries it; a short link must not be a way
  * around that, so it gets the same locked 404 as a slug that doesn't exist.
+ *
+ * When `handle` is present (/{handle}/{slug}), the author's handle must match —
+ * otherwise a renamed or mistyped profile segment still 404s rather than
+ * serving someone else's post under the wrong name.
  */
-async function publicPost(request, code) {
+async function publicPost(request, code, handle) {
   const origin = originOf(request);
   try {
     const raw = String(code).trim().toLowerCase().slice(0, 80);
+    const wantHandle = String(handle || "").trim().toLowerCase().slice(0, 40);
+    if (wantHandle && RESERVED_HANDLES.has(wantHandle)) {
+      return html(renderMissingPage({ origin, postId: null }), 404);
+    }
     // Old links pasted before slugs existed carry the raw id — still resolve those.
     const by = /^[0-9a-f]{24}$/.test(raw) ? { _id: new ObjectId(raw) } : { slug: raw };
 
@@ -599,6 +661,19 @@ async function publicPost(request, code) {
     if (!post.slug) await assignSlug(db, post);
 
     const author = await publicAuthor(db, post.authorId);
+    if (wantHandle && author.handle && author.handle !== wantHandle) {
+      return html(renderMissingPage({ origin, postId: null }), 404, {
+        "Cache-Control": "public, max-age=0, s-maxage=60",
+      });
+    }
+    // Backfill authorHandle so subsequent shares skip the profile join.
+    if (author.handle && post.authorHandle !== author.handle) {
+      db.collection(collections.posts)
+        .updateOne({ _id: post._id }, { $set: { authorHandle: author.handle } })
+        .catch(() => {});
+      post.authorHandle = author.handle;
+    }
+
     if (!isCrawler(request.headers.get("user-agent"))) {
       // Fire and forget: a counter must never be the reason a page 500s.
       db.collection(collections.posts)
@@ -623,7 +698,9 @@ export default {
     const params = new URL(request.url).searchParams;
     const share = params.get("share");
     // HEAD as well as GET: link checkers and some unfurlers probe before they fetch.
-    if (share && (request.method === "GET" || request.method === "HEAD")) return publicPost(request, share);
+    if (share && (request.method === "GET" || request.method === "HEAD")) {
+      return publicPost(request, share, params.get("handle"));
+    }
     if (request.method === "POST" && params.get("upload") === "1") return upload(request);
     return withUser(handler)(request);
   },

@@ -7,7 +7,9 @@
 <meta name="description" content="A personal invitation to the founding mentor Roster. Toronto. Invitation only.">
 <meta name="theme-color" content="#5B4FCF">
 <link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="/branding/ryzn-brand-kit/icon/png/favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/branding/ryzn-brand-kit/icon/png/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/branding/ryzn-brand-kit/icon/png/favicon-48.png">
 <link rel="apple-touch-icon" href="/branding/ryzn-brand-kit/icon/png/ryzn-app-icon-180.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
@@ -477,6 +479,10 @@
   const P = new URLSearchParams(location.search);
   const isPreview = P.get('preview') === '1';
   const first = (P.get('name') || '').trim();
+  const orgName = (P.get('org') || '').trim();
+  const seatRole = (P.get('role') || 'Mentor').trim().toLowerCase();
+  const isMenteeSeat = seatRole === 'mentee';
+  const seatWord = isMenteeSeat ? 'mentee' : 'mentor';
   const heroName = document.getElementById('heroName');
   const leadEl = document.querySelector('.hero .lead');
   const gateH2 = document.querySelector('.gate h2');
@@ -490,6 +496,28 @@
     }
     if(gateH2) gateH2.textContent = 'Twenty seats. ' + first + ', one of them is yours.';
     if(gateSub) gateSub.textContent = 'Your code is single-use and tied to you. Confirm it to claim your seat.';
+  }
+
+  // Org / mentee seats override the founding-roster pitch above.
+  if(orgName){
+    document.title = first
+      ? 'Ryzn - ' + first + ', invited to ' + orgName
+      : 'Ryzn - invited to ' + orgName;
+    const mono = document.querySelector('.hero .mono');
+    if(mono) mono.textContent = orgName.toUpperCase() + ' · ON RYZN · INVITATION ONLY';
+    if(leadEl){
+      leadEl.textContent = first
+        ? first + ', you\u2019ve been invited to ' + orgName + ' on Ryzn as a ' + seatWord + '.'
+        : 'You\u2019ve been invited to ' + orgName + ' on Ryzn as a ' + seatWord + '.';
+    }
+    if(gateH2) gateH2.textContent = first
+      ? first + ', claim your seat at ' + orgName + '.'
+      : 'Claim your seat at ' + orgName + '.';
+    if(gateSub) gateSub.textContent = 'Your code is single-use. Confirm it to join ' + orgName + ' on Ryzn.';
+  } else if(isMenteeSeat && leadEl){
+    leadEl.textContent = first
+      ? first + ', you were invited to join Ryzn as a mentee.'
+      : 'You were invited to join Ryzn as a mentee.';
   }
   const codeInput = document.getElementById('codeInput');
   const codeFromUrl = (P.get('code') || '').trim().toUpperCase();
@@ -511,7 +539,8 @@
   }
 
   function joinUrl(codeVal){
-    return location.origin + '/app/#/join?code=' + encodeURIComponent(codeVal || '');
+    const roleQ = isMenteeSeat ? '&role=mentee' : '';
+    return location.origin + '/app/#/join?code=' + encodeURIComponent(codeVal || '') + roleQ;
   }
   function setClaimHref(codeVal){
     if(isPreview){
@@ -603,14 +632,6 @@
     tabs.forEach((t,i)=>t.classList.toggle('on', i<=idx));
   }
   grads.addEventListener('input',render); render();
-
-  // ---------- org personalization ----------
-  const orgName = (P.get('org') || '').trim();
-  if(orgName){
-    if(leadEl) leadEl.textContent = first
-      ? first + ', you were nominated to join the founding mentor Roster for ' + orgName + '.'
-      : 'A personal invitation to mentor inside ' + orgName + '. Invitation only.';
-  }
 
   // ---------- code confirm against Mongo invites via /api/invites/validate ----------
   // Read-only check. The single-use claim happens later at /app/#/join after sign-up

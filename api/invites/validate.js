@@ -37,7 +37,13 @@ async function handler(request) {
     return json({ valid: false, reason: "expired" });
   }
 
-  return json({ valid: true });
+  return json({
+    valid: true,
+    role: invite.role === "mentee" || invite.role === "admin" || invite.role === "mentor"
+      ? invite.role
+      : "mentor",
+    org: invite.orgName || null,
+  });
 }
 
 export default { fetch: handler };

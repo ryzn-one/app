@@ -112,6 +112,9 @@ export const postAction = (id, action) => api("/posts", { method: "PATCH", body:
 export const fetchComments = (id) => api(`/posts?id=${encodeURIComponent(id)}&comments=1`);
 export const addComment = (id, text) =>
   api("/posts", { method: "PATCH", body: { id, action: "comment", text } });
+/** Like a comment. Idempotent — the server dedupes via likedBy. */
+export const reactToComment = (postId, commentId) =>
+  api("/posts", { method: "PATCH", body: { id: postId, action: "comment_react", commentId } });
 /** Pin, change visibility, or edit the copy. Author only. */
 export const updatePost = (id, patch) => api("/posts", { method: "PATCH", body: { id, ...patch } });
 export const deletePost = (id) => api(`/posts?id=${encodeURIComponent(id)}`, { method: "DELETE" });

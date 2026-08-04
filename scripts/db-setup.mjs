@@ -56,6 +56,9 @@ const indexes = [
   // Org-scoped mentor codes, newest first — the org console's Invites list.
   ["invites", { orgId: 1, createdAt: -1 }, { sparse: true, name: "org_recent" }],
   ["profiles", { userId: 1 }, { unique: true, name: "userId_unique" }],
+  // Public share URLs are ryzn.one/{handle}/{slug} — handles are unique and
+  // sparse so older profiles without one still pass until /api/me backfills.
+  ["profiles", { handle: 1 }, { unique: true, sparse: true, name: "handle_unique" }],
   // One document per pair, enforced by the database — this is what stops a
   // double-tap on "Request" from opening two matches between the same people.
   ["matches", { menteeId: 1, mentorId: 1 }, { unique: true, name: "pair_unique" }],

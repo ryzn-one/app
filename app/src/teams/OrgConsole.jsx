@@ -69,7 +69,7 @@ function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
           <Label color={C.purple}>Next step</Label>
           <div style={{ fontSize: 14, lineHeight: 1.55, marginTop: 8 }}>
             {members.length < 2
-              ? <>Invite your senior people. Each one claims a mentor seat with their own profile and Impact Score — then open the Orbit so the whole org reads the same feed.</>
+              ? <>Invite mentors and mentees. Each claim seats them in {org.name} on Ryzn — then open the Orbit so the whole org reads the same feed.</>
               : <>You have a roster. Opening the Orbit puts everyone’s profile posts into one feed for the org.</>}
           </div>
           {canManage && (
@@ -152,40 +152,63 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
   const [who, setWho] = useState("");
   const [count, setCount] = useState(1);
   const [days, setDays] = useState(90);
+  const [role, setRole] = useState("mentor");
   const [orgRole, setOrgRole] = useState("member");
   const addressed = to.trim().length > 0;
+  const isMentee = role === "mentee";
 
   // Same query shape the server builds when it mails one — the page reads `org`
-  // and opens with the company's name rather than Ryzn's.
+  // + `role` and opens with the company's name rather than Ryzn's founding pitch.
   const linkFor = (iv) =>
-    buildInviteUrl({ code: iv.code, name: iv.sentName || "", adminName: inviterName, orgName: org.name, role: "Mentor" });
+    buildInviteUrl({
+      code: iv.code,
+      name: iv.sentName || "",
+      adminName: inviterName,
+      orgName: org.name,
+      role: (iv.role || "mentor") === "mentee" ? "Mentee" : "Mentor",
+    });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Card>
         <Label color={C.purple}>Seat someone at {org.name}</Label>
         <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
-          A code is single-use. Claiming it makes them a Ryzn mentor <i>and</i> puts them in this org —
+          A code is single-use. Claiming it puts them in {org.name} on Ryzn
+          {isMentee ? " as a mentee" : " as a mentor with their own profile and Impact Score"} —
           one link, one sign-in, no approval queue.
         </div>
 
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4, marginTop: 14 }}>
-          {[["member", "Member"], ["admin", "Org admin"]].map(([id, l]) => (
-            <button key={id} onClick={() => setOrgRole(id)} style={{
+          {[["mentor", "Mentor"], ["mentee", "Mentee"]].map(([id, l]) => (
+            <button key={id} onClick={() => { setRole(id); if (id === "mentee") setOrgRole("member"); }} style={{
               flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0",
               fontFamily: F.sans, fontWeight: 600, fontSize: 13,
-              background: orgRole === id ? C.white : "transparent", color: orgRole === id ? C.ink : C.gray,
+              background: role === id ? C.white : "transparent", color: role === id ? C.ink : C.gray,
             }}>{l}</button>
           ))}
         </div>
-        {orgRole === "admin" && (
-          <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: C.amberTint, borderRadius: 12, padding: 12, marginTop: 10 }}>
-            <Shield size={15} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
-              An org admin can invite, remove people and open the Orbit for {org.name}. They still can’t touch
-              anything outside this org.
+
+        {!isMentee && (
+          <>
+            <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4, marginTop: 10 }}>
+              {[["member", "Member"], ["admin", "Org admin"]].map(([id, l]) => (
+                <button key={id} onClick={() => setOrgRole(id)} style={{
+                  flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0",
+                  fontFamily: F.sans, fontWeight: 600, fontSize: 13,
+                  background: orgRole === id ? C.white : "transparent", color: orgRole === id ? C.ink : C.gray,
+                }}>{l}</button>
+              ))}
             </div>
-          </div>
+            {orgRole === "admin" && (
+              <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: C.amberTint, borderRadius: 12, padding: 12, marginTop: 10 }}>
+                <Shield size={15} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
+                  An org admin can invite, remove people and open the Orbit for {org.name}. They still can’t touch
+                  anything outside this org.
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 12 }}>
@@ -212,10 +235,14 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
         </div>
 
         <Btn style={{ marginTop: 14 }} disabled={busy}
-          onClick={() => onMint({ to: to.trim(), name: who.trim(), count: Number(count) || 1, expiresDays: Number(days) || 90, orgRole })
-            .then((ok) => { if (ok) { setTo(""); setWho(""); } })}>
+          onClick={() => onMint({
+            to: to.trim(), name: who.trim(), count: Number(count) || 1,
+            expiresDays: Number(days) || 90, role, orgRole: isMentee ? "member" : orgRole,
+          }).then((ok) => { if (ok) { setTo(""); setWho(""); } })}>
           {addressed ? <Send size={15} /> : <Plus size={15} />}
-          {busy ? "Working…" : addressed ? `Send a seat to ${to.trim()}` : `Mint ${count} code${Number(count) === 1 ? "" : "s"}`}
+          {busy ? "Working…" : addressed
+            ? `Invite ${to.trim()} as ${isMentee ? "mentee" : "mentor"}`
+            : `Mint ${count} ${isMentee ? "mentee" : "mentor"} code${Number(count) === 1 ? "" : "s"}`}
         </Btn>
       </Card>
 
@@ -229,6 +256,10 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
           <div key={iv.code} style={{ padding: "12px 16px", borderBottom: i < invites.length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontFamily: F.mono, fontSize: 11.5, fontWeight: 700, flex: 1, minWidth: 170 }}>{iv.code}</span>
+              <Chip c={(iv.role || "mentor") === "mentee" ? C.purple : C.teal}
+                bg={(iv.role || "mentor") === "mentee" ? C.purpleTint : C.tealTint}>
+                {(iv.role || "mentor").toUpperCase()}
+              </Chip>
               {iv.orgRole === "admin" && <Chip c={C.amber} bg={C.amberTint}>ORG ADMIN</Chip>}
               <Chip c={STATE_COLOR[iv.state]} bg={STATE_BG[iv.state]}>{iv.state.toUpperCase()}</Chip>
               <button onClick={() => copyText(linkFor(iv)).then(() => toast("Invite link copied"))} title="Copy invite link"
@@ -279,14 +310,25 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
   }, [org.orbitActive, org.id]);
 
   const onReact = async (id) => {
-    if (reacted[id]) return;
+    if (reacted[id]) return { already: true };
     setReacted((r) => ({ ...r, [id]: true }));
     try {
-      await postAction(id, "react");
+      const res = await postAction(id, "react");
+      if (res?.self) {
+        setReacted((r) => { const n = { ...r }; delete n[id]; return n; });
+        return res;
+      }
+      setState((s) => ({
+        ...s,
+        posts: (s.posts || []).map((p) => (
+          p.id === id ? { ...p, reactions: (p.reactions ?? 0) + 1 } : p
+        )),
+      }));
       toast?.("Liked");
+      return res;
     } catch (e) {
       setReacted((r) => { const n = { ...r }; delete n[id]; return n; });
-      toast?.(e.message || "Couldn’t like that.");
+      throw e;
     }
   };
 
@@ -462,9 +504,12 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
     ["settings", "Settings", Settings],
   ];
 
-  const mint = async ({ to, name, count, expiresDays, orgRole }) => {
+  const mint = async ({ to, name, count, expiresDays, role, orgRole }) => {
     const res = await run(
-      () => orgMintInvites({ to: to || undefined, name: name || undefined, count, expiresDays, orgRole }),
+      () => orgMintInvites({
+        to: to || undefined, name: name || undefined, count, expiresDays,
+        role, orgRole,
+      }),
       null
     );
     if (!res) return false;
@@ -473,6 +518,9 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
       // say what actually happened rather than a blanket success.
       if (res.sent) toast(`Seat sent to ${to}`);
       else { copyText(res.url || res.created?.[0] || ""); toast(res.sendError || "Minted but not sent · link copied"); }
+    } else if (res.url) {
+      copyText(res.url);
+      toast("Invite link copied");
     } else {
       copyText((res.created || []).join("\n"));
       toast(`${res.created?.length || 0} code${res.created?.length === 1 ? "" : "s"} minted · copied`);

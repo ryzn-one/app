@@ -3,15 +3,17 @@ import { getDb, collections } from "../../lib/db.js";
 import { json, fail, withUser } from "../../lib/http.js";
 import { rateLimit } from "../../lib/ratelimit.js";
 import { GRANTABLE_ORG_ROLES } from "../../lib/orgs.js";
+import { isMentorRole } from "../../lib/roles.js";
 
 /**
  * POST /api/invites/redeem  { code }   (authenticated)
  *
  * Promotes the caller to the role recorded ON THE INVITE — "mentor" by default,
- * or "admin" for codes minted as admin invites in the founder console. This is
- * the only path to either role: `role` is input:false in the Better Auth config,
- * so a client can never send one, and the role here comes from a document only
- * an existing admin could have written.
+ * "mentee" for org mentee seats, or "admin" for codes minted as admin invites
+ * in the founder console. This is the only path to mentor/admin: `role` is
+ * input:false in the Better Auth config, so a client can never send one, and
+ * the role here comes from a document only an existing admin (or org manager)
+ * could have written.
  *
  * The claim is a single atomic findOneAndUpdate guarded on `redeemedBy: null`.
  * Two people racing the same code means exactly one matches the filter and
@@ -21,7 +23,7 @@ import { GRANTABLE_ORG_ROLES } from "../../lib/orgs.js";
 
 // Whitelist, not passthrough: a malformed or hand-edited invite document must
 // never be able to name an arbitrary role.
-const GRANTABLE = new Set(["mentor", "admin"]);
+const GRANTABLE = new Set(["mentor", "mentee", "admin"]);
 const roleOf = (invite) => (GRANTABLE.has(invite?.role) ? invite.role : "mentor");
 
 async function handler(request, user) {
@@ -80,31 +82,60 @@ async function handler(request, user) {
   // the peek and the claim are two round trips, and only this one is atomic.
   const granted = roleOf(claimed);
 
+  // Never demote a mentor/admin who claims a mentee seat — they still join the
+  // org below. Promoting mentee → mentor|admin and seating mentees are fine.
+  const nextRole =
+    granted === "mentee" && isMentorRole(user.role) ? (user.role || "mentor") : granted;
+
   await db.collection(collections.user).updateOne(
     { _id: new ObjectId(user.id) },
-    { $set: { role: granted, invitedBy: claimed.createdBy ?? null, updatedAt: new Date() } }
+    { $set: { role: nextRole, invitedBy: claimed.createdBy ?? null, updatedAt: new Date() } }
   );
 
-  await db.collection(collections.profiles).updateOne(
-    { userId: user.id },
-    granted === "mentor"
-      // Reshape the profile for the mentor side of the app.
-      ? {
-          $set: {
-            role: "mentor",
-            impact: 0,
-            tier: "Scout",
-            cohort: [],
-            greetingUploaded: false,
-            updatedAt: new Date(),
-          },
-          $unset: { mentorUserId: "", supportMentorIds: "", earned: "", xp: "", rank: "", week: "", streak: "" },
-        }
-      // Admins are staff, not participants — flag the role and leave the rest
-      // of their profile alone so they keep whatever they had.
-      : { $set: { role: granted, updatedAt: new Date() } },
-    { upsert: true }
-  );
+  if (nextRole === "mentor") {
+    await db.collection(collections.profiles).updateOne(
+      { userId: user.id },
+      {
+        $set: {
+          role: "mentor",
+          impact: 0,
+          tier: "Scout",
+          cohort: [],
+          greetingUploaded: false,
+          updatedAt: new Date(),
+        },
+        $unset: { mentorUserId: "", supportMentorIds: "", earned: "", xp: "", rank: "", week: "", streak: "" },
+      },
+      { upsert: true }
+    );
+  } else if (nextRole === "mentee" && !isMentorRole(user.role)) {
+    await db.collection(collections.profiles).updateOne(
+      { userId: user.id },
+      {
+        $set: {
+          role: "mentee",
+          week: 1,
+          streak: 0,
+          xp: 0,
+          rank: null,
+          mentorUserId: null,
+          supportMentorIds: [],
+          earned: {},
+          updatedAt: new Date(),
+        },
+        $unset: { impact: "", tier: "", mentorRank: "", cohort: "", greetingUploaded: "", capacity: "" },
+      },
+      { upsert: true }
+    );
+  } else if (nextRole === "admin") {
+    // Admins are staff, not participants — flag the role and leave the rest
+    // of their profile alone so they keep whatever they had.
+    await db.collection(collections.profiles).updateOne(
+      { userId: user.id },
+      { $set: { role: "admin", updatedAt: new Date() } },
+      { upsert: true }
+    );
+  }
 
   /* An org code seats them in the org that minted it. The seat is a consequence
      of the claim above, never a second route to a platform role: `orgRole` is
@@ -117,7 +148,9 @@ async function handler(request, user) {
       { projection: { name: 1, slug: 1 } }
     ).catch(() => null);
     if (orgDoc) {
-      const orgRole = GRANTABLE_ORG_ROLES.has(claimed.orgRole) ? claimed.orgRole : "member";
+      // Mentee seats are always org members — org admin is a mentor-side tool.
+      const wantedOrgRole = granted === "mentee" ? "member" : claimed.orgRole;
+      const orgRole = GRANTABLE_ORG_ROLES.has(wantedOrgRole) ? wantedOrgRole : "member";
       await db.collection(collections.orgMembers).updateOne(
         { orgId: String(claimed.orgId), userId: user.id },
         {
@@ -135,7 +168,7 @@ async function handler(request, user) {
     }
   }
 
-  return json({ ok: true, role: granted, org });
+  return json({ ok: true, role: nextRole, org });
 }
 
 export default { fetch: withUser(handler) };

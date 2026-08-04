@@ -37,18 +37,24 @@ import { fmtDate } from "./lib/calendar.js";
    answers yet means the Ryzn AI setup, otherwise straight into the app. */
 
 /**
- * A mentor arriving from the invitation email: /app/#/join?code=RYZ-INV-…
+ * An invite arriving from the web invite page: /app/#/join?code=RYZ-INV-…&role=…
  *
  * The invite page confirms the code against /api/invites/validate and then
  * hands it over here so it never has to be retyped. The code alone grants
  * nothing — it is still claimed atomically server-side at sign-up.
  */
 function inviteFromHash() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return { code: null, role: null };
   const hash = window.location.hash || "";
-  if (!hash.startsWith("#/join")) return null;
-  const code = new URLSearchParams(hash.split("?")[1] || "").get("code");
-  return code ? code.trim().toUpperCase() : null;
+  if (!hash.startsWith("#/join")) return { code: null, role: null };
+  const params = new URLSearchParams(hash.split("?")[1] || "");
+  const code = params.get("code");
+  const roleRaw = (params.get("role") || "").trim().toLowerCase();
+  const role = roleRaw === "mentee" || roleRaw === "mentor" ? roleRaw : null;
+  return {
+    code: code ? code.trim().toUpperCase() : null,
+    role,
+  };
 }
 
 /** Share deep link: /app/#/post/{id} — cleared once handled. */
@@ -97,6 +103,7 @@ function toAppUser(me) {
     return {
       ...pictures,
       fresh,
+      handle: p.handle ?? null,
       impact: p.impact ?? 0,
       tier: p.tier || "Scout",
       mentorRank: p.mentorRank ?? null,
@@ -117,6 +124,7 @@ function toAppUser(me) {
   return {
     ...pictures,
     fresh,
+    handle: p.handle ?? null,
     headline: p.headline ?? null,
     week: p.week ?? 1,
     streak: p.streak ?? 0,
@@ -148,7 +156,8 @@ function toAppUser(me) {
 }
 
 export default function RyznComplete() {
-  const [inviteCode] = useState(inviteFromHash);
+  const [inviteArrival] = useState(inviteFromHash);
+  const [inviteCode] = useState(inviteArrival.code);
   const [booting, setBooting] = useState(true);
   const [introTourOpen, setIntroTourOpen] = useState(false);
   const [comprehensiveTourOpen, setComprehensiveTourOpen] = useState(false);
@@ -156,8 +165,11 @@ export default function RyznComplete() {
   const introCheckedRef = useRef(false);
   const [session, setSession] = useState(null);          // /api/me payload, or null when signed out
   // An invited mentor is a mentor: skip the role picker they were never meant
-  // to see, and open on the claim form rather than the splash.
-  const [role, setRole] = useState(inviteCode ? "mentor" : "mentee");
+  // to see, and open on the claim form rather than the splash. Mentee invites
+  // land on the mentee side the same way.
+  const [role, setRole] = useState(
+    inviteArrival.role === "mentee" ? "mentee" : (inviteCode ? "mentor" : "mentee")
+  );
   const [phase, setPhase] = useState("journey");         // journey | app
   const [stage, setStage] = useState(inviteCode ? "register" : "splash");
   const [xp, setXp] = useState(0);                       // session-local setup XP
@@ -638,22 +650,34 @@ export default function RyznComplete() {
     }
   };
 
-  const publishPost = async ({ kind, text, title, media }) => {
+  const publishPost = async ({ kind, text, title, media, visibility }) => {
     // Throws on failure so the Composer can keep the draft and show why.
     // `impact` comes back from the server, which is what actually awarded it.
-    const { impact } = await createPost({ kind, text, title, media });
+    const { impact } = await createPost({ kind, text, title, media, visibility });
     await Promise.all([loadFeed(), refreshUser()]);
     const n = user?.cohort?.length || 0;
-    toast(`+${impact} Impact · live in ${n} mentee orbit${n === 1 ? "" : "s"}`);
+    toast(visibility === "public"
+      ? `+${impact} Impact · public link ready`
+      : `+${impact} Impact · live in ${n} mentee orbit${n === 1 ? "" : "s"}`);
   };
 
   const reactToPost = async (id) => {
-    if (reacted[id]) return;
+    if (reacted[id]) return { already: true };
     setReacted(r => ({ ...r, [id]: true }));
-    try { await postAction(id, "react"); toast("Liked"); }
-    catch (e) {
+    try {
+      const res = await postAction(id, "react");
+      if (res?.self) {
+        setReacted(r => { const n = { ...r }; delete n[id]; return n; });
+        return res;
+      }
+      setMentorFeed((feed) => (feed || []).map((p) => (
+        p.id === id ? { ...p, reactions: (p.reactions ?? 0) + 1 } : p
+      )));
+      toast("Liked");
+      return res;
+    } catch (e) {
       setReacted(r => { const n = { ...r }; delete n[id]; return n; });
-      toast(e.message || "Couldn’t send that.");
+      throw e;
     }
   };
 
@@ -707,7 +731,7 @@ export default function RyznComplete() {
       await loadFeed();
       toast(visibility === "public"
         ? "Public — anyone with the link can open this"
-        : "Cohort only — the link now asks for a sign-in");
+        : "Private — only your cohort can see this");
     } catch (e) { toast(e.message || "Couldn’t change that."); }
   };
 

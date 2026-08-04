@@ -37,7 +37,8 @@ export function buildInviteUrl({ code, email, name, role, orgName, adminName, pr
   if (role) params.set("role", role);
   if (preview) params.set("preview", "1");
   if (code && !preview) {
-    params.set("claim", `${origin}/app/#/join?code=${encodeURIComponent(code)}`);
+    const roleQ = String(role || "").toLowerCase() === "mentee" ? "&role=mentee" : "";
+    params.set("claim", `${origin}/app/#/join?code=${encodeURIComponent(code)}${roleQ}`);
   }
 
   return `${origin}/mentor-invite.html?${params.toString()}`;

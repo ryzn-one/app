@@ -265,6 +265,7 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
   const [who, setWho] = useState("");
   const [busy, setBusy] = useState(false);
   const isAdminCode = role === "admin";
+  const isMenteeCode = role === "mentee";
   /* An address turns minting into addressing: one code, mailed to one person.
      Without it this stays a batch minter and the founder pastes links by hand. */
   const addressed = to.trim().length > 0;
@@ -292,15 +293,15 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
       code: "RYZ-INV-PREVIEW",
       name: previewName,
       email: to.trim(),
-      role: "Mentor",
+      role: isMenteeCode ? "Mentee" : "Mentor",
       adminName: founderName,
       preview: true,
     });
     window.open(url, "_blank", "noopener");
   };
 
-  // Mentor codes open the branded claim page. Admin codes go to the console's
-  // own sign-in, where the code field promotes an existing account.
+  // Mentor / mentee codes open the branded claim page. Admin codes go to the
+  // console's own sign-in, where the code field promotes an existing account.
   const linkFor = (iv) => iv.role === "admin"
     ? `${window.location.origin}/app/#/admin?code=${encodeURIComponent(iv.code)}`
     // Prefer the stored recipient name (set when the invite was mailed). Fall
@@ -309,7 +310,7 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
       code: iv.code,
       email: iv.sentTo || "",
       name: iv.sentName || "",
-      role: "Mentor",
+      role: iv.role === "mentee" ? "Mentee" : "Mentor",
       adminName: founderName,
     });
 
@@ -317,11 +318,11 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Label color={isAdminCode ? C.amber : C.purple}>Mint invites</Label>
+          <Label color={isAdminCode ? C.amber : isMenteeCode ? C.teal : C.purple}>Mint invites</Label>
           <Label>SINGLE-USE · ONE PERSON PER CODE</Label>
         </div>
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4, marginTop: 10 }}>
-          {[["mentor", "Mentor"], ["admin", "Admin"]].map(([id, l]) => (
+          {[["mentor", "Mentor"], ["mentee", "Mentee"], ["admin", "Admin"]].map(([id, l]) => (
             <button key={id} onClick={() => { setRole(id); setCount(id === "admin" ? 1 : 5); }} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: role === id ? C.white : "transparent", color: role === id ? C.ink : C.gray }}>{l}</button>
           ))}
         </div>
@@ -332,6 +333,11 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
               An admin code hands over this whole console. Send it to one person, directly — never in a shared channel.
               They sign in at <span style={{ fontFamily: F.mono, fontSize: 11.5 }}>/app/#/admin</span> with their own Ryzn account and paste it.
             </div>
+          </div>
+        )}
+        {isMenteeCode && (
+          <div style={{ background: C.tealTint, borderRadius: 12, padding: "11px 12px", marginTop: 10, fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
+            A mentee code grants the mentee role on claim — same redeem path as org mentee seats, without seating them in an organisation.
           </div>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 12 }}>
@@ -357,7 +363,7 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
           </div>
           <div style={{ gridColumn: "span 2", minWidth: 0 }}>
             <Label>Note</Label>
-            <input value={note} onChange={e => setNote(e.target.value)} placeholder={isAdminCode ? "Founder access" : "Founding cohort"}
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder={isAdminCode ? "Founder access" : isMenteeCode ? "Mentee seat" : "Founding cohort"}
               style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
           </div>
         </div>
@@ -394,6 +400,8 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontFamily: F.mono, fontSize: 11.5, fontWeight: 700, flex: 1, minWidth: 170 }}>{iv.code}</span>
               {iv.role === "admin" && <Chip c={C.amber} bg={C.amberTint}>ADMIN</Chip>}
+              {iv.role === "mentee" && <Chip c={C.teal} bg={C.tealTint}>MENTEE</Chip>}
+              {iv.role === "mentor" && <Chip c={C.purple} bg={C.purpleTint}>MENTOR</Chip>}
               <Chip c={STATE_COLOR[iv.state]} bg={iv.state === "claimed" ? C.tealTint : iv.state === "revoked" ? C.coralTint : iv.state === "expired" ? C.surface : C.purpleTint}>{iv.state.toUpperCase()}</Chip>
               <button onClick={() => copyText(linkFor(iv)).then(() => toast(iv.role === "admin" ? "Admin link copied — send it directly" : "Invite link copied"))} title="Copy invite link"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Copy size={13} color={C.gray} /></button>

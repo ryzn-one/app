@@ -35,6 +35,9 @@ import {
 
 const MAX_MINT = 25;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Platform roles an org can seat — never platform admin. */
+const GRANTABLE_ROLES = new Set(["mentor", "mentee"]);
+const roleLabel = (role) => (role === "mentee" ? "Mentee" : "Mentor");
 
 const inviteState = (i, now = new Date()) => {
   if (i.revokedAt) return "revoked";
@@ -98,6 +101,7 @@ async function invitesOf(db, orgId) {
   return rows.map((i) => ({
     code: i.code,
     state: inviteState(i, now),
+    role: GRANTABLE_ROLES.has(i.role) ? i.role : "mentor",
     orgRole: i.orgRole || "member",
     note: i.note || null,
     createdAt: i.createdAt,
@@ -114,11 +118,12 @@ async function invitesOf(db, orgId) {
  * Mail one org code. Never throws: a delivery failure must not undo a mint —
  * the code is live either way and the manager can still copy the link by hand.
  */
-async function deliver({ invites, code, to, name, inviter, org }) {
-  const url = inviteUrl({ code, name, founder: inviter, org, role: "Mentor" });
+async function deliver({ invites, code, to, name, inviter, org, role }) {
+  const seat = GRANTABLE_ROLES.has(role) ? role : "mentor";
+  const url = inviteUrl({ code, name, founder: inviter, org, role: roleLabel(seat) });
   await invites.updateOne({ code }, { $set: { sentTo: to, sentName: name || null } });
   try {
-    const msg = orgInviteEmail({ name, url, inviter, org });
+    const msg = orgInviteEmail({ name, url, inviter, org, role: seat });
     const res = await sendEmail({ to, ...msg });
     await invites.updateOne(
       { code },
@@ -281,7 +286,11 @@ async function handler(request, user) {
     const denied = managerOnly();
     if (denied) return denied;
 
-    const orgRole = GRANTABLE_ORG_ROLES.has(body.orgRole) ? body.orgRole : "member";
+    const role = GRANTABLE_ROLES.has(body.role) ? body.role : "mentor";
+    // Org admin is a mentor-side privilege — mentee invites are always members.
+    const orgRole = role === "mentee"
+      ? "member"
+      : (GRANTABLE_ORG_ROLES.has(body.orgRole) ? body.orgRole : "member");
     const to = String(body.to || "").trim().toLowerCase();
     if (to && !EMAIL_RE.test(to)) return fail(400, "bad_request", "That doesn't look like an email address.");
 
@@ -296,9 +305,9 @@ async function handler(request, user) {
 
     const docs = Array.from({ length: count }, () => ({
       code: newInviteCode(),
-      // Platform role, read back by api/invites/redeem.js. An org can seat its
-      // own people as mentors — it can never mint platform admins.
-      role: "mentor",
+      // Platform role, read back by api/invites/redeem.js. An org can seat
+      // mentors and mentees — it can never mint platform admins.
+      role,
       orgId,
       orgRole,
       orgName: org.name,
@@ -320,8 +329,20 @@ async function handler(request, user) {
       const name = String(body.name || "").trim() || nameFromEmail(to);
       delivery = await deliver({
         invites, code: created[0], to, name,
-        inviter: user.name || user.email, org: org.name,
+        inviter: user.name || user.email, org: org.name, role,
       });
+    } else {
+      // Even without email, hand back the web-invite URL so "copy link" and
+      // the mint response agree with what /mentor-invite.html expects.
+      delivery = {
+        sent: false,
+        url: inviteUrl({
+          code: created[0],
+          founder: user.name || user.email,
+          org: org.name,
+          role: roleLabel(role),
+        }),
+      };
     }
 
     return json({ ...(await contextPayload(db, user, ctx)), created, to: to || null, ...delivery }, 201);

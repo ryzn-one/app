@@ -6,6 +6,7 @@ import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 import { isMentorRole } from "../lib/roles.js";
 import { asLabel } from "../lib/scalars.js";
 import { orgContext, publicOrg } from "../lib/orgs.js";
+import { ensureHandle } from "../lib/handles.js";
 
 const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 
@@ -105,6 +106,7 @@ async function handler(request, user) {
     { upsert: true }
   );
   let profile = await profiles.findOne({ userId: user.id });
+  profile = await ensureHandle(db, user, profile);
   const onboardingComplete = await resolveOnboarding(db, user, profile);
   if (onboardingComplete && !profile?.onboardingComplete) {
     profile = await profiles.findOne({ userId: user.id });

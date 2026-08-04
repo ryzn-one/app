@@ -6,7 +6,7 @@ import {
 import { C, F } from "./theme.js";
 import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
-import { fetchComments, addComment } from "./lib/auth-client.js";
+import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
 import { sharePostLink, isPublicPost } from "./lib/share.js";
 
 /** Turn a VideoCaptureModal result into a real File for uploadMedia. */
@@ -127,7 +127,7 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
   );
 };
 
-/** One post. `mine` renders the mentor's own view (stats; likes stay read-only). */
+/** One post. `mine` renders the mentor's own view (stats; self-likes stay blocked). */
 export const PostCard = ({
   post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
   onAuthor, onShare, onVisibility, toast, highlight,
@@ -142,8 +142,15 @@ export const PostCard = ({
   const [busy, setBusy] = useState(false);
   const [commentCount, setCommentCount] = useState(post.comments ?? 0);
   const [sharing, setSharing] = useState(false);
+  // Local reaction count so an optimistic like bumps the number once — without
+  // the old `reactions + (reacted ? 1 : 0)` double-count after a refresh.
+  const [reactionCount, setReactionCount] = useState(post.reactions ?? 0);
+  const [liked, setLiked] = useState(!!reacted);
+  const [liking, setLiking] = useState(false);
 
   useEffect(() => { setCommentCount(post.comments ?? 0); }, [post.comments]);
+  useEffect(() => { setReactionCount(post.reactions ?? 0); }, [post.reactions]);
+  useEffect(() => { setLiked(!!reacted); }, [reacted]);
 
   const loadThread = async () => {
     setLoadingComments(true);
@@ -177,6 +184,57 @@ export const PostCard = ({
       toast?.(e.message || "Couldn’t post that comment.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const likePost = async () => {
+    if (liking || liked) return;
+    if (mine) {
+      toast?.("You can’t like your own post");
+      return;
+    }
+    if (!onReact) return;
+    setLiking(true);
+    setLiked(true);
+    setReactionCount((n) => n + 1);
+    try {
+      const res = await onReact(post.id);
+      if (res?.self) {
+        setLiked(false);
+        setReactionCount((n) => Math.max(0, n - 1));
+        toast?.("You can’t like your own post");
+      }
+    } catch (e) {
+      setLiked(false);
+      setReactionCount((n) => Math.max(0, n - 1));
+      toast?.(e.message || "Couldn’t like that.");
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const likeComment = async (commentId) => {
+    const row = thread?.find((c) => c.id === commentId);
+    if (!row || row.reacted) return;
+    setThread((rows) => (rows || []).map((c) => (
+      c.id === commentId
+        ? { ...c, reacted: true, reactions: (c.reactions ?? 0) + 1 }
+        : c
+    )));
+    try {
+      const res = await reactToComment(post.id, commentId);
+      if (typeof res?.reactions === "number") {
+        setThread((rows) => (rows || []).map((c) => (
+          c.id === commentId ? { ...c, reactions: res.reactions, reacted: true } : c
+        )));
+      }
+    } catch (e) {
+      setThread((rows) => (rows || []).map((c) => (
+        c.id === commentId
+          ? { ...c, reacted: false, reactions: Math.max(0, (c.reactions ?? 1) - 1) }
+          : c
+      )));
+      toast?.(e.message || "Couldn’t like that comment.");
     }
   };
 
@@ -247,20 +305,18 @@ export const PostCard = ({
       <MediaBlock post={post} onEngage={mine ? undefined : () => !done && onOpen?.(post)} />
 
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
-        {/* On your own post this is a read-out, not a control — you can't react
-            to yourself. */}
-        {React.createElement(mine ? "span" : "button", {
-          ...(mine ? {} : { type: "button", onClick: () => onReact?.(post.id) }),
-          style: {
+        <button type="button" onClick={likePost}
+          title={mine ? "You can’t like your own post" : (liked ? "Liked" : "Like")}
+          disabled={liking}
+          style={{
             display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
-            cursor: mine ? "default" : "pointer", padding: "6px 10px", borderRadius: 10,
+            cursor: mine || liked ? "default" : "pointer", padding: "6px 10px", borderRadius: 10,
             fontFamily: F.mono, fontSize: 11, fontWeight: 700,
-            color: reacted ? C.coral : C.gray,
-          },
-        },
-          <Heart key="h" size={15} color={reacted ? C.coral : "#A5A39D"} fill={reacted ? C.coral : "none"} />,
-          post.reactions + (reacted ? 1 : 0)
-        )}
+            color: liked ? C.coral : C.gray,
+          }}>
+          <Heart size={15} color={liked ? C.coral : "#A5A39D"} fill={liked ? C.coral : "none"} />
+          {reactionCount}
+        </button>
         <button type="button" onClick={toggleComments} style={{
           display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: commentsOpen ? C.purpleTint : "none",
           cursor: "pointer", padding: "6px 10px", borderRadius: 10,
@@ -292,13 +348,13 @@ export const PostCard = ({
           <button type="button"
             onClick={() => onVisibility(post.id, isPublic ? "cohort" : "public")}
             title={isPublic
-              ? "Anyone with the link can open this. Tap to keep it to your cohort."
-              : "Only your cohort can open this. Tap to make the link public."}
+              ? "Public — anyone with the link can open this. Tap to make it private."
+              : "Private — only your cohort. Tap to make the link public."}
             style={{
               fontFamily: F.mono, fontSize: 8, border: "none", cursor: "pointer", letterSpacing: 0.6,
               padding: "4px 7px", fontWeight: 700, whiteSpace: "nowrap",
               background: isPublic ? C.tealTint : "#EFEEEA", color: isPublic ? C.teal : C.gray,
-            }}>{isPublic ? "PUBLIC LINK" : "COHORT ONLY"}</button>
+            }}>{isPublic ? "PUBLIC" : "PRIVATE"}</button>
         ) : post.visibility === "public" && (
           <span style={{ fontFamily: F.mono, fontSize: 8, background: C.tealTint, color: C.teal, padding: "3px 6px", fontWeight: 700, letterSpacing: 0.6 }}>ON PROFILE</span>
         ))}
@@ -321,6 +377,17 @@ export const PostCard = ({
                   <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>{relTime(c.createdAt)}</span>
                 </div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 2, color: C.ink }}>{c.text}</div>
+                <button type="button" onClick={() => likeComment(c.id)}
+                  title={c.reacted ? "Liked" : "Like comment"}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5, border: "none", background: "none",
+                    cursor: c.reacted ? "default" : "pointer", padding: "4px 0", marginTop: 4,
+                    fontFamily: F.mono, fontSize: 10, fontWeight: 700,
+                    color: c.reacted ? C.coral : C.gray,
+                  }}>
+                  <Heart size={12} color={c.reacted ? C.coral : "#A5A39D"} fill={c.reacted ? C.coral : "none"} />
+                  {c.reactions ?? 0}
+                </button>
               </div>
             </div>
           ))}
@@ -346,7 +413,7 @@ export const PostCard = ({
   );
 };
 
-/** Compose box. One text field, four kinds, one button — that's the whole thing. */
+/** Compose box. One text field, four kinds, visibility, one button. */
 export const Composer = ({ onPublish, name, userId }) => {
   const [kind, setKind] = useState("status");
   const [text, setText] = useState("");
@@ -357,6 +424,7 @@ export const Composer = ({ onPublish, name, userId }) => {
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [visibility, setVisibility] = useState("cohort");
   const fileRef = useRef(null);
 
   const needsFile = kind === "photo" || kind === "video" || kind === "resource";
@@ -366,7 +434,10 @@ export const Composer = ({ onPublish, name, userId }) => {
     kind === "photo" ? !!media : needsTitle ? title.trim() && media : text.trim()
   );
 
-  const reset = () => { setText(""); setTitle(""); setMedia(null); setFileName(""); setProgress(null); setErr(null); setKind("status"); };
+  const reset = () => {
+    setText(""); setTitle(""); setMedia(null); setFileName(""); setProgress(null);
+    setErr(null); setKind("status"); setVisibility("cohort");
+  };
 
   const uploadFile = async (file) => {
     if (!file) return;
@@ -389,7 +460,7 @@ export const Composer = ({ onPublish, name, userId }) => {
     if (!ready) return;
     setBusy(true);
     try {
-      await onPublish({ kind, text: text.trim(), title: title.trim(), media });
+      await onPublish({ kind, text: text.trim(), title: title.trim(), media, visibility });
       reset();
     } catch (e2) {
       setErr(e2?.message || "Couldn’t publish that.");
@@ -467,6 +538,22 @@ export const Composer = ({ onPublish, name, userId }) => {
       )}
 
       {err && <div style={{ marginTop: 8, fontSize: 12.5, color: C.coral, lineHeight: 1.45 }}>{err}</div>}
+
+      <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 10, padding: 3, marginTop: 12, maxWidth: 260 }}>
+        {[["cohort", "Private"], ["public", "Public"]].map(([id, l]) => (
+          <button key={id} type="button" disabled={uploading} onClick={() => setVisibility(id)} style={{
+            flex: 1, border: "none", cursor: uploading ? "default" : "pointer", borderRadius: 8, padding: "7px 0",
+            fontFamily: F.sans, fontWeight: 600, fontSize: 12.5,
+            background: visibility === id ? C.white : "transparent",
+            color: visibility === id ? (id === "public" ? C.teal : C.ink) : C.gray,
+          }}>{l}</button>
+        ))}
+      </div>
+      <div style={{ fontSize: 11.5, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
+        {visibility === "public"
+          ? "Anyone with the link can open this — including people outside Ryzn."
+          : "Only your cohort can see this inside Ryzn. You can flip it to Public later."}
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
         {Object.entries(KIND_META).map(([id, m]) => {

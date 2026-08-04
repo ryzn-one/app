@@ -1,9 +1,12 @@
 /**
  * Sharing out of Ryzn.
  *
- * A post link is a public page — ryzn.one/p/run-on-bos-x7k2q — served by
+ * A post link is a public page — ryzn.one/{handle}/{slug} — served by
  * lib/post-page.js with its own Open Graph tags, the way an Instagram or TikTok
  * link is. Anyone can open it, app or no app, account or no account.
+ *
+ * Legacy /p/{slug} links still resolve. Prefer the handle form whenever we
+ * know who wrote it.
  *
  * It only works that way for a post the mentor marked public: a cohort post
  * keeps its pairing check, and its link lands on the locked page. The Share
@@ -31,9 +34,10 @@ export const isPublicPost = (post) => !!(post?.slug && post?.visibility === "pub
 export function buildPostShareUrl(post) {
   const slug = typeof post === "string" ? null : post?.slug;
   const id = typeof post === "string" ? post : post?.id;
-  return slug
-    ? `${originNow()}/p/${slug}`
-    : `${originNow()}/app/#/post/${encodeURIComponent(id)}`;
+  const handle = typeof post === "string" ? null : (post?.authorHandle || post?.handle || null);
+  if (slug && handle) return `${originNow()}/${encodeURIComponent(handle)}/${encodeURIComponent(slug)}`;
+  if (slug) return `${originNow()}/p/${encodeURIComponent(slug)}`;
+  return `${originNow()}/app/#/post/${encodeURIComponent(id)}`;
 }
 
 /**

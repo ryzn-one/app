@@ -26,8 +26,14 @@ import { inviteUrl, nameFromEmail } from "../../lib/invite-url.js";
  */
 
 const MAX_MINT = 50;
-const GRANTABLE = new Set(["mentor", "admin"]);
+const GRANTABLE = new Set(["mentor", "mentee", "admin"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const roleLabel = (role) => {
+  if (role === "admin") return "Admin";
+  if (role === "mentee") return "Mentee";
+  return "Mentor";
+};
 
 /**
  * Mail a code to one person.
@@ -36,8 +42,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * valid and the founder can still copy the link by hand, so the caller reports
  * the failure and moves on rather than losing the invitation entirely.
  */
-async function deliver({ invites, code, to, name, founder }) {
-  const url = inviteUrl({ code, name, founder, role: "Mentor" });
+async function deliver({ invites, code, to, name, founder, role = "mentor" }) {
+  const seat = GRANTABLE.has(role) ? role : "mentor";
+  const url = inviteUrl({ code, name, founder, role: roleLabel(seat) });
   // Persist who this seat is for even if the send fails — Resend and the
   // personalized link both need sentName later.
   await invites.updateOne(
@@ -45,7 +52,7 @@ async function deliver({ invites, code, to, name, founder }) {
     { $set: { sentTo: to, sentName: name || null } }
   );
   try {
-    const msg = inviteEmail({ name, url, founder });
+    const msg = inviteEmail({ name, url, founder, role: seat });
     const res = await sendEmail({ to, ...msg });
     await invites.updateOne(
       { code },
@@ -131,7 +138,7 @@ async function handler(request, admin) {
     const count = to ? 1 : Math.min(Math.max(Number(body.count) || 1, 1), cap);
     const days = Number(body.expiresDays) > 0 ? Number(body.expiresDays) : 90;
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-    const fallbackNote = role === "admin" ? "Founder access" : "Founding cohort";
+    const fallbackNote = role === "admin" ? "Founder access" : role === "mentee" ? "Mentee seat" : "Founding cohort";
     const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 120) : fallbackNote;
 
     const docs = Array.from({ length: count }, () => ({
@@ -152,7 +159,7 @@ async function handler(request, admin) {
     if (to) {
       const name = String(body.name || "").trim() || nameFromEmail(to);
       const out = await deliver({
-        invites, code: created[0], to, name, founder: admin.name || admin.email,
+        invites, code: created[0], to, name, founder: admin.name || admin.email, role,
       });
       return json({ created, role, expiresAt, to, ...out }, 201);
     }
@@ -187,7 +194,7 @@ async function handler(request, admin) {
 
       const name = String(body.name || "").trim() || iv.sentName || nameFromEmail(to);
       const out = await deliver({
-        invites, code, to, name, founder: admin.name || admin.email,
+        invites, code, to, name, founder: admin.name || admin.email, role: iv.role || "mentor",
       });
       return json({ ok: true, code, to, ...out });
     }
