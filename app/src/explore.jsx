@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, SlidersHorizontal, Crown, School, Check, Clock, X } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Btn, Monogram, HeaderRow, firstNameOf, labelOf } from "./ui.jsx";
+import { Card, Btn, Monogram, Avatar, HeaderRow, firstNameOf, labelOf } from "./ui.jsx";
 import {
   FilterSheet, MentorDetailSheet, MenteeDetailSheet, AffinityTag, TagRow, EmptyRoster,
 } from "./chatmatch.jsx";
@@ -41,12 +41,12 @@ function PersonRow({ p, wanted, onOpen }) {
   const industry = labelOf(p.industry);
   const sub = wanted === "mentor"
     ? [p.headline, industry].filter(Boolean).join(" · ")
-    : [track, p.goals?.[0]].filter(Boolean).join(" · ");
+    : [p.headline, track, p.goals?.[0]].filter(Boolean).join(" · ");
   const tags = wanted === "mentor" ? p.expertise : p.interests;
   return (
     <Card onClick={() => onOpen(p)} style={{ opacity: p.matchState === "declined" ? 0.62 : 1 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Monogram name={p.name} size={42} />
+        <Avatar src={p.avatarUrl} name={p.name} size={42} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>

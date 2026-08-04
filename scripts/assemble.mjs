@@ -14,6 +14,10 @@ copyFileSync(join(root, "site", "mentor-invite.html"), join(dist, "mentor-invite
    already sent out still lands. */
 copyFileSync(join(root, "site", "privacy.html"), join(dist, "privacy.html"));
 copyFileSync(join(root, "site", "terms.html"), join(dist, "terms.html"));
+/* One manifest at the origin root, scoped to "/", so installing from the
+   marketing site and from /app/ produce the same app with the same icon.
+   Its absence is why Chrome was drawing a generated "R" tile. */
+copyFileSync(join(root, "site", "manifest.webmanifest"), join(dist, "manifest.webmanifest"));
 
 const brandingSrc = join(root, "site", "branding");
 if (existsSync(brandingSrc)) {

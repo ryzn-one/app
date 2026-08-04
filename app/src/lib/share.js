@@ -1,10 +1,16 @@
 /**
  * Sharing out of Ryzn.
  *
- * LinkedIn still uses the text composer — Ryzn has no public offsite profile
- * page yet (see docs/BACKEND.md). Post links are authenticated deep links:
- * anyone with access who is signed in lands on the post; everyone else gets
- * the normal sign-in wall.
+ * A post link is a public page — ryzn.one/p/run-on-bos-x7k2q — served by
+ * lib/post-page.js with its own Open Graph tags, the way an Instagram or TikTok
+ * link is. Anyone can open it, app or no app, account or no account.
+ *
+ * It only works that way for a post the mentor marked public: a cohort post
+ * keeps its pairing check, and its link lands on the locked page. The Share
+ * button says which one you copied so nobody sends a link that dead-ends.
+ *
+ * LinkedIn still uses the text composer — LinkedIn's share endpoint takes a
+ * text body, not a URL, so the link goes in as part of the post.
  */
 import { copyText } from "./invite-url.js";
 
@@ -13,18 +19,29 @@ export function shareToLinkedIn(text) {
   window.open(url, "_blank", "noopener,noreferrer,width=680,height=720");
 }
 
-/** Origin-aware deep link a paired mentee / org peer can open after signing in. */
-export function buildPostShareUrl(postId) {
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://ryzn.one";
-  return `${origin}/app/#/post/${encodeURIComponent(postId)}`;
+const originNow = () => (typeof window !== "undefined" ? window.location.origin : "https://ryzn.one");
+
+/** True when this link opens for a stranger rather than landing on the wall. */
+export const isPublicPost = (post) => !!(post?.slug && post?.visibility === "public");
+
+/**
+ * The link to hand out. Falls back to the authenticated deep link for a post
+ * old enough to have no slug yet — the next read of that post mints one.
+ */
+export function buildPostShareUrl(post) {
+  const slug = typeof post === "string" ? null : post?.slug;
+  const id = typeof post === "string" ? post : post?.id;
+  return slug
+    ? `${originNow()}/p/${slug}`
+    : `${originNow()}/app/#/post/${encodeURIComponent(id)}`;
 }
 
 /**
  * Prefer the OS share sheet when it exists; otherwise copy the link.
  * Returns `"shared"` | `"copied"`.
  */
-export async function sharePostLink(postId, { title, text } = {}) {
-  const url = buildPostShareUrl(postId);
+export async function sharePostLink(post, { title, text } = {}) {
+  const url = buildPostShareUrl(post);
   if (typeof navigator !== "undefined" && navigator.share) {
     try {
       await navigator.share({

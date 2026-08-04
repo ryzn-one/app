@@ -3,6 +3,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/auth/:path*", "destination": "/api/auth-handler" },
+    { "source": "/p/:code", "destination": "/api/posts?share=:code" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/", "destination": "/app/index.html" }
   ],

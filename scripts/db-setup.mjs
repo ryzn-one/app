@@ -70,6 +70,10 @@ const indexes = [
   ["posts", { authorId: 1, createdAt: -1 }, { name: "author_recent" }],
   // What a mentee sees: one author, cohort-visible, newest first.
   ["posts", { authorId: 1, visibility: 1, createdAt: -1 }, { name: "author_visibility" }],
+  // The public share link, ryzn.one/p/<slug>. Sparse because posts published
+  // before share links existed get theirs backfilled on first read, and unique
+  // because the slug is the only thing identifying a post to a stranger.
+  ["posts", { slug: 1 }, { unique: true, sparse: true, name: "share_slug" }],
   // One view and one reaction per person per post, enforced by the database —
   // this is what stops a double-tap inflating a mentor's numbers.
   ["post_events", { postId: 1, userId: 1, type: 1 }, { unique: true, name: "viewer_unique" }],

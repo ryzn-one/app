@@ -205,6 +205,37 @@ belongs to the other party. Adding to a calendar is entirely client-side
 the confirmed slot); there is no calendar integration and nothing leaves the
 browser.
 
+## Public post links
+
+`ryzn.one/p/<slug>` — e.g. `ryzn.one/p/run-on-bos-x7k2q`. A real HTML document,
+rendered server-side by `lib/post-page.js`, with its own Open Graph tags. No
+session, no app required: it is the link you paste into Slack, iMessage or a DM
+and it unfurls with the post's own title, text and thumbnail.
+
+It replaces `/app/#/post/{id}`, which was a deep link into an authenticated SPA
+— pasted anywhere it unfurled as the marketing site, because a crawler only ever
+saw `site/index.html`, and a stranger hit the sign-in wall.
+
+- `posts.slug` is minted on publish (`makeSlug`: title words + a 5-char code) and
+  backfilled on read for anything published earlier. Unique sparse index
+  `share_slug` is the authority — run `npm run db:setup` after deploying.
+- **Only `visibility: "public"` renders.** A cohort post is written for one
+  mentor's mentees and the pairing check is what carries it; a short link is not
+  a way around it, so it gets the same locked 404 as a slug that doesn't exist —
+  a 404 so no crawler previews it either. `PostCard` shows the author a
+  `PUBLIC LINK` / `COHORT ONLY` switch, which is the same `visibility` field
+  that puts a post on their profile.
+- **Comments are never on the public page**, only their count. Mentees write
+  those and some of them are minors; the page carries the mentor's name and
+  their own content, and nothing else.
+- The thumbnail for a video is a frame grabbed in the browser at upload time
+  (`posterOf` in `app/src/lib/upload.js`) and stored as `media.posterUrl` — a
+  Vercel function never sees the video, so there is nowhere else it could come
+  from. Failing to produce one is silent; the link falls back to the Ryzn card.
+- Opens are counted in `posts.publicViews`, kept apart from `views` (the in-app,
+  one-per-signed-in-person counter that awards XP). Known crawler UAs are
+  skipped, and the page is edge-cached 30s, so a burst undercounts.
+
 ## Not built yet
 
 Screens that depend on these render an explicit empty state. None of them fall
@@ -226,15 +257,11 @@ placeholder mentor or a seeded leaderboard is worse than an empty one.
   surfaces (Home card, Notifications, the amber "needs your answer" pile) are
   the whole delivery mechanism until Postmark is wired up.
 - **Public mentor pages.** A mentor's "Public view" renders exactly what a
-  cohort mentee sees, using the same components, but there is no unauthenticated
-  `/m/:slug` route. In-app share uses authenticated deep links
-  (`/app/#/post/{id}`) so paired mentees and org peers can open a post after
-  signing in — not a public URL on the open internet. Building a true public
-  page is a decision about putting adults' names alongside a platform containing
-  minors — it needs to be made deliberately, not as a side effect of a UI change.
-  The verification QR stays out until that URL exists and resolves.
+  cohort mentee sees, using the same components, but there is still no
+  unauthenticated `/m/:slug` route for a *profile*. The verification QR stays out
+  until that URL exists and resolves.
 - Post comments live in `post_comments` (count denormalised on `posts.comments`).
-  Like / comment / share are on `PostCard`; share copies or OS-shares the deep link.
+  Like / comment / share are on `PostCard`.
 - Cross-user leaderboards (cohort XP, mentor Impact ranking).
 - Org-wide programmes. An org has a roster and an Orbit (see below), but cohorts,
   exercises and matching are still person-to-person — an org does not yet run a

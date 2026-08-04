@@ -117,6 +117,43 @@ export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, r
     {initialsOf(name)}
   </div>
 );
+
+/* A picture where there is one, initials where there isn't — every place a
+   person appears takes the same prop and neither case is a special case at the
+   call site. Most accounts have no photo, so the monogram is the normal state,
+   not a fallback for an error. A broken URL (a blob deleted out from under us)
+   drops back to it too, rather than leaving the alt-text box browsers draw. */
+export const Avatar = ({ src, name, size = 44, bg = C.purpleTint, color = C.deep, radius = 12, style }) => {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
+  if (!src || broken) return <Monogram name={name} size={size} bg={bg} color={color} radius={radius} />;
+  return (
+    <img src={src} alt={name ? `${name}’s profile picture` : "Profile picture"} onError={() => setBroken(true)}
+      style={{ width: size, height: size, borderRadius: radius, objectFit: "cover", flexShrink: 0, background: bg, display: "block", ...style }} />
+  );
+};
+
+/* The strip behind a profile header. Falls back to a brand gradient rather than
+   empty space, so a profile with no cover still reads as finished. The image is
+   an <img> rather than a CSS background so a URL that fails to load can drop
+   back to the gradient instead of leaving a blank band. */
+export const Banner = ({ src, height = 104, radius = 0, children, style }) => {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
+  return (
+    <div style={{
+      height, borderRadius: radius, position: "relative", overflow: "hidden",
+      background: `linear-gradient(115deg, ${C.deep} 0%, ${C.purple} 55%, #7A6FE0 100%)`,
+      ...style,
+    }}>
+      {src && !broken && (
+        <img src={src} alt="" onError={() => setBroken(true)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      )}
+      {children}
+    </div>
+  );
+};
 /* `rest` is load-bearing: every caller passes autoComplete, and the login screen
    passes onKeyDown for Enter-to-submit. Both used to be destructured away and
    dropped, so Enter did nothing and no password manager could fill the form. */

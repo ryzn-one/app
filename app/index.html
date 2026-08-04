@@ -6,6 +6,14 @@
     <title>Ryzn — Rise now.</title>
     <meta name="description" content="A 12-week mentorship program matching students with a hand-picked roster of professionals. Verifiable badges, real outcomes." />
     <meta name="theme-color" content="#5B4FCF" />
+    <!-- Without a manifest, Chrome's "Add to home screen" has nothing but a
+         48px favicon to work with and draws its own letter tile instead — that
+         was the grey "R" on people's phones, not our icon. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Ryzn" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="32x32" href="/branding/ryzn-brand-kit/icon/png/favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="/branding/ryzn-brand-kit/icon/svg/ryzn-favicon-atom.svg" />

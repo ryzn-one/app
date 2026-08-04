@@ -4,6 +4,7 @@ import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser, getUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair } from "../lib/matches.js";
 import { orgContext, orgMemberIds } from "../lib/orgs.js";
+import { makeSlug, originOf, isCrawler, renderPostPage, renderMissingPage } from "../lib/post-page.js";
 
 /**
  * /api/posts — mentor content, and the only thing that carries it to a mentee.
@@ -12,6 +13,7 @@ import { orgContext, orgMemberIds } from "../lib/orgs.js";
  *   GET    /api/posts?mentorId=…     that mentor's cohort posts (mentee, paired only)
  *   GET    /api/posts?id=…           one post (access-checked; for share deep links)
  *   GET    /api/posts?id=…&comments=1  comment thread for that post
+ *   GET    /api/posts?share=<slug>   the public page — no session (see /p/:slug)
  *   POST   /api/posts                publish
  *   POST   /api/posts?upload=1       Vercel Blob upload token
  *   PATCH  /api/posts {id, action}   record a view, reaction, or comment
@@ -59,25 +61,38 @@ const FILE_LABEL = {
  * Media arrives from the browser after it uploads straight to Blob storage —
  * `onUploadCompleted` never fires on localhost, so the create call can't wait
  * for it. That means the client is telling us the URL, and an unchecked client
- * could name any URL on the internet as its "upload". These two checks are what
- * make that claim safe: right host, and a path inside the author's own prefix.
+ * could name any URL on the internet as its "upload". This is what makes that
+ * claim safe: right host, and a path inside the author's own prefix.
+ *
+ * The prefix is read off the URL rather than the `pathname` the client sends
+ * alongside it — those are two separate strings and only the URL is what the
+ * browser will actually load, so checking the other one proves nothing.
  */
+function ownBlobUrl(value, userId) {
+  const url = String(value || "");
+  let parsed;
+  try { parsed = new URL(url); } catch { return null; }
+  if (!parsed.host.endsWith(".public.blob.vercel-storage.com")) return null;
+  if (!parsed.pathname.startsWith(`/posts/${userId}/`)) return null;
+  return url;
+}
+
 function cleanMedia(media, userId) {
   if (!media || typeof media !== "object") return null;
-  const url = String(media.url || "");
-  const pathname = String(media.pathname || "");
-  let host;
-  try { host = new URL(url).host; } catch { return null; }
-  if (!host.endsWith(".public.blob.vercel-storage.com")) return null;
-  if (!pathname.startsWith(`posts/${userId}/`)) return null;
+  const url = ownBlobUrl(media.url, userId);
+  if (!url) return null;
 
   const contentType = String(media.contentType || "");
   return {
     url,
-    pathname,
+    pathname: new URL(url).pathname.replace(/^\//, ""),
     contentType,
     size: Number(media.size) || 0,
     durationSec: Number(media.durationSec) > 0 ? Math.round(Number(media.durationSec)) : null,
+    /* A frame grabbed in the browser at upload time. Without it a shared video
+       link unfurls with no thumbnail — there's nothing server-side that can
+       decode a 200 MB mp4 to produce one. */
+    posterUrl: ownBlobUrl(media.posterUrl, userId),
   };
 }
 
@@ -87,6 +102,9 @@ const asMins = (sec) =>
 
 const shape = (p) => ({
   id: String(p._id),
+  /* The public link's last segment — "run-on-bos-x7k2q". The client builds
+     ryzn.one/p/<slug> from it; null only for a post whose backfill hasn't run. */
+  slug: p.slug ?? null,
   authorId: p.authorId,
   kind: p.kind,
   text: p.text ?? null,
@@ -99,12 +117,48 @@ const shape = (p) => ({
   greeting: !!p.greeting,
   xp: p.xp ?? 5,
   views: p.views ?? 0,
+  /* Opens of the public page. Kept apart from `views`, which is the in-app
+     counter that awards XP and is one-per-signed-in-person. */
+  publicViews: p.publicViews ?? 0,
   reactions: p.reactions ?? 0,
   comments: p.comments ?? 0,
   // ISO, not "2d ago": a relative string computed here would be wrong for
   // anyone in another timezone and impossible to cache. The client formats it.
   createdAt: p.createdAt,
 });
+
+/**
+ * Gives a post its share slug, in place.
+ *
+ * Posts published before public links existed have none, so this runs on read
+ * rather than in a migration script — the slug appears the first time anyone
+ * loads the post, and every read after that is a no-op. The unique index is the
+ * authority: a duplicate code means try another rather than overwrite.
+ */
+async function assignSlug(db, doc) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = makeSlug(doc.title || doc.text || doc.kind);
+    let res;
+    try {
+      res = await db.collection(collections.posts).updateOne({ _id: doc._id, slug: null }, { $set: { slug } });
+    } catch (err) {
+      if (err?.code === 11000) continue; // that code is taken — reroll
+      throw err;
+    }
+    if (res.matchedCount) return (doc.slug = slug);
+    // Another request got there first; use whatever it wrote.
+    const fresh = await db.collection(collections.posts).findOne({ _id: doc._id }, { projection: { slug: 1 } });
+    return (doc.slug = fresh?.slug ?? null);
+  }
+  return null;
+}
+
+/** Backfill for a page of rows, before they're shaped. */
+async function withSlugs(db, rows) {
+  const missing = rows.filter((r) => !r.slug);
+  if (missing.length) await Promise.all(missing.map((r) => assignSlug(db, r)));
+  return rows;
+}
 
 /**
  * Author, accepted mentee of the author, or org peer reading a profile-visible
@@ -177,7 +231,7 @@ async function readFeed(db, { authorId, viewer, cohortOnly }) {
     .limit(100)
     .toArray();
 
-  const posts = rows.map(shape);
+  const posts = (await withSlugs(db, rows)).map(shape);
   return { posts, viewerState: await viewerState(db, viewer, rows.map((r) => r._id)) };
 }
 
@@ -204,6 +258,7 @@ async function handler(request, user) {
       if (url.searchParams.get("comments") === "1") {
         return json({ comments: await loadComments(db, _id) });
       }
+      if (!post.slug) await assignSlug(db, post);
       return json({ post: shape(post), viewerState: await viewerState(db, user.id, [_id]) });
     }
 
@@ -236,6 +291,7 @@ async function handler(request, user) {
         : [];
       const nameById = new Map(authors.map((a) => [String(a._id), a.name]));
 
+      await withSlugs(db, rows);
       return json({
         posts: rows.map((p) => ({ ...shape(p), authorName: nameById.get(String(p.authorId)) || "—" })),
         viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
@@ -255,7 +311,7 @@ async function handler(request, user) {
           .limit(50)
           .toArray();
         return json({
-          posts: rows.map(shape),
+          posts: (await withSlugs(db, rows)).map(shape),
           viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
         });
       }
@@ -306,13 +362,27 @@ async function handler(request, user) {
       greeting,
       xp: 5,
       views: 0,
+      publicViews: 0,
       reactions: 0,
       comments: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
     };
-    const { insertedId } = await posts.insertOne(doc);
+
+    /* The share slug is minted here, not on first share: a post that exists has
+       a public link, so the Share button never has to wait on a round trip. */
+    let insertedId = null;
+    for (let attempt = 0; attempt < 5 && !insertedId; attempt++) {
+      doc.slug = makeSlug(title || text || kind);
+      try {
+        ({ insertedId } = await posts.insertOne(doc));
+      } catch (err) {
+        if (err?.code !== 11000) throw err; // slug collision — reroll the code
+        delete doc._id; // insertOne stamped one on the way in; don't reuse it
+      }
+    }
+    if (!insertedId) return fail(503, "slug_conflict", "Couldn’t publish that — try again.");
 
     const impact = greeting ? IMPACT.greeting : IMPACT.post;
     await Promise.all([
@@ -478,9 +548,83 @@ async function upload(request) {
   }
 }
 
+/* ————— the public page: /p/<slug> ————— */
+
+const html = (body, status, headers = {}) =>
+  new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", ...headers } });
+
+/** Name, face and headline of whoever wrote it — the byline on the public page. */
+async function publicAuthor(db, authorId) {
+  const fallback = { name: "A Ryzn mentor", avatarUrl: null, headline: null };
+  if (!ObjectId.isValid(String(authorId))) return fallback;
+  const [account, profile] = await Promise.all([
+    db.collection(collections.user).findOne(
+      { _id: new ObjectId(String(authorId)) },
+      { projection: { name: 1, image: 1 } }
+    ),
+    db.collection(collections.profiles).findOne(
+      { userId: String(authorId) },
+      { projection: { avatarUrl: 1, headline: 1, tier: 1 } }
+    ),
+  ]);
+  return {
+    name: account?.name || fallback.name,
+    avatarUrl: profile?.avatarUrl || account?.image || null,
+    headline: profile?.headline || null,
+    tier: profile?.tier || null,
+  };
+}
+
+/**
+ * No session, by design — this is the page a link lands on.
+ *
+ * Only `public` posts render. A cohort post is written for one mentor's mentees
+ * and the pairing check is what carries it; a short link must not be a way
+ * around that, so it gets the same locked 404 as a slug that doesn't exist.
+ */
+async function publicPost(request, code) {
+  const origin = originOf(request);
+  try {
+    const raw = String(code).trim().toLowerCase().slice(0, 80);
+    // Old links pasted before slugs existed carry the raw id — still resolve those.
+    const by = /^[0-9a-f]{24}$/.test(raw) ? { _id: new ObjectId(raw) } : { slug: raw };
+
+    const db = await getDb();
+    const post = await db.collection(collections.posts).findOne({ ...by, deletedAt: null });
+    if (!post || post.visibility !== "public") {
+      return html(renderMissingPage({ origin, postId: post ? String(post._id) : null }), 404, {
+        "Cache-Control": "public, max-age=0, s-maxage=60",
+      });
+    }
+    if (!post.slug) await assignSlug(db, post);
+
+    const author = await publicAuthor(db, post.authorId);
+    if (!isCrawler(request.headers.get("user-agent"))) {
+      // Fire and forget: a counter must never be the reason a page 500s.
+      db.collection(collections.posts)
+        .updateOne({ _id: post._id }, { $inc: { publicViews: 1 } })
+        .catch((err) => console.error("[api:posts] publicViews:", err));
+    }
+
+    return html(renderPostPage({ post: shape(post), author, origin }), 200, {
+      /* 30s at the edge keeps a link that gets passed around from hitting Mongo
+         once per reader. The cost is that publicViews undercounts a burst — the
+         right trade for a page whose whole job is to load fast for strangers. */
+      "Cache-Control": "public, max-age=0, s-maxage=30, stale-while-revalidate=300",
+    });
+  } catch (err) {
+    console.error("[api:posts] public page:", err);
+    return html(renderMissingPage({ origin, postId: null }), 500);
+  }
+}
+
 export default {
-  fetch: (request) =>
-    request.method === "POST" && new URL(request.url).searchParams.get("upload") === "1"
-      ? upload(request)
-      : withUser(handler)(request),
+  fetch: (request) => {
+    const params = new URL(request.url).searchParams;
+    const share = params.get("share");
+    // HEAD as well as GET: link checkers and some unfurlers probe before they fetch.
+    if (share && (request.method === "GET" || request.method === "HEAD")) return publicPost(request, share);
+    if (request.method === "POST" && params.get("upload") === "1") return upload(request);
+    return withUser(handler)(request);
+  },
 };

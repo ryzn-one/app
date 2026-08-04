@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter, labelOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
@@ -462,7 +462,7 @@ export const MentorDetailSheet = ({ m, close, footer }) => {
     <DetailShell title="Mentor profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
       <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-          <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
+          <Avatar src={m.avatarUrl} name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
             {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{m.headline}</div>}
@@ -555,9 +555,10 @@ export const MenteeDetailSheet = ({ m, close, footer }) => {
     <DetailShell title="Mentee profile" right={<AffinityTag affinity={m.affinity} />} close={close} footer={footer}>
       <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-          <Monogram name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
+          <Avatar src={m.avatarUrl} name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
+            {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE", marginTop: 2, lineHeight: 1.4 }}>{m.headline}</div>}
             {labelOf(m.track) && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
           </div>
         </div>

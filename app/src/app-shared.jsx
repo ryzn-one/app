@@ -5,16 +5,149 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Building2
+  X, SlidersHorizontal, RotateCcw, Search, Building2, Camera
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, Banner, FormError, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { BADGE_DEFS } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
 import { isMentorRole } from "./lib/roles.js";
+import { uploadProfileImage, ACCEPT } from "./lib/upload.js";
 import { EventComposer, EventCard } from "./events.jsx";
 
 /* ————————————————— APP: SHARED ————————————————— */
+
+/**
+ * One tap-to-edit line on a profile: label, current value, and a textarea that
+ * takes its place. Both profile screens had this written out per field, so the
+ * mentee and mentor copies had already drifted on which fields they offered.
+ *
+ * `maxLength` mirrors the cap /api/profile enforces — the server is still the
+ * one that truncates, this just stops people writing past it blind.
+ */
+export const EditableRow = ({ label, value, placeholder, emptyText, maxLength, rows = 2, onSave }) => {
+  const [draft, setDraft] = useState(null);   // null when not editing
+
+  if (draft !== null) {
+    const left = maxLength ? maxLength - draft.length : null;
+    return (
+      <div style={{ marginTop: 12 }}>
+        <Label>{label}</Label>
+        <textarea value={draft} autoFocus rows={rows} maxLength={maxLength}
+          onChange={e => setDraft(e.target.value)} placeholder={placeholder}
+          style={{ width: "100%", marginTop: 8, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} />
+        {maxLength && (
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: left <= 20 ? C.coral : "#A5A39D", textAlign: "right", marginTop: 4 }}>{left} LEFT</div>
+        )}
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={() => setDraft(null)}>Cancel</Btn>
+          <Btn small style={{ flex: 1 }} onClick={() => { onSave(draft.trim()); setDraft(null); }}>Save</Btn>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setDraft(value || "")}
+      style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginTop: 10, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>{label.toUpperCase()}</div>
+        <div style={{ fontSize: 13.5, marginTop: 4, lineHeight: 1.45, color: value ? C.ink : C.gray, fontStyle: value ? "normal" : "italic" }}>{value || emptyText}</div>
+      </div>
+      <ChevronRight size={16} color={C.gray} style={{ marginTop: 2, flexShrink: 0 }} />
+    </div>
+  );
+};
+
+/**
+ * The cover-image + profile-picture block at the top of both profile screens.
+ *
+ * One component for two quite different heroes (a mentee's white card, a
+ * mentor's dark public-view card) because the part that differs is layout —
+ * passed in as children — and the part that's identical is the upload: pick a
+ * file, push it to Blob storage, then PATCH the URL onto the profile. That
+ * sequence written twice is the version that drifts.
+ *
+ * `editable` is off in the mentor's Public view, which is a preview of what a
+ * mentee sees and must not offer buttons a mentee wouldn't have.
+ */
+export const ProfileHeader = ({
+  name, headline, avatarUrl, bannerUrl, userId,
+  editable = false, onSaveImage, align = "left", dark = false, children,
+}) => {
+  const [busy, setBusy] = useState(null);   // "avatar" | "banner" while uploading
+  const [err, setErr] = useState(null);
+  const avatarInput = useRef(null);
+  const bannerInput = useRef(null);
+
+  const pick = async (kind, file) => {
+    if (!file) return;
+    setBusy(kind); setErr(null);
+    try {
+      const url = await uploadProfileImage(file, kind, null, userId);
+      await onSaveImage(kind === "avatar" ? "avatarUrl" : "bannerUrl", url);
+    } catch (e) {
+      setErr(e?.message || "That image didn’t upload.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const centred = align === "center";
+  const AVATAR = 76;
+
+  /* Sits on the cover, so it has to stay legible over whatever someone uploads —
+     hence the scrim rather than a flat brand colour. */
+  const camera = (onClick, label, loading, style) => (
+    <button onClick={onClick} disabled={!!busy} aria-label={label} title={label}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+        border: "none", borderRadius: 999, cursor: busy ? "default" : "pointer",
+        background: "rgba(26,26,26,.62)", color: C.white, backdropFilter: "blur(4px)",
+        fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, padding: "7px 10px", ...style,
+      }}>
+      {loading ? <span style={{ fontFamily: F.mono, fontSize: 9 }}>…</span> : <Camera size={13} />}
+    </button>
+  );
+
+  return (
+    <Card style={{ padding: 0, overflow: "hidden", background: dark ? C.ink : C.white, color: dark ? C.white : C.ink, ...(dark && { border: "none" }) }}>
+      <Banner src={bannerUrl} height={112}>
+        {editable && camera(() => bannerInput.current?.click(), "Change cover image", busy === "banner", { position: "absolute", top: 10, right: 10 })}
+      </Banner>
+
+      {/* Pulled up over the cover so the picture straddles the two, the way
+          every profile people already use puts it. */}
+      <div style={{
+        padding: centred ? "0 18px 20px" : "0 16px 16px", marginTop: -(AVATAR / 2),
+        display: "flex", flexDirection: "column", alignItems: centred ? "center" : "flex-start",
+        textAlign: centred ? "center" : "left",
+      }}>
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <div style={{ padding: 3, background: dark ? C.ink : C.white, borderRadius: 22, display: "inline-flex" }}>
+            <Avatar src={avatarUrl} name={name} size={AVATAR} radius={19} bg={dark ? C.purple : C.ink} color={C.white} />
+          </div>
+          {editable && camera(() => avatarInput.current?.click(), "Change profile picture", busy === "avatar", { position: "absolute", right: -2, bottom: -2, padding: 8 })}
+        </div>
+
+        <div style={{ fontSize: centred ? 21 : 19, fontWeight: 700, marginTop: 10, letterSpacing: -0.2 }}>{name || "Your profile"}</div>
+        {headline && (
+          <div style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 3, color: dark ? "#B5B3AE" : C.gray }}>{headline}</div>
+        )}
+        {children}
+      </div>
+
+      {err && <div style={{ padding: "0 16px 14px", marginTop: -6 }}><FormError>{err}</FormError></div>}
+
+      {editable && (<>
+        <input ref={avatarInput} type="file" accept={ACCEPT.photo} hidden
+          onChange={e => { pick("avatar", e.target.files?.[0]); e.target.value = ""; }} />
+        <input ref={bannerInput} type="file" accept={ACCEPT.photo} hidden
+          onChange={e => { pick("banner", e.target.files?.[0]); e.target.value = ""; }} />
+      </>)}
+    </Card>
+  );
+};
 
 export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, eventsError, isAdmin, userId, onCreateEvent, onEventAction }) => {
   const quarterlyEvent = events?.find(e => e.kind === "quarterly");

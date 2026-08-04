@@ -4,10 +4,10 @@ import {
   Upload, Heart, Eye, Send, Pin, Sparkles, Share2,
 } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Label, Btn, Monogram, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment } from "./lib/auth-client.js";
-import { sharePostLink } from "./lib/share.js";
+import { sharePostLink, isPublicPost } from "./lib/share.js";
 
 /** Turn a VideoCaptureModal result into a real File for uploadMedia. */
 const captureToFile = (captured) => {
@@ -102,7 +102,9 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
   const fallback = { backgroundImage: art(post.id, post.kind), backgroundSize: "cover", backgroundPosition: "center" };
 
   if (post.kind === "video" && post.media?.url) return (
-    <video src={post.media.url} controls preload="metadata" playsInline
+    // The poster is the frame grabbed at upload time — the same image a shared
+    // link unfurls with, so the card and the preview show the same thing.
+    <video src={post.media.url} poster={post.media.posterUrl || undefined} controls preload="metadata" playsInline
       onClick={e => e.stopPropagation()} onPlay={() => onEngage?.()}
       style={{ marginTop: 10, width: "100%", height, borderRadius: 12, background: C.ink, objectFit: "cover", display: "block" }} />
   );
@@ -128,7 +130,7 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
 /** One post. `mine` renders the mentor's own view (stats; likes stay read-only). */
 export const PostCard = ({
   post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
-  onAuthor, onShare, toast, highlight,
+  onAuthor, onShare, onVisibility, toast, highlight,
 }) => {
   const meta = KIND_META[post.kind] || KIND_META.status;
   const Icon = meta.icon;
@@ -178,17 +180,24 @@ export const PostCard = ({
     }
   };
 
+  const isPublic = isPublicPost(post);
+
   const share = async () => {
     if (sharing) return;
     setSharing(true);
     try {
       if (onShare) await onShare(post);
       else {
-        const how = await sharePostLink(post.id, {
-          title: post.title || "Ryzn post",
+        const how = await sharePostLink(post, {
+          title: post.title || `${author} on Ryzn`,
           text: post.text || `${author} on Ryzn`,
         });
-        toast?.(how === "copied" ? "Link copied — share it with your Orbit" : "Shared");
+        if (how !== "copied") toast?.("Shared");
+        // A cohort link still needs a sign-in at the other end. Saying so here
+        // is the difference between a link that works and one that dead-ends.
+        else if (isPublic) toast?.("Public link copied — anyone can open it");
+        else if (mine) toast?.("Link copied — set this post to Public for a link anyone can open");
+        else toast?.("Link copied — your Orbit can open it in Ryzn");
       }
     } catch (e) {
       toast?.(e.message || "Couldn’t share that.");
@@ -266,8 +275,9 @@ export const PostCard = ({
         }}>
           <Share2 size={15} color="#A5A39D" /> Share
         </button>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", fontFamily: F.mono, fontSize: 11, color: C.gray, padding: "6px 4px" }}>
-          <Eye size={14} color="#A5A39D" /> {post.views}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", fontFamily: F.mono, fontSize: 11, color: C.gray, padding: "6px 4px" }}
+          title={mine && post.publicViews ? `${post.publicViews} of these came from the public link` : undefined}>
+          <Eye size={14} color="#A5A39D" /> {post.views + (mine ? (post.publicViews || 0) : 0)}
         </span>
         {!mine && openable && (
           <button type="button" onClick={() => onOpen(post)} style={{
@@ -275,9 +285,23 @@ export const PostCard = ({
             padding: "7px 11px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap",
           }}>{done ? "✓ DONE" : `${post.kind === "video" ? "WATCH" : "OPEN"} · +${post.xp} XP`}</button>
         )}
-        {mine && post.visibility === "public" && (
+        {/* Who the link works for. On your own feed it's the switch that decides
+            it — a shareable link is exactly what "public" means now, so the
+            badge that only reported it had to become the control. */}
+        {mine && (onVisibility ? (
+          <button type="button"
+            onClick={() => onVisibility(post.id, isPublic ? "cohort" : "public")}
+            title={isPublic
+              ? "Anyone with the link can open this. Tap to keep it to your cohort."
+              : "Only your cohort can open this. Tap to make the link public."}
+            style={{
+              fontFamily: F.mono, fontSize: 8, border: "none", cursor: "pointer", letterSpacing: 0.6,
+              padding: "4px 7px", fontWeight: 700, whiteSpace: "nowrap",
+              background: isPublic ? C.tealTint : "#EFEEEA", color: isPublic ? C.teal : C.gray,
+            }}>{isPublic ? "PUBLIC LINK" : "COHORT ONLY"}</button>
+        ) : post.visibility === "public" && (
           <span style={{ fontFamily: F.mono, fontSize: 8, background: C.tealTint, color: C.teal, padding: "3px 6px", fontWeight: 700, letterSpacing: 0.6 }}>ON PROFILE</span>
-        )}
+        ))}
       </div>
 
       {commentsOpen && (
@@ -519,7 +543,7 @@ function GreetingCard({ onDone, userId }) {
 
 /* ————————————————— MENTOR: your feed ————————————————— */
 
-export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadGreeting, toast, onAuthor, highlightPostId }) => {
+export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadGreeting, toast, onAuthor, onVisibility, highlightPostId }) => {
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
   const reach = u.cohort ? u.cohort.length : 0;
@@ -551,7 +575,7 @@ export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadG
         ) : (
           feed.map(p => (
             <PostCard key={p.id} post={p} author={name} authorId={userId} tier mine
-              toast={toast} onAuthor={onAuthor} highlight={highlightPostId === p.id} />
+              toast={toast} onAuthor={onAuthor} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
           ))
         )}
       </div>
@@ -647,6 +671,7 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
     id: u.mentorId,
     name: u.mentorName,
     headline: u.mentorTitle,
+    avatarUrl: u.mentorAvatarUrl,
     tier: u.mentorTier,
     matchState: "accepted",
   });
@@ -657,7 +682,7 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20, cursor: onAuthor ? "pointer" : "default" }} onClick={openMentorProfile}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <Monogram name={u.mentorName} size={54} bg={C.purple} color={C.white} radius={0} />
+            <Avatar src={u.mentorAvatarUrl} name={u.mentorName} size={54} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 18, fontWeight: 700 }}>{u.mentorName}</div>
               {u.mentorTitle && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{u.mentorTitle}</div>}

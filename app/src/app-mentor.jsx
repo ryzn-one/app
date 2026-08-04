@@ -7,7 +7,8 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
 import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
@@ -171,7 +172,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         return (
           <Card key={m.id || m.name} onClick={() => openOverlay({ mentee: m })} style={{ padding: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Monogram name={m.name} size={38} bg={st.bg} color={st.c} />
+              <Avatar src={m.avatarUrl} name={m.name} size={38} bg={st.bg} color={st.c} />
               <span style={{ width: 9, height: 9, background: st.c }} />
             </div>
             <div style={{ fontWeight: 700, fontSize: 13.5, marginTop: 9 }}>{m.name}</div>
@@ -273,9 +274,10 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <Monogram name={mentee.name} size={58} bg={C.purple} color={C.white} radius={0} />
+            <Avatar src={mentee.avatarUrl} name={mentee.name} size={58} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 19, fontWeight: 700 }}>{mentee.name}</div>
+              {mentee.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE", marginTop: 2, lineHeight: 1.4 }}>{mentee.headline}</div>}
               {track && (
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}>
                   <School size={11} /> {track.toUpperCase()}
@@ -435,13 +437,11 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile }) => {
+export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
   const [contentTab, setContentTab] = useState("feed");
-  const [editMode, setEditMode] = useState(null);
-  const [editValues, setEditValues] = useState({});
   const posts = Array.isArray(feed) ? feed : [];
   const cohort = u?.cohort || [];
   const phases = program?.phases || [];
@@ -454,15 +454,6 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
   const strength = checklist.reduce((a, [, ok]) => a + (ok ? 25 : 0), 0);
   const resourceCount = posts.filter(p => p.kind === "video" || p.kind === "resource").length;
 
-  const startEdit = (field) => {
-    setEditMode(field);
-    setEditValues({ [field]: u?.[field] || "" });
-  };
-
-  const cancelEdit = () => {
-    setEditMode(null);
-    setEditValues({});
-  };
   return (
     <div>
       <HeaderRow title="Your profile" right={
@@ -475,19 +466,17 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
         </div>
 
         {view === "preview" ? (<>
-          <Card style={{ background: C.ink, border: "none", color: C.white, textAlign: "center", padding: 24 }}>
-            <Monogram name={name || "—"} size={68} bg={C.purple} color={C.white} radius={0} />
-            <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>{name || "Your profile"}</div>
-            {(u?.headline || u?.industry) && (
-              <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 2 }}>{[u.headline, u.industry].filter(Boolean).join(" · ")}</div>
-            )}
+          {/* Read-only on purpose: this tab is the mentee's view of the profile,
+              so it must not offer edit affordances a mentee wouldn't have. */}
+          <ProfileHeader name={name} headline={[u?.headline, u?.industry].filter(Boolean).join(" · ") || null}
+            avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} align="center" dark>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u?.tier || "Scout").toUpperCase()} MENTOR</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
               {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
                 <div key={l}><div style={{ fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
               ))}
             </div>
-          </Card>
+          </ProfileHeader>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 0.5, textAlign: "center" }}>
             EXACTLY WHAT A MENTEE IN YOUR COHORT SEES
           </div>
@@ -531,6 +520,12 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
           <ContentTabs feed={posts} authorName={name} authorId={u?.id} view={contentTab} readOnly
             emptyText="Nothing on your profile yet. What you post in Feed shows up here." />
         </>) : (<>
+          {/* Studio is the editing surface — the pictures are changed here and
+              previewed in the other tab, not edited in both places. */}
+          <ProfileHeader name={name} headline={[u?.headline, u?.industry].filter(Boolean).join(" · ") || null}
+            avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} userId={userId} editable
+            onSaveImage={onUpdateProfile} />
+
           <Card data-tour="mentor-profile-studio">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Label>Profile strength</Label>
@@ -579,45 +574,16 @@ export const MentorProfile = ({ u, name, openOverlay, feed = [], go, greetingUp,
 
           <Card>
             <Label>Background</Label>
-            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Add your education, current role, or other details to complete your profile.</div>
-
-            {editMode === "education" ? (
-              <div style={{ marginTop: 12 }}>
-                <textarea value={editValues.education || ""} onChange={e => setEditValues({ ...editValues, education: e.target.value })} placeholder="e.g., Stanford University, Computer Science (2015)"
-                  style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
-                  <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("education", editValues.education); setEditMode(null); }}>Save</Btn>
-                </div>
-              </div>
-            ) : (
-              <div onClick={() => startEdit("education")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 12, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>EDUCATION</div>
-                  <div style={{ fontSize: 13.5, marginTop: 4, color: u?.education ? C.ink : C.gray, fontStyle: u?.education ? "normal" : "italic" }}>{u?.education || "Add your education"}</div>
-                </div>
-                <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
-              </div>
-            )}
-
-            {editMode === "experience" ? (
-              <div style={{ marginTop: 12 }}>
-                <textarea value={editValues.experience || ""} onChange={e => setEditValues({ ...editValues, experience: e.target.value })} placeholder="e.g., Senior Product Manager at Meta (2019–present)"
-                  style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
-                  <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("experience", editValues.experience); setEditMode(null); }}>Save</Btn>
-                </div>
-              </div>
-            ) : (
-              <div onClick={() => startEdit("experience")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 10, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>CURRENT ROLE</div>
-                  <div style={{ fontSize: 13.5, marginTop: 4, color: u?.experience ? C.ink : C.gray, fontStyle: u?.experience ? "normal" : "italic" }}>{u?.experience || "Add your current role"}</div>
-                </div>
-                <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
-              </div>
-            )}
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Your headline is the line every mentee reads under your name — in the match deck, in Explore, and on your profile.</div>
+            <EditableRow label="Headline" value={u?.headline} maxLength={220}
+              placeholder="e.g., Senior Product Manager at Meta · ex-Stripe · I coach PMs into their first role"
+              emptyText="Add a headline" onSave={v => onUpdateProfile("headline", v)} />
+            <EditableRow label="Education" value={u?.education} maxLength={600}
+              placeholder="e.g., Stanford University, Computer Science (2015)"
+              emptyText="Add your education" onSave={v => onUpdateProfile("education", v)} />
+            <EditableRow label="Current role" value={u?.experience} maxLength={600} rows={3}
+              placeholder="e.g., Senior Product Manager at Meta (2019–present)"
+              emptyText="Add your current role" onSave={v => onUpdateProfile("experience", v)} />
           </Card>
 
           <Card style={{ border: `1.5px solid ${posts.length ? C.teal : C.purple}` }}>

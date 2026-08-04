@@ -105,7 +105,7 @@ async function handler(request, user) {
     const rx = { $regex: escapeRe(q), $options: "i" };
     const profileFields = wanted === "mentor"
       ? [{ headline: rx }, { industry: rx }, { expertise: rx }, { menteeFit: rx }]
-      : [{ track: rx }, { interests: rx }, { skills: rx }, { goals: rx }];
+      : [{ headline: rx }, { track: rx }, { interests: rx }, { skills: rx }, { goals: rx }];
     const hits = await db
       .collection(collections.profiles)
       .find({ $or: profileFields }, { projection: { userId: 1 } })
@@ -160,6 +160,10 @@ async function handler(request, user) {
         id: String(u._id),
         name: u.name || "—",
         image: u.image ?? null,
+        // The picture they set on Ryzn, falling back to whatever Google gave us
+        // at sign-in. Every card that shows a face reads this one field.
+        avatarUrl: p.avatarUrl ?? u.image ?? null,
+        bannerUrl: p.bannerUrl ?? null,
         affinity: affinity(viewerProfile, p, viewerRole),
         ...stateOf(String(u._id)),
       };
@@ -179,6 +183,7 @@ async function handler(request, user) {
           }
         : {
             ...base,
+            headline: p.headline ?? null,
             track: asLabel(p.track),
             interests: p.interests ?? [],
             skills: p.skills ?? [],

@@ -7,7 +7,8 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { fetchMessages, sendMessage } from "./lib/auth-client.js";
 import { countdown, fmtRange } from "./lib/calendar.js";
@@ -114,7 +115,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, todayDone, stage1
       {u.mentorName ? (
         <Card onClick={() => openOverlay("orbit")} style={{ marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Monogram name={u.mentorName} size={48} bg={C.purple} color={C.white} />
+            <Avatar src={u.mentorAvatarUrl} name={u.mentorName} size={48} bg={C.purple} color={C.white} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{u.mentorName}</div>
               {u.mentorTitle && <div style={{ fontSize: 12, color: C.gray }}>{u.mentorTitle}</div>}
@@ -447,32 +448,17 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
   );
 };
 
-export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop, program, onUpdateProfile }) => {
-  const [editMode, setEditMode] = useState(null);
-  const [editValues, setEditValues] = useState({});
-
-  const startEdit = (field) => {
-    setEditMode(field);
-    setEditValues({ [field]: u?.[field] || "" });
-  };
-
-  const cancelEdit = () => {
-    setEditMode(null);
-    setEditValues({});
-  };
-
-  return (
+export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOverlay, extraMentors = [], onPromote, onDrop, program, onUpdateProfile }) => (
   <div>
     <HeaderRow title="Profile" right={
       <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
     <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-      <Card data-tour="mentee-profile-hero" style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <Monogram name={name || "—"} size={62} bg={C.ink} color={C.white} radius={16} />
-        <div>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>{name || "Your profile"}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{labelOf(u?.track) ? `TRACK · ${labelOf(u.track).toUpperCase()} · ` : ""}WEEK {u?.week ?? 1}</div>
-        </div>
-      </Card>
+      <div data-tour="mentee-profile-hero">
+        <ProfileHeader name={name} headline={u?.headline} avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl}
+          userId={userId} editable onSaveImage={onUpdateProfile}>
+          <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 6 }}>{labelOf(u?.track) ? `TRACK · ${labelOf(u.track).toUpperCase()} · ` : ""}WEEK {u?.week ?? 1}</div>
+        </ProfileHeader>
+      </div>
       {u?.goals?.length > 0 && (
         <Card>
           <Label color={C.purple}>Your program goals</Label>
@@ -503,45 +489,16 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
       </Card>
       <Card>
         <Label>Background</Label>
-        <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Add your education, projects, or other experience to complete your profile.</div>
-
-        {editMode === "education" ? (
-          <div style={{ marginTop: 12 }}>
-            <textarea value={editValues.education || ""} onChange={e => setEditValues({ ...editValues, education: e.target.value })} placeholder="e.g., Stanford University, Computer Science (Expected 2025)"
-              style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
-              <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("education", editValues.education); setEditMode(null); }}>Save</Btn>
-            </div>
-          </div>
-        ) : (
-          <div onClick={() => startEdit("education")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 12, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>EDUCATION</div>
-              <div style={{ fontSize: 13.5, marginTop: 4, color: u?.education ? C.ink : C.gray, fontStyle: u?.education ? "normal" : "italic" }}>{u?.education || "Add your education"}</div>
-            </div>
-            <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
-          </div>
-        )}
-
-        {editMode === "experience" ? (
-          <div style={{ marginTop: 12 }}>
-            <textarea value={editValues.experience || ""} onChange={e => setEditValues({ ...editValues, experience: e.target.value })} placeholder="e.g., Interned at Google as a Product Manager (Summer 2024)"
-              style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, outline: "none", boxSizing: "border-box", minHeight: 60 }} rows={2} />
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <Btn small kind="ghost" style={{ flex: 1, borderColor: C.line, color: C.gray }} onClick={cancelEdit}>Cancel</Btn>
-              <Btn small style={{ flex: 1 }} onClick={() => { if (onUpdateProfile) onUpdateProfile("experience", editValues.experience); setEditMode(null); }}>Save</Btn>
-            </div>
-          </div>
-        ) : (
-          <div onClick={() => startEdit("experience")} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 10, cursor: "pointer", padding: 10, borderRadius: 10, background: C.surface }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.5 }}>EXPERIENCE & PROJECTS</div>
-              <div style={{ fontSize: 13.5, marginTop: 4, color: u?.experience ? C.ink : C.gray, fontStyle: u?.experience ? "normal" : "italic" }}>{u?.experience || "Add your experience"}</div>
-            </div>
-            <ChevronRight size={16} color={C.gray} style={{ marginTop: 2 }} />
-          </div>
-        )}
+        <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Add a headline, your education, projects, or other experience to complete your profile.</div>
+        <EditableRow label="Headline" value={u?.headline} maxLength={220}
+          placeholder="e.g., CS student at Stanford · building tools for student founders"
+          emptyText="Add a headline" onSave={v => onUpdateProfile("headline", v)} />
+        <EditableRow label="Education" value={u?.education} maxLength={600}
+          placeholder="e.g., Stanford University, Computer Science (Expected 2025)"
+          emptyText="Add your education" onSave={v => onUpdateProfile("education", v)} />
+        <EditableRow label="Experience & projects" value={u?.experience} maxLength={600} rows={3}
+          placeholder="e.g., Interned at Google as a Product Manager (Summer 2024)"
+          emptyText="Add your experience" onSave={v => onUpdateProfile("experience", v)} />
       </Card>
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -551,7 +508,7 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
         <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", marginTop: 6, letterSpacing: 0.5 }}>ONE ACTIVE ENGAGEMENT AT A TIME — KEEPS IT AUTHENTIC. SUPPORTS STAY IN YOUR CORNER.</div>
         {u?.mentorName ? (
           <div onClick={() => openOverlay("orbit")} style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, cursor: "pointer" }}>
-            <Monogram name={u.mentorName} size={40} bg={C.purple} color={C.white} />
+            <Avatar src={u.mentorAvatarUrl} name={u.mentorName} size={40} bg={C.purple} color={C.white} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{u.mentorName}</div>
               {u.mentorTitle && <div style={{ fontSize: 11.5, color: C.gray }}>{u.mentorTitle}</div>}
@@ -564,7 +521,7 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
         {extraMentors.map(m => (
           <div key={m.id} style={{ marginTop: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Monogram name={m.name} size={40} bg={C.purpleTint} color={C.deep} />
+              <Avatar src={m.avatarUrl} name={m.name} size={40} bg={C.purpleTint} color={C.deep} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
                 {m.headline && <div style={{ fontSize: 11.5, color: C.gray }}>{m.headline}</div>}
@@ -599,6 +556,5 @@ export const MenteeProfile = ({ u, name, badges = [], openBadge, openOverlay, ex
       )}
     </div>
   </div>
-  );
-};
+);
 

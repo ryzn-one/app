@@ -87,8 +87,15 @@ function toAppUser(me) {
   // "fresh" means day one: no history to show, so screens render first-run copy
   // rather than a fabricated six weeks of it.
   const fresh = !p.onboardingCompletedAt || (p.week ?? 1) <= 1;
+  /* Google sign-in already hands us a photo, so an account that never uploaded
+     one still has a face. Whatever they set on Ryzn wins over it. */
+  const pictures = {
+    avatarUrl: p.avatarUrl ?? me.user?.image ?? null,
+    bannerUrl: p.bannerUrl ?? null,
+  };
   if (isMentor) {
     return {
+      ...pictures,
       fresh,
       impact: p.impact ?? 0,
       tier: p.tier || "Scout",
@@ -108,7 +115,9 @@ function toAppUser(me) {
     };
   }
   return {
+    ...pictures,
     fresh,
+    headline: p.headline ?? null,
     week: p.week ?? 1,
     streak: p.streak ?? 0,
     xp: p.xp ?? 0,
@@ -119,6 +128,7 @@ function toAppUser(me) {
     // rather than falling back to a name.
     mentorName: me.mentor?.name ?? null,
     mentorTitle: me.mentor?.headline ?? null,
+    mentorAvatarUrl: me.mentor?.avatarUrl ?? null,
     mentorTier: me.mentor?.tier ?? null,
     mentorMatchId: me.mentor?.matchId ?? null,
     // The mentor's *user* id, not the match id — it's what /api/posts needs to
@@ -663,6 +673,7 @@ export default function RyznComplete() {
           id: user.mentorId,
           name: user.mentorName,
           headline: user.mentorTitle,
+          avatarUrl: user.mentorAvatarUrl,
           tier: user.mentorTier,
           matchState: "accepted",
         },
@@ -675,6 +686,7 @@ export default function RyznComplete() {
         id: person.id,
         name: person.name || "Mentor",
         headline: person.headline,
+        avatarUrl: person.avatarUrl,
         tier: person.tier,
         matchState: person.matchState || (user?.mentorId && String(person.id) === String(user.mentorId) ? "accepted" : undefined),
       },
@@ -685,6 +697,18 @@ export default function RyznComplete() {
   const pinPost = async (id, pinned) => {
     try { await updatePost(id, { pinned }); await loadFeed(); toast(pinned ? "Pinned to the top" : "Unpinned"); }
     catch (e) { toast(e.message || "Couldn’t change that."); }
+  };
+
+  /* Public is what makes ryzn.one/p/<slug> open for a stranger — the same
+     switch that puts the post on the mentor's profile. */
+  const setPostVisibility = async (id, visibility) => {
+    try {
+      await updatePost(id, { visibility });
+      await loadFeed();
+      toast(visibility === "public"
+        ? "Public — anyone with the link can open this"
+        : "Cohort only — the link now asks for a sign-in");
+    } catch (e) { toast(e.message || "Couldn’t change that."); }
   };
 
   const removePost = async (id) => {
@@ -903,13 +927,13 @@ export default function RyznComplete() {
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} onUpdateProfile={updateUserProfile} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} onUpdateProfile={updateUserProfile} />;
         default: return null;
       }
     }
     switch (tab) {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
-      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId} />;
+      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} highlightPostId={highlightPostId} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}
@@ -918,7 +942,7 @@ export default function RyznComplete() {
         />
       );
       case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} />;
       default: return null;
     }
   };

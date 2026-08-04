@@ -138,6 +138,7 @@ async function handler(request, user) {
         id: m.mentorId,
         name: u?.name || "—",
         headline: p.headline ?? null,
+        avatarUrl: p.avatarUrl ?? u?.image ?? null,
         tier: p.tier ?? "Scout",
         seat: m.seat,
       };
@@ -152,6 +153,8 @@ async function handler(request, user) {
         matchId: String(m._id),
         id: m.menteeId,
         name: u?.name || "—",
+        headline: p.headline ?? null,
+        avatarUrl: p.avatarUrl ?? u?.image ?? null,
         track: asLabel(p.track),
         goals: p.goals ?? [],
         skills: p.skills ?? [],
