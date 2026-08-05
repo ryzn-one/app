@@ -37,7 +37,9 @@ guidelines/   the brand book, PDF and HTML
 
 1. **Clear space.** X on all four sides, where X is the height of the smallest diamond. Nothing enters it.
 2. **Never retype the wordmark.** Space Grotesk set live does not match the supplied tracking. Use the file.
-3. **Minimum sizes.** Horizontal lockup 120 px. Mark 24 px. Below 32 px switch to the atom.
+3. **Minimum sizes.** Horizontal lockup 120 px. Mark 24 px. Below 32 px switch to the atom, except
+   for browser favicons: `icon/png/favicon-*.png` and `icon/favicon.ico` carry the three-diamond mark
+   at every size, because a lone diamond in a tab or a dashboard row reads as somebody else's product.
 4. **Coral and amber are not body text on white.** They measure 3.87 and 3.72 to 1. Chips, bars, and
    large numerals only.
 5. **No em dashes or en dashes in any Ryzn copy.** Full stop, comma, or colon instead. This applies to
