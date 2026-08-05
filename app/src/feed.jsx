@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Check, Lock, Crown, Plus, Image as ImageIcon, MessageCircle, Play, FileText,
-  Upload, Heart, Eye, Send, Pin, Sparkles, Share2,
+  Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe,
 } from "lucide-react";
 import { C, F } from "./theme.js";
 import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
@@ -127,6 +127,46 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
   );
 };
 
+/**
+ * Who this post is for, on the author's own copy of it.
+ *
+ * This used to be an 8px badge wedged into the like/comment/share row, which
+ * read as a status label rather than the switch it is. It gets its own row and
+ * says what tapping does, because "make this public" is the whole reason a
+ * mentor opens their feed after posting.
+ *
+ * Rendered only where `onVisibility` is wired, which is the same thing as "this
+ * is the author looking at their own post" — `mine` also carries "don't award
+ * XP for this", which is true on other people's profiles too.
+ */
+const VisibilityRow = ({ isPublic, onChange, busy }) => (
+  <div style={{
+    display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "9px 11px",
+    borderRadius: 10, background: isPublic ? C.tealTint : "#EFEEEA",
+  }}>
+    {isPublic ? <Globe size={14} color={C.teal} /> : <Lock size={14} color={C.gray} />}
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: isPublic ? C.teal : C.ink }}>
+        {isPublic ? "Public" : "Private"}
+      </div>
+      <div style={{ fontSize: 11.5, color: C.gray, marginTop: 1, lineHeight: 1.35 }}>
+        {isPublic
+          ? "Anyone with the link can open this, and it shows on your profile."
+          : "Only your cohort, inside Ryzn. The share link won’t open for anyone else."}
+      </div>
+    </div>
+    <button type="button" disabled={busy} onClick={() => onChange(isPublic ? "cohort" : "public")}
+      style={{
+        flexShrink: 0, border: `1px solid ${isPublic ? C.teal : "#CFCDC7"}`, background: C.white,
+        cursor: busy ? "default" : "pointer", borderRadius: 999, padding: "6px 11px",
+        fontFamily: F.sans, fontWeight: 600, fontSize: 12, color: isPublic ? C.teal : C.ink,
+        opacity: busy ? 0.6 : 1, whiteSpace: "nowrap",
+      }}>
+      {busy ? "Saving…" : isPublic ? "Make private" : "Make public"}
+    </button>
+  </div>
+);
+
 /** One post. `mine` renders the mentor's own view (stats; self-likes stay blocked). */
 export const PostCard = ({
   post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
@@ -147,6 +187,7 @@ export const PostCard = ({
   const [reactionCount, setReactionCount] = useState(post.reactions ?? 0);
   const [liked, setLiked] = useState(!!reacted);
   const [liking, setLiking] = useState(false);
+  const [flipping, setFlipping] = useState(false);
 
   useEffect(() => { setCommentCount(post.comments ?? 0); }, [post.comments]);
   useEffect(() => { setReactionCount(post.reactions ?? 0); }, [post.reactions]);
@@ -239,6 +280,12 @@ export const PostCard = ({
   };
 
   const isPublic = isPublicPost(post);
+
+  const flipVisibility = async (to) => {
+    if (flipping) return;
+    setFlipping(true);
+    try { await onVisibility(post.id, to); } finally { setFlipping(false); }
+  };
 
   const share = async () => {
     if (sharing) return;
@@ -341,24 +388,12 @@ export const PostCard = ({
             padding: "7px 11px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap",
           }}>{done ? "✓ DONE" : `${post.kind === "video" ? "WATCH" : "OPEN"} · +${post.xp} XP`}</button>
         )}
-        {/* Who the link works for. On your own feed it's the switch that decides
-            it — a shareable link is exactly what "public" means now, so the
-            badge that only reported it had to become the control. */}
-        {mine && (onVisibility ? (
-          <button type="button"
-            onClick={() => onVisibility(post.id, isPublic ? "cohort" : "public")}
-            title={isPublic
-              ? "Public — anyone with the link can open this. Tap to make it private."
-              : "Private — only your cohort. Tap to make the link public."}
-            style={{
-              fontFamily: F.mono, fontSize: 8, border: "none", cursor: "pointer", letterSpacing: 0.6,
-              padding: "4px 7px", fontWeight: 700, whiteSpace: "nowrap",
-              background: isPublic ? C.tealTint : "#EFEEEA", color: isPublic ? C.teal : C.gray,
-            }}>{isPublic ? "PUBLIC" : "PRIVATE"}</button>
-        ) : post.visibility === "public" && (
-          <span style={{ fontFamily: F.mono, fontSize: 8, background: C.tealTint, color: C.teal, padding: "3px 6px", fontWeight: 700, letterSpacing: 0.6 }}>ON PROFILE</span>
-        ))}
       </div>
+
+      {/* Who the link works for. A shareable link is exactly what "public"
+          means now, so the author reads it as a sentence and flips it here
+          rather than decoding a badge. */}
+      {mine && onVisibility && <VisibilityRow isPublic={post.visibility === "public"} busy={flipping} onChange={flipVisibility} />}
 
       {commentsOpen && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
