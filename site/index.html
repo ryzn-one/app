@@ -557,6 +557,16 @@
     if (e.isIntersecting && !seen.has(e.target)) { seen.add(e.target); animate(e.target); }
   }), { threshold: .5 });
   document.querySelectorAll('[data-count]').forEach(el => io.observe(el));
+
+  // Installability: Chrome only offers to install, and only fires
+  // beforeinstallprompt, once a service worker with a fetch handler is in
+  // control. Registered from here as well as from the app so a visitor who
+  // never opens /app/ can still install from the landing page.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>

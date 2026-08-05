@@ -18,6 +18,9 @@ copyFileSync(join(root, "site", "terms.html"), join(dist, "terms.html"));
    marketing site and from /app/ produce the same app with the same icon.
    Its absence is why Chrome was drawing a generated "R" tile. */
 copyFileSync(join(root, "site", "manifest.webmanifest"), join(dist, "manifest.webmanifest"));
+/* The worker has to sit at the origin root: a worker's scope cannot rise above
+   the path it is served from, and this one controls both / and /app/. */
+copyFileSync(join(root, "site", "sw.js"), join(dist, "sw.js"));
 
 const brandingSrc = join(root, "site", "branding");
 if (existsSync(brandingSrc)) {

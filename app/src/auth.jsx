@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, FormError, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, FormError, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, BrandMark, TypingDots } from "./ui.jsx";
 import { authClient, signIn, signUp, messageFor, validateInvite, redeemInvite } from "./lib/auth-client.js";
 import { useTurnstile } from "./lib/turnstile.js";
 
@@ -27,7 +27,10 @@ export const Splash = ({ onEnter, isDesktop }) => (
     <div style={{ position: "absolute", top: "-18%", left: "50%", transform: "translateX(-50%)", width: 340, height: 340, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,.16), transparent 70%)" }} />
     <div className="splash-in" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 68, height: 68, borderRadius: 20, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.22)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 18px 40px rgba(20,10,60,.35)", marginBottom: 22 }}>
-        <Glyph color={C.white} size={30} />
+        {/* The launch screen is the app's biggest logo moment, and it was
+            showing the single diamond — the atom we use for bullets and tiers,
+            not the mark. Anyone opening the installed app saw the wrong logo. */}
+        <BrandMark color="white" size={34} />
       </div>
       <div style={{ color: C.white, fontSize: 52, fontWeight: 700, letterSpacing: -2 }}>RYZN</div>
       <div style={{ color: "#E4E1FA", fontSize: 15.5, marginTop: 6, fontWeight: 500 }}>Rise now.</div>

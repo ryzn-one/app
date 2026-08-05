@@ -45,6 +45,15 @@ function Router() {
   return hash.startsWith("#/teams") ? <RyznTeams /> : <RyznComplete />;
 }
 
+/* The worker lives at the origin root so its scope is "/", and it only exists
+   in the assembled build — the dev server serves /app/ alone, so registering
+   there would 404 on every reload. */
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  });
+}
+
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
