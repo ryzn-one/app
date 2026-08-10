@@ -208,3 +208,11 @@ export const adminRevokeInvite = (code) => api("/admin/invites", { method: "PATC
 /** Mails an already-minted code again. `to` is optional — the server falls back
     to whoever it went to last, so the row's Resend needs no retyping. */
 export const adminResendInvite = ({ code, to, name }) => api("/admin/invites", { method: "PATCH", body: { code, to, name, action: "resend" } });
+/** Erases the code row outright. Revoke is the tool for a real invitation —
+    this one is for clearing test codes out of the ledger. */
+export const adminDeleteInvite = (code) => api("/admin/invites", { method: "DELETE", body: { code } });
+/** Erases an account and everything it owns. Refused for your own account, the
+    last admin, and anyone who still owns an organisation. */
+export const adminDeleteUser = (userId) => api("/admin/users", { method: "DELETE", body: { userId } });
+/** Every live post across all authors — the console's moderation queue. */
+export const adminPosts = () => api("/posts?scope=admin");

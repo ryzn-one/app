@@ -14,6 +14,12 @@ import { inviteUrl, nameFromEmail } from "../../lib/invite-url.js";
  *   POST  { to, name, ... }                      mint one and email it
  *   PATCH { code, action:"revoke" }              kill an unclaimed code
  *   PATCH { code, action:"resend", to?, name? }  email an existing code again
+ *   DELETE { code }                              erase the row entirely
+ *
+ * Revoke and delete are not the same tool. Revoke kills a code and keeps the
+ * record of it; delete removes the row, and with it any trace of who was
+ * invited and whether they came. Revoke is the one to reach for on a real
+ * invitation — delete exists to clear test codes out of the ledger.
  *
  * Redemption still happens only in api/invites/redeem.js. Nothing here promotes
  * anyone — minting a code and claiming it stay separate operations. An admin
@@ -218,7 +224,23 @@ async function handler(request, admin) {
     return json({ ok: true, code });
   }
 
-  return fail(405, "method_not_allowed", "Use GET, POST or PATCH.");
+  if (request.method === "DELETE") {
+    let body = {};
+    try { body = await request.json(); } catch { return fail(400, "bad_request", "Expected a JSON body."); }
+
+    const code = String(body.code || "").trim().toUpperCase();
+    if (!code) return fail(400, "bad_request", "Which code?");
+
+    /* Deleting a claimed code is allowed but destroys the record of how that
+       person got in — the account keeps its role either way, since the role
+       lives on the user document, not here. Returned so the console can say
+       what it just erased rather than a bare ok. */
+    const gone = await invites.findOneAndDelete({ code });
+    if (!gone) return fail(404, "invalid_code", "No such code.");
+    return json({ ok: true, code, wasClaimed: !!gone.redeemedBy });
+  }
+
+  return fail(405, "method_not_allowed", "Use GET, POST, PATCH or DELETE.");
 }
 
 export default { fetch: withAdmin(handler) };

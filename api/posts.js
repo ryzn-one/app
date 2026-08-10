@@ -6,6 +6,7 @@ import { sideOf, hasAcceptedPair } from "../lib/matches.js";
 import { orgContext, orgMemberIds } from "../lib/orgs.js";
 import { makeSlug, originOf, isCrawler, renderPostPage, renderMissingPage } from "../lib/post-page.js";
 import { ensureHandle, RESERVED_HANDLES } from "../lib/handles.js";
+import { canAccessAdminConsole } from "../lib/admin.js";
 
 /**
  * /api/posts — mentor content, and the only thing that carries it to a mentee.
@@ -254,6 +255,28 @@ async function handler(request, user) {
     const mentorId = url.searchParams.get("mentorId");
     const scope = url.searchParams.get("scope");
     const postIdParam = url.searchParams.get("id");
+
+    /* Console moderation view: every live post, whoever wrote it. Admin-only,
+       and capped rather than paged — this is a queue for finding the one post
+       that has to come down, not a feed anybody scrolls. */
+    if (scope === "admin") {
+      if (!canAccessAdminConsole(user)) return fail(403, "forbidden", "This view is for admins.");
+      const rows = await posts.find({ deletedAt: null }).sort({ createdAt: -1 }).limit(100).toArray();
+      const ids = [...new Set(rows.map((r) => String(r.authorId)))].filter((id) => ObjectId.isValid(id));
+      const authors = ids.length
+        ? await db
+            .collection(collections.user)
+            .find({ _id: { $in: ids.map((id) => new ObjectId(id)) } }, { projection: { name: 1, email: 1 } })
+            .toArray()
+        : [];
+      const byId = new Map(authors.map((a) => [String(a._id), a]));
+      return json({
+        posts: rows.map((p) => {
+          const a = byId.get(String(p.authorId));
+          return { ...shape(p), authorName: a?.name || "—", authorEmail: a?.email || null };
+        }),
+      });
+    }
 
     /* Deep-link / share target: one post the caller is allowed to see. */
     if (postIdParam) {
@@ -536,11 +559,17 @@ async function handler(request, user) {
   if (request.method === "DELETE") {
     let _id;
     try { _id = new ObjectId(String(url.searchParams.get("id"))); } catch { return fail(400, "bad_request", "Which post?"); }
+    /* Authors delete their own; admins can take down anyone's. Moderation is
+       the one place the author-only rule has to yield — it is still a soft
+       delete, so the row survives for anyone auditing what was removed. */
+    const moderator = canAccessAdminConsole(user);
     const res = await posts.updateOne(
-      { _id, authorId: user.id, deletedAt: null },
-      { $set: { deletedAt: new Date(), pinned: false, greeting: false } }
+      moderator ? { _id, deletedAt: null } : { _id, authorId: user.id, deletedAt: null },
+      { $set: { deletedAt: new Date(), pinned: false, greeting: false, ...(moderator ? { deletedBy: user.id } : {}) } }
     );
-    if (!res.matchedCount) return fail(404, "not_found", "That post is gone, or it isn't yours.");
+    if (!res.matchedCount) {
+      return fail(404, "not_found", moderator ? "That post is already gone." : "That post is gone, or it isn't yours.");
+    }
     return json({ ok: true });
   }
 

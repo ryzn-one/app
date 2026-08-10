@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   BarChart3, Users, Send, Building2, Settings, Shield, Search, Copy, ExternalLink,
-  Plus, LogOut, RotateCcw, Eye, EyeOff, Zap, ChevronLeft,
+  Plus, LogOut, RotateCcw, Eye, EyeOff, Zap, ChevronLeft, Trash2, Newspaper, AlertTriangle,
 } from "lucide-react";
 import { C, F } from "../theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, Bar, Glyph } from "../ui.jsx";
@@ -9,6 +9,7 @@ import { useIsDesktop } from "../useIsDesktop.js";
 import {
   signIn, signOut, messageFor, redeemInvite, fetchMe,
   adminStats, adminUsers, adminInvites, adminMintInvites, adminRevokeInvite, adminResendInvite,
+  adminDeleteInvite, adminDeleteUser, adminPosts, deletePost,
 } from "../lib/auth-client.js";
 import { buildInviteUrl, copyText } from "../lib/invite-url.js";
 import { GoogleMark } from "../auth.jsx";
@@ -256,7 +257,7 @@ function Overview({ stats }) {
 }
 
 /* ————— invites ————— */
-function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
+function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderName }) {
   const [role, setRole] = useState("mentor");
   const [count, setCount] = useState(5);
   const [days, setDays] = useState(90);
@@ -417,9 +418,11 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
                   style={{ border: "none", background: C.purpleTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Send size={13} color={C.purple} /></button>
               )}
               {iv.state === "open" && (
-                <button onClick={() => onRevoke(iv.code)} title="Revoke"
+                <button onClick={() => onRevoke(iv.code)} title="Revoke — kills the code, keeps the record"
                   style={{ border: "none", background: C.coralTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><RotateCcw size={13} color={C.coral} /></button>
               )}
+              <button onClick={() => onDelete(iv)} title="Delete the row entirely"
+                style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Trash2 size={13} color={C.gray} /></button>
             </div>
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 6 }}>
               {iv.claimedBy
@@ -441,7 +444,7 @@ function Invites({ rows, onMint, onRevoke, onResend, toast, founderName }) {
 }
 
 /* ————— people ————— */
-function People({ rows, q, setQ, role, setRole }) {
+function People({ rows, q, setQ, role, setRole, onDelete, meId }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -473,6 +476,104 @@ function People({ rows, q, setQ, role, setRole }) {
             </span>
             <Chip c={u.role === "mentor" ? C.teal : u.role === "admin" ? C.amber : C.purple}
               bg={u.role === "mentor" ? C.tealTint : u.role === "admin" ? C.amberTint : C.purpleTint}>{u.role.toUpperCase()}</Chip>
+            {/* Your own row has no delete: the server refuses it anyway, and an
+                armed button you can never legitimately press is just a trap. */}
+            {u.id !== meId && (
+              <button onClick={() => onDelete(u)} title={`Delete ${u.email}`}
+                style={{ border: "none", background: C.coralTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex", flexShrink: 0 }}>
+                <Trash2 size={13} color={C.coral} />
+              </button>
+            )}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+/* ————— destructive actions —————
+   Everything below erases something a person made. Each one names exactly what
+   is about to go, and deleting an account makes you type the address first: a
+   stray click in a row of icon buttons must not be able to remove somebody. */
+function ConfirmDelete({ open, title, lines = [], confirmWord, busy, onCancel, onConfirm }) {
+  const [typed, setTyped] = useState("");
+  useEffect(() => { if (open) setTyped(""); }, [open]);
+  if (!open) return null;
+  const ready = !confirmWord || typed.trim().toLowerCase() === String(confirmWord).trim().toLowerCase();
+  return (
+    <div onClick={busy ? undefined : onCancel} style={{
+      position: "fixed", inset: 0, zIndex: 90, background: "rgba(20,16,40,.55)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: C.white, borderRadius: 18, padding: 22, width: "100%", maxWidth: 430, boxSizing: "border-box" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: C.coralTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <AlertTriangle size={17} color={C.coral} />
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: -0.3 }}>{title}</div>
+        </div>
+        {lines.map((l, i) => (
+          <div key={i} style={{ fontSize: 13.5, color: i === 0 ? C.ink : C.gray, lineHeight: 1.55, marginTop: i === 0 ? 14 : 8 }}>{l}</div>
+        ))}
+        {confirmWord && (
+          <div style={{ marginTop: 15 }}>
+            <Label>Type the address to confirm</Label>
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus spellCheck={false} autoComplete="off"
+              placeholder={confirmWord}
+              style={{
+                width: "100%", border: `1px solid ${ready ? C.teal : C.line}`, borderRadius: 12,
+                padding: "12px 13px", fontFamily: F.mono, fontSize: 13, outline: "none", marginTop: 7, boxSizing: "border-box",
+              }} />
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+          <Btn kind="soft" style={{ flex: 1 }} disabled={busy} onClick={onCancel}>Cancel</Btn>
+          <Btn style={{ flex: 1, background: ready && !busy ? C.coral : "#D9D6D0" }} disabled={!ready || busy} onClick={onConfirm}>
+            {busy ? "Deleting…" : "Delete"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ————— posts ————— */
+function Posts({ rows, loading, onDelete }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card>
+        <Label color={C.purple}>Moderation</Label>
+        <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55, marginTop: 8 }}>
+          Every live post on the platform, newest first. Removing one here hides it everywhere —
+          feed, profile and public share page — and the author is not notified. The row itself is
+          kept, so what was taken down stays auditable.
+        </div>
+      </Card>
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.line}` }}>
+          <Label>Posts · {rows.length}</Label>
+        </div>
+        {loading && <div style={{ padding: 18, fontSize: 13, color: C.gray }}>Loading…</div>}
+        {!loading && rows.length === 0 && <div style={{ padding: 18, fontSize: 13, color: C.gray }}>Nothing posted yet.</div>}
+        {rows.map((p, i) => (
+          <div key={p.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 16px", borderBottom: i < rows.length - 1 ? `1px solid ${C.line}` : "none" }}>
+            <Monogram name={p.authorName === "—" ? (p.authorEmail || "?") : p.authorName} size={30} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, lineHeight: 1.5, wordBreak: "break-word" }}>
+                {p.title ? <b>{p.title}{p.text ? " · " : ""}</b> : null}
+                {(p.text || "").slice(0, 200)}
+                {(p.text || "").length > 200 ? "…" : ""}
+                {!p.title && !p.text && <span style={{ color: C.gray }}>({p.kind || "post"} — no text)</span>}
+              </div>
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 6 }}>
+                {(p.authorName || "—").toUpperCase()}{p.authorEmail ? ` · ${p.authorEmail}` : ""} · {fmtDate(p.createdAt)}
+                {p.visibility ? ` · ${String(p.visibility).toUpperCase()}` : ""}
+              </div>
+            </div>
+            <button onClick={() => onDelete(p)} title="Delete this post"
+              style={{ border: "none", background: C.coralTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex", flexShrink: 0 }}>
+              <Trash2 size={13} color={C.coral} />
+            </button>
           </div>
         ))}
       </Card>
@@ -501,6 +602,13 @@ export default function RyznAdmin() {
   const [people, setPeople] = useState([]);
   const [q, setQ] = useState("");
   const [role, setRole] = useState("all");
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  /* One modal serves every destructive action: each caller supplies the copy
+     and the `run` that does the work, so there is exactly one place where an
+     irreversible thing can be confirmed. */
+  const [confirm, setConfirm] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   /* Runs on mount, not just after sign-in: an existing session is the common
      case when this opens in a new window. A 403 here is the real gate — the
@@ -553,6 +661,21 @@ export default function RyznAdmin() {
 
   const visiblePeople = people;
 
+  /* Posts load only when that tab is opened — it is a moderation queue nobody
+     needs on first paint, and it reads every author's feed at once. */
+  const loadPosts = async () => {
+    setPostsLoading(true);
+    try {
+      const { posts: rows } = await adminPosts();
+      setPosts(rows || []);
+    } catch (e) {
+      toast(messageFor(e, "Couldn’t load posts."));
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+  useEffect(() => { if (authed && nav === "posts") loadPosts(); /* eslint-disable-next-line */ }, [authed, nav]);
+
   const mint = async ({ role: kind, count, expiresDays, note, to, name }) => {
     try {
       const res = await adminMintInvites({ role: kind, count, expiresDays, note, to, name });
@@ -588,6 +711,81 @@ export default function RyznAdmin() {
     } catch (e) { toast(messageFor(e, "Couldn’t revoke that code.")); }
   };
 
+  /* — deletes —
+     Each `ask*` only describes the action; nothing happens until the modal's
+     Delete is pressed and `run` fires. Reloading afterwards is deliberate:
+     removing an account also revokes codes and changes the counts, so the
+     whole console has to re-read rather than patch one row locally. */
+  const runConfirm = async () => {
+    if (!confirm) return;
+    setConfirmBusy(true);
+    try {
+      await confirm.run();
+      setConfirm(null);
+    } catch (e) {
+      toast(messageFor(e, "Couldn’t delete that."));
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
+
+  const reloadAll = async () => {
+    const [{ users }, { invites: fresh }, s] = await Promise.all([
+      adminUsers({ q, role, limit: 100 }),
+      adminInvites(),
+      adminStats(),
+    ]);
+    setPeople(users);
+    setInvites(fresh);
+    setStats(s);
+  };
+
+  const askDeleteUser = (u) => setConfirm({
+    title: "Delete this account?",
+    confirmWord: u.email,
+    lines: [
+      `${u.name === "—" ? u.email : u.name} (${u.role}) will be erased, along with everything they own — profile, posts, comments, matches, messages, bookings and org seats.`,
+      "Any invitation code they claimed is revoked, not returned to the pool.",
+      "This cannot be undone.",
+    ],
+    run: async () => {
+      const res = await adminDeleteUser(u.id);
+      await reloadAll();
+      if (nav === "posts") await loadPosts();
+      const n = Object.values(res.removed || {}).reduce((a, b) => a + b, 0);
+      toast(`${res.deleted.email} deleted · ${n} record${n === 1 ? "" : "s"} removed`);
+    },
+  });
+
+  const askDeleteInvite = (iv) => setConfirm({
+    title: "Delete this code?",
+    lines: [
+      `${iv.code} will be removed from the ledger entirely.`,
+      iv.state === "claimed"
+        ? "It has been claimed — deleting it erases the record of how that person joined. Their account and role are unaffected."
+        : "Revoke instead if you only want to stop it working: that kills the code but keeps the record.",
+    ],
+    run: async () => {
+      await adminDeleteInvite(iv.code);
+      const { invites: fresh } = await adminInvites();
+      setInvites(fresh);
+      toast(`${iv.code} deleted`);
+    },
+  });
+
+  const askDeletePost = (p) => setConfirm({
+    title: "Delete this post?",
+    lines: [
+      `${p.authorName}'s post will be hidden everywhere — feed, profile and its public share link.`,
+      "The author is not notified. The row is kept so it stays auditable.",
+    ],
+    run: async () => {
+      await deletePost(p.id);
+      await loadPosts();
+      toast("Post removed");
+    },
+  });
+
   const leave = async () => {
     try { await signOut(); } catch { /* already gone */ }
     setAuthed(false);
@@ -602,14 +800,15 @@ export default function RyznAdmin() {
   if (!authed) return <AdminGate onIn={() => { setGateError(null); setAuthed(true); }} error={gateError} />;
   if (!stats) return splash("LOADING CONSOLE…");
 
-  const NAV = [["overview", "Overview", BarChart3], ["invites", "Invites", Send], ["people", "People", Users], ["teams", "Teams", Building2], ["settings", "Access", Settings]];
+  const NAV = [["overview", "Overview", BarChart3], ["invites", "Invites", Send], ["people", "People", Users], ["posts", "Posts", Newspaper], ["teams", "Teams", Building2], ["settings", "Access", Settings]];
   // Signs the invitation. The server uses the same value when it mails one.
   const founderName = me?.name || "Ryzn";
 
   const body = {
     overview: <Overview stats={stats} />,
-    invites: <Invites rows={invites} onMint={mint} onRevoke={revoke} onResend={resend} toast={toast} founderName={founderName} />,
-    people: <People rows={visiblePeople} q={q} setQ={setQ} role={role} setRole={setRole} />,
+    invites: <Invites rows={invites} onMint={mint} onRevoke={revoke} onResend={resend} onDelete={askDeleteInvite} toast={toast} founderName={founderName} />,
+    people: <People rows={visiblePeople} q={q} setQ={setQ} role={role} setRole={setRole} onDelete={askDeleteUser} meId={me?.id || null} />,
+    posts: <Posts rows={posts} loading={postsLoading} onDelete={askDeletePost} />,
     teams: (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Card>
@@ -743,8 +942,18 @@ export default function RyznAdmin() {
         </div>
       </div>
 
+      {/* Before the toast in the tree so a success message paints over it. */}
+      <ConfirmDelete
+        open={!!confirm}
+        title={confirm?.title || ""}
+        lines={confirm?.lines || []}
+        confirmWord={confirm?.confirmWord}
+        busy={confirmBusy}
+        onCancel={() => setConfirm(null)}
+        onConfirm={runConfirm}
+      />
       {toastMsg && (
-        <div className="sheet-up" style={{ position: "fixed", bottom: 22, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 90, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
+        <div className="sheet-up" style={{ position: "fixed", bottom: 22, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 95, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
           <Zap size={12} /> {toastMsg}
         </div>
       )}
