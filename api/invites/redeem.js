@@ -53,7 +53,13 @@ async function handler(request, user) {
   // An org code carries a seat as well as a role, so a mentor who already holds
   // the role still has something to claim — skipping it here would leave a
   // mentor invited by their own company permanently outside it.
-  if (user.role === grants && !peek?.orgId) {
+  //
+  // Mentee codes never take this exit. `mentee` is the default role on every
+  // new account (see the Better Auth config in lib/auth.js), so "already holds
+  // it" is true for someone who has claimed nothing at all — and returning
+  // here left the code unspent forever: still live for the next person handed
+  // the link, and never showing as claimed in the console.
+  if (grants !== "mentee" && user.role === grants && !peek?.orgId) {
     return json({ ok: true, already: true, role: grants });
   }
 
@@ -109,11 +115,16 @@ async function handler(request, user) {
       { upsert: true }
     );
   } else if (nextRole === "mentee" && !isMentorRole(user.role)) {
+    /* Scaffold a mentee profile, but never reset one. Progress used to be $set
+       unconditionally, which was safe only while the single caller was a
+       brand-new account. An existing mentee claiming a second code — their
+       company seating them in its org, most likely — would have had their
+       week, streak, XP and badges wiped by accepting the invitation. */
     await db.collection(collections.profiles).updateOne(
       { userId: user.id },
       {
-        $set: {
-          role: "mentee",
+        $set: { role: "mentee", updatedAt: new Date() },
+        $setOnInsert: {
           week: 1,
           streak: 0,
           xp: 0,
@@ -121,7 +132,6 @@ async function handler(request, user) {
           mentorUserId: null,
           supportMentorIds: [],
           earned: {},
-          updatedAt: new Date(),
         },
         $unset: { impact: "", tier: "", mentorRank: "", cohort: "", greetingUploaded: "", capacity: "" },
       },

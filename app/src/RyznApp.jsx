@@ -13,6 +13,7 @@ import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
 import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
 import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
+import { stashPendingInvite, readPendingInvite, claimPendingInvite } from "./lib/pending-invite.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen, MentorDetailSheet } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
@@ -243,12 +244,30 @@ export default function RyznComplete() {
     }
   }, []);
 
+  /* Hold an arriving code somewhere a page load cannot reach: "Continue with
+     Google" returns to /app/ with the hash stripped, and the sign-in screen is
+     equally a place someone lands from an invitation link. Both are settled by
+     settleInvite rather than by the screen they happened to arrive on. */
+  useEffect(() => { if (inviteCode) stashPendingInvite(inviteCode); }, [inviteCode]);
+
+  /* Spend a stashed code now that there is a session to spend it with, and
+     re-read /api/me if it changed anything — a claim can flip the role, and
+     every screen below branches on it. Returns the session either way. */
+  const settleInvite = useCallback(async (me) => {
+    if (!me || !readPendingInvite()) return me;
+    const claimed = await claimPendingInvite();
+    if (!claimed?.ok || claimed.already) return me;
+    return (await loadSession()) || me;
+  }, [loadSession]);
+
   /* Onboarding is one-time. /api/me resolves the flag from profile / answers /
      a fresh user doc (not cookieCache), so a completed setup never restarts. */
   useEffect(() => {
     let alive = true;
     (async () => {
-      const me = await loadSession();
+      // Claim before routing: coming back from Google, this is the first moment
+      // a session exists, and the role it grants decides where they land.
+      const me = await settleInvite(await loadSession());
       if (!alive) return;
       if (me) {
         if (isOnboardingDone(me)) { applyMe(me); setPhase("app"); }
@@ -257,7 +276,7 @@ export default function RyznComplete() {
       setBooting(false);
     })();
     return () => { alive = false; };
-  }, [loadSession, applyMe]);
+  }, [loadSession, applyMe, settleInvite]);
 
   /* — roster —
      Loaded when the match deck is about to show. Empty is a valid result: an
@@ -813,13 +832,15 @@ export default function RyznComplete() {
       case "welcome": return <Welcome role={role} go={setStage} />;
       case "register": return <Register role={role} go={setStage} initialInvite={inviteCode} onDone={async () => {
         addXp(10);
-        const me = await loadSession();
+        const me = await settleInvite(await loadSession());
         // Returning accounts that already finished setup skip the AI chat.
         if (isOnboardingDone(me)) await enterApp(me);
         else setStage("chat");
       }} />;
       case "login": return <Login role={role} go={setStage} onDone={async () => {
-        const me = await loadSession();
+        // Someone can arrive from an invitation link already holding an
+        // account and sign in rather than register — the code is still theirs.
+        const me = await settleInvite(await loadSession());
         // Setup is one-time — never re-open the chat for a finished account.
         if (isOnboardingDone(me)) await enterApp(me);
         else setStage("chat");

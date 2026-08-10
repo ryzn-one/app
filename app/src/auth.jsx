@@ -9,6 +9,7 @@ import {
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, FormError, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, BrandMark, TypingDots } from "./ui.jsx";
 import { authClient, signIn, signUp, messageFor, validateInvite, redeemInvite } from "./lib/auth-client.js";
+import { stashPendingInvite, clearPendingInvite } from "./lib/pending-invite.js";
 import { useTurnstile } from "./lib/turnstile.js";
 
 /* ————————————————— JOURNEY: AUTH —————————————————
@@ -177,9 +178,27 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
       );
       if (error) throw error;
 
-      // Mentors are promoted only by an atomic server-side claim of the code.
-      // If this throws, the account still exists — they can retry another code.
-      if (role === "mentor") await redeemInvite(inv.trim());
+      /* Claim the invitation — mentee codes included. This ran for mentors
+         only, on the reasoning that a mentee needs no promotion: `mentee` is
+         already the default role, so the sign-up looked like it worked. What
+         it skipped was everything else the claim does — spending the code so
+         it stops working for the next person who gets the link, recording who
+         accepted, and seating a company invite in the org that sent it. */
+      const code = inv.trim();
+      if (code) {
+        // This path spends the code directly, so nothing is left for the
+        // stash-based claim on the next boot to retry.
+        clearPendingInvite();
+        try {
+          await redeemInvite(code);
+        } catch (e) {
+          // The account exists either way. A mentor whose claim fails would
+          // land on the mentee side without being told, so surface it and let
+          // them retry; a mentee is already where the code would have put them.
+          if (role === "mentor") throw e;
+          console.error("[ryzn] mentee invite claim failed:", e);
+        }
+      }
 
       onDone();
     } catch (e) {
@@ -189,7 +208,13 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
     }
   };
 
-  const google = () => signIn.social({ provider: "google", callbackURL: "/app/" });
+  /* Google leaves the app and comes back to /app/ with no hash, so a code held
+     only in this component dies on the round trip. Stash it first; RyznApp
+     claims it on the way back, once there is a session to claim it with. */
+  const google = () => {
+    stashPendingInvite(inv.trim());
+    signIn.social({ provider: "google", callbackURL: "/app/" });
+  };
 
   const inviteBadge = {
     idle: null,
