@@ -45,7 +45,7 @@ const roleLabel = (role) => {
 async function deliver({ invites, code, to, name, founder, role = "mentor" }) {
   const seat = GRANTABLE.has(role) ? role : "mentor";
   const url = inviteUrl({ code, name, founder, role: roleLabel(seat) });
-  // Persist who this seat is for even if the send fails — Resend and the
+  // Persist who this seat is for even if the send fails — Postmark and the
   // personalized link both need sentName later.
   await invites.updateOne(
     { code },
@@ -54,15 +54,24 @@ async function deliver({ invites, code, to, name, founder, role = "mentor" }) {
   try {
     const msg = inviteEmail({ name, url, founder, role: seat });
     const res = await sendEmail({ to, ...msg });
+
+    /* delivered:false means no provider token is configured — the mail was
+       written to the log, not sent. That is a failed send and has to be
+       recorded as one. Stamping sentAt here regardless (as this did) left a
+       row indistinguishable from a real delivery: the console showed a sent
+       date, `npm run invites:status` agreed, and nobody had the invitation.
+       A misconfigured mailer must not be able to look like a delivered one. */
+    if (!res.delivered) {
+      const sendError = "No email provider configured — the invitation was logged, not sent.";
+      await invites.updateOne({ code }, { $set: { lastSendError: sendError } });
+      return { sent: false, url, sendError };
+    }
+
     await invites.updateOne(
       { code },
       { $set: { sentAt: new Date(), lastSendError: null }, $inc: { sentCount: 1 } }
     );
-    // delivered:false means no provider key is configured — the mail was logged,
-    // not sent. Say so rather than reporting a success that never left the box.
-    return res.delivered
-      ? { sent: true, url }
-      : { sent: false, url, sendError: "No email provider configured — the invitation was logged, not sent." };
+    return { sent: true, url, provider: res.provider };
   } catch (err) {
     const sendError = String(err?.message || err).slice(0, 300);
     await invites.updateOne({ code }, { $set: { lastSendError: sendError } });
