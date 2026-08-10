@@ -8,6 +8,11 @@ const dist = join(root, "dist");
 mkdirSync(dist, { recursive: true });
 copyFileSync(join(root, "site", "index.html"), join(dist, "index.html"));
 copyFileSync(join(root, "site", "mentor-invite.html"), join(dist, "mentor-invite.html"));
+/* Mentees get their own page. They used to land on mentor-invite.html with
+   ?role=mentee, which rewrote two lines of copy and left the rest — Impact
+   Score, the global mentor leaderboard, "one active mentee at a time" — pitching
+   a student on being a mentor. */
+copyFileSync(join(root, "site", "mentee-invite.html"), join(dist, "mentee-invite.html"));
 /* site/invite.html was a byte-identical second copy of the invite page, shipped
    alongside it. Two files meant every fix had to be applied twice or they drifted
    apart silently. It's gone; vercel.json redirects /invite.html here so any link

@@ -29,6 +29,7 @@ export function buildInviteUrl({ code, email, name, role, orgName, adminName, pr
     explicit ||
     (nameGuess ? nameGuess.charAt(0).toUpperCase() + nameGuess.slice(1) : "");
 
+  const isMentee = String(role || "").toLowerCase() === "mentee";
   const params = new URLSearchParams();
   if (code) params.set("code", code);
   if (display) params.set("name", display);
@@ -37,11 +38,13 @@ export function buildInviteUrl({ code, email, name, role, orgName, adminName, pr
   if (role) params.set("role", role);
   if (preview) params.set("preview", "1");
   if (code && !preview) {
-    const roleQ = String(role || "").toLowerCase() === "mentee" ? "&role=mentee" : "";
+    const roleQ = isMentee ? "&role=mentee" : "";
     params.set("claim", `${origin}/app/#/join?code=${encodeURIComponent(code)}${roleQ}`);
   }
 
-  return `${origin}/mentor-invite.html?${params.toString()}`;
+  // Two pages, one query shape. A mentee sent to mentor-invite.html reads a
+  // pitch about Impact Score and holding a roster seat, which is not the offer.
+  return `${origin}/${isMentee ? "mentee-invite" : "mentor-invite"}.html?${params.toString()}`;
 }
 
 export function copyText(text) {
