@@ -11,7 +11,7 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
-import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
+import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, amplifyPost, unamplifyPost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
 import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
 import { stashPendingInvite, readPendingInvite, claimPendingInvite } from "./lib/pending-invite.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
@@ -21,6 +21,7 @@ import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, Ment
 import { MentorDash, MenteeDetailScreen, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
 import { SessionsScreen } from "./sessions.jsx";
 import { ExploreScreen } from "./explore.jsx";
+import { NetworkScreen } from "./network.jsx";
 import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
@@ -196,6 +197,10 @@ export default function RyznComplete() {
   const [watched, setWatched] = useState({});
   const [reacted, setReacted] = useState({});
   const [mentorFeed, setMentorFeed] = useState([]);
+  /* Posts by other mentors that this mentor put in their own Orbit. Kept apart
+     from `mentorFeed` because they are not theirs to edit, pin or delete — only
+     to stop relaying. A mentee's Orbit gets the two already merged server-side. */
+  const [relayed, setRelayed] = useState([]);
   const [highlightPostId, setHighlightPostId] = useState(null);
   const [menteeAdds, setMenteeAdds] = useState(0);
   const [program, setProgram] = useState({ phases: [], completedPhaseIds: [] });
@@ -215,7 +220,7 @@ export default function RyznComplete() {
   const resetAppState = () => {
     setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false);
     setMidwayEarned(false); setShowMidway(false); setJustEarnedId(null);
-    setWatched({}); setReacted({}); setMenteeAdds(0);
+    setWatched({}); setReacted({}); setMenteeAdds(0); setRelayed([]);
     setIntroTourOpen(false); setSpotlightTab(null); introCheckedRef.current = false;
   };
 
@@ -343,10 +348,11 @@ export default function RyznComplete() {
      useState maps wiped by every refresh. */
   const mentorId = user?.mentorId ?? null;
   const loadFeed = useCallback(async () => {
-    if (role === "mentee" && !mentorId) { setMentorFeed([]); return; }
+    if (role === "mentee" && !mentorId) { setMentorFeed([]); setRelayed([]); return; }
     try {
-      const { posts, viewerState } = await fetchPosts(role === "mentee" ? { mentorId } : {});
+      const { posts, amplified, viewerState } = await fetchPosts(role === "mentee" ? { mentorId } : {});
       setMentorFeed(posts || []);
+      setRelayed(amplified || []);
       setWatched(Object.fromEntries((viewerState?.watched || []).map(id => [id, true])));
       setReacted(Object.fromEntries((viewerState?.reacted || []).map(id => [id, true])));
     } catch (err) {
@@ -759,6 +765,17 @@ export default function RyznComplete() {
     catch (e) { toast(e.message || "Couldn’t delete that."); }
   };
 
+  /* The relay toggle as it appears on your own Feed tab, where everything shown
+     is already in your Orbit — so this is almost always the "remove" direction.
+     It still honours `next` rather than assuming, because the card stays on
+     screen until loadFeed answers. Re-throws so PostCard can restore its own
+     button on failure. */
+  const setRelaying = async (post, next) => {
+    await (next ? amplifyPost(post.id) : unamplifyPost(post.id));
+    await loadFeed();
+    toast(next ? "Added to your Orbit" : "Removed from your Orbit");
+  };
+
   /* The greeting is a pinned video post like any other — that's what makes it
      show up in a mentee's Orbit. It used to set a boolean and nothing else. */
   const uploadGreeting = async (media) => {
@@ -819,7 +836,7 @@ export default function RyznComplete() {
   const navTo = (to) => {
     setOverlay(null);
     // Sessions is a tab on the mentor side and an overlay on the mentee side.
-    const asOverlay = ["cohort", "dm", "orbit", "board", "explore"].includes(to)
+    const asOverlay = ["cohort", "dm", "orbit", "board", "explore", "network"].includes(to)
       || (to === "sessions" && role === "mentee");
     if (asOverlay) setTimeout(() => setOverlay(to), 60);
     else setTab(to);
@@ -931,6 +948,16 @@ export default function RyznComplete() {
         }}
       />
     );
+    if (overlay === "network") return (
+      <NetworkScreen
+        back={() => setOverlay(null)}
+        toast={toast}
+        cohortSize={(user.cohort || []).length}
+        /* Adding or dropping a post there changes what this mentor's own Feed
+           tab lists, so the shared copy is re-read rather than patched twice. */
+        onAmplifyChange={loadFeed}
+      />
+    );
     if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId} />;
     if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
     if (overlay === "course") return (
@@ -978,7 +1005,7 @@ export default function RyznComplete() {
     }
     switch (tab) {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
-      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} highlightPostId={highlightPostId} />;
+      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}

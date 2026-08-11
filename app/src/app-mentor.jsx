@@ -4,7 +4,7 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2
+  X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2, Repeat2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
@@ -196,6 +196,19 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>Explore mentees</div>
           <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Search by name, track, or goal</div>
+        </div>
+        <ChevronRight size={16} color={C.gray} />
+      </div>
+    </Card>
+    {/* The other side of the directory. Everything above this line runs across
+        the mentor/mentee line; this is where a mentor finds the other mentors,
+        follows them, and picks up posts worth passing to their own cohort. */}
+    <Card onClick={() => openOverlay("network")} style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 36, height: 36, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Repeat2 size={16} color={C.teal} /></div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Mentor network</div>
+          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Follow mentors · add their posts to your Orbit</div>
         </div>
         <ChevronRight size={16} color={C.gray} />
       </div>

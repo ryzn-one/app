@@ -431,7 +431,12 @@ export const EmptyRoster = ({ title, body, action }) => (
   </div>
 );
 
-export const MentorDetailSheet = ({ m, close, footer }) => {
+/**
+ * `onAmplify(post, next)` is wired only by the mentor network — it's what turns
+ * a peer's profile into somewhere you can pick posts out of, and its absence is
+ * what keeps that control off the mentee-facing version of this same sheet.
+ */
+export const MentorDetailSheet = ({ m, close, footer, onAmplify }) => {
   const [posts, setPosts] = useState([]);
   const [feedLoading, setFeedLoading] = useState(!!m?.id);
   const [contentTab, setContentTab] = useState("feed");
@@ -521,6 +526,7 @@ export const MentorDetailSheet = ({ m, close, footer }) => {
           authorId={m.id}
           view={contentTab}
           readOnly
+          onAmplify={onAmplify}
           emptyText={`${(m.name || "They").split(" ")[0]} hasn’t put anything on their profile yet.`}
         />
       )}

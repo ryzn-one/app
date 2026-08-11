@@ -74,6 +74,27 @@ export const fetchRoster = (params = {}) => {
     so the directory doesn't hide your own cohort from you. */
 export const exploreRoster = ({ q } = {}) => fetchRoster({ include: "all", q });
 
+/* ————— The mentor network —————
+   Mentor ↔ mentor, which is a different relationship from mentor ↔ mentee: a
+   follow is one-sided, needs no handshake, and commits neither side to a
+   pairing. It decides one thing — whose posts land in your network feed. */
+
+/** Other mentors, with `following` / `followsYou` / `followers` per row. */
+export const fetchMentorPeers = ({ q } = {}) => fetchRoster({ side: "mentors", q });
+export const followMentor = (mentorId) =>
+  api("/roster", { method: "POST", body: { mentorId, action: "follow" } });
+export const unfollowMentor = (mentorId) =>
+  api("/roster", { method: "POST", body: { mentorId, action: "unfollow" } });
+
+/** Public posts from the mentors you follow. Each carries `amplified`: whether
+    you've already put it in your own Orbit. */
+export const fetchNetworkFeed = () => api("/posts?scope=following");
+/** Put another mentor's public post into your Orbit — your mentees read it
+    alongside your own. A pointer, not a copy: the byline, the counters and the
+    delete button all stay with whoever wrote it. Idempotent. */
+export const amplifyPost = (id) => api("/posts", { method: "PATCH", body: { id, action: "amplify" } });
+export const unamplifyPost = (id) => api("/posts", { method: "PATCH", body: { id, action: "unamplify" } });
+
 /* ————— Matches —————
    A pairing is one shared document, so both sides read the same truth and it
    survives a refresh. Opening a match against someone who already asked you

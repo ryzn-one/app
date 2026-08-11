@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Check, Lock, Crown, Plus, Image as ImageIcon, MessageCircle, Play, FileText,
-  Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe,
+  Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe, Repeat2,
 } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, VideoCaptureModal } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, VideoCaptureModal, firstNameOf } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
 import { sharePostLink, isPublicPost } from "./lib/share.js";
@@ -167,10 +167,30 @@ const VisibilityRow = ({ isPublic, onChange, busy }) => (
   </div>
 );
 
-/** One post. `mine` renders the mentor's own view (stats; self-likes stay blocked). */
+/**
+ * A post another mentor pulled into this Orbit.
+ *
+ * Sits above the byline rather than replacing it, because the byline is still
+ * true: the post has one author, and relaying it does not make it somebody
+ * else's. This line says who put it in front of you and nothing more.
+ */
+const RelayRow = ({ by }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, color: C.purple }}>
+    <Repeat2 size={12} color={C.purple} />
+    {(by?.name ? `${by.name.split(" ")[0].toUpperCase()} ADDED THIS TO YOUR ORBIT` : "ADDED TO YOUR ORBIT")}
+  </div>
+);
+
+/**
+ * One post. `mine` renders the mentor's own view (stats; self-likes stay blocked).
+ *
+ * `onAmplify(post, next)` is the mentor-network control: it appears only where
+ * a caller wired it, which is the same thing as "the viewer is a mentor looking
+ * at a peer's public post". `amplified` is the current state of that toggle.
+ */
 export const PostCard = ({
   post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
-  onAuthor, onShare, onVisibility, toast, highlight,
+  onAuthor, onShare, onVisibility, onAmplify, amplified, toast, highlight,
 }) => {
   const meta = KIND_META[post.kind] || KIND_META.status;
   const Icon = meta.icon;
@@ -188,10 +208,13 @@ export const PostCard = ({
   const [liked, setLiked] = useState(!!reacted);
   const [liking, setLiking] = useState(false);
   const [flipping, setFlipping] = useState(false);
+  const [relayed, setRelayed] = useState(!!amplified);
+  const [relaying, setRelaying] = useState(false);
 
   useEffect(() => { setCommentCount(post.comments ?? 0); }, [post.comments]);
   useEffect(() => { setReactionCount(post.reactions ?? 0); }, [post.reactions]);
   useEffect(() => { setLiked(!!reacted); }, [reacted]);
+  useEffect(() => { setRelayed(!!amplified); }, [amplified]);
 
   const loadThread = async () => {
     setLoadingComments(true);
@@ -313,11 +336,30 @@ export const PostCard = ({
 
   const openAuthor = () => onAuthor?.({ id: authorId || post.authorId, name: author });
 
+  /* Optimistic, then corrected by the server's answer — the write is
+     idempotent, so a double tap costs nothing and a failure just puts the
+     button back. */
+  const toggleRelay = async () => {
+    if (relaying) return;
+    const next = !relayed;
+    setRelaying(true);
+    setRelayed(next);
+    try {
+      await onAmplify(post, next);
+    } catch (e) {
+      setRelayed(!next);
+      toast?.(e.message || "Couldn’t change that.");
+    } finally {
+      setRelaying(false);
+    }
+  };
+
   return (
     <Card style={{
       padding: 14,
       ...(highlight ? { boxShadow: `0 0 0 2px ${C.purple}` } : null),
     }}>
+      {post.amplifiedBy && <RelayRow by={post.amplifiedBy} />}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button type="button" onClick={openAuthor} disabled={!onAuthor}
           style={{ border: "none", background: "none", padding: 0, cursor: onAuthor ? "pointer" : "default", flexShrink: 0 }}>
@@ -394,6 +436,37 @@ export const PostCard = ({
           means now, so the author reads it as a sentence and flips it here
           rather than decoding a badge. */}
       {mine && onVisibility && <VisibilityRow isPublic={post.visibility === "public"} busy={flipping} onChange={flipVisibility} />}
+
+      {/* The mentor-network control. Given its own row for the same reason
+          VisibilityRow has one: "my cohort will read this" is a decision about
+          other people, not a toggle to squeeze in beside the like button. */}
+      {onAmplify && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "9px 11px",
+          borderRadius: 10, background: relayed ? C.purpleTint : "#EFEEEA",
+        }}>
+          <Repeat2 size={14} color={relayed ? C.purple : C.gray} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: relayed ? C.purple : C.ink }}>
+              {relayed ? "In your Orbit" : "Not in your Orbit"}
+            </div>
+            <div style={{ fontSize: 11.5, color: C.gray, marginTop: 1, lineHeight: 1.35 }}>
+              {relayed
+                ? `Your mentees see this alongside your own posts, credited to ${firstNameOf(author)}.`
+                : "Add it and every mentee in your cohort reads it — the post stays theirs."}
+            </div>
+          </div>
+          <button type="button" disabled={relaying} onClick={toggleRelay}
+            style={{
+              flexShrink: 0, border: `1px solid ${relayed ? C.purple : "#CFCDC7"}`, background: C.white,
+              cursor: relaying ? "default" : "pointer", borderRadius: 999, padding: "6px 11px",
+              fontFamily: F.sans, fontWeight: 600, fontSize: 12, color: relayed ? C.purple : C.ink,
+              opacity: relaying ? 0.6 : 1, whiteSpace: "nowrap",
+            }}>
+            {relaying ? "Saving…" : relayed ? "Remove" : "Add to Orbit"}
+          </button>
+        </div>
+      )}
 
       {commentsOpen && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
@@ -665,7 +738,10 @@ function GreetingCard({ onDone, userId }) {
 
 /* ————————————————— MENTOR: your feed ————————————————— */
 
-export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadGreeting, toast, onAuthor, onVisibility, highlightPostId }) => {
+export const MentorFeed = ({
+  u, name, userId, feed, amplified = [], publish, greetingUp, uploadGreeting,
+  toast, onAuthor, onVisibility, onAmplify, openNetwork, highlightPostId,
+}) => {
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
   const reach = u.cohort ? u.cohort.length : 0;
@@ -687,6 +763,39 @@ export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadG
         <div data-tour="mentor-feed-compose">
           <Composer name={name} userId={userId} onPublish={publish} />
         </div>
+
+        {/* The other half of the feed: what other mentors wrote and you chose
+            to put in front of your cohort. Kept in its own section rather than
+            mixed into your posts — your mentees see one Orbit, but you should
+            always be able to tell what you wrote from what you relayed. */}
+        {openNetwork && (
+          <Card onClick={openNetwork} style={{ padding: 13, cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 34, height: 34, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Repeat2 size={15} color={C.purple} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13.5 }}>Mentor network</div>
+                <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>
+                  {amplified.length
+                    ? `${amplified.length} post${amplified.length === 1 ? "" : "s"} from other mentors in your Orbit`
+                    : "Follow other mentors and add their posts to your Orbit"}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {amplified.length > 0 && (
+          <>
+            <Label color={C.purple}>From mentors you follow · {amplified.length}</Label>
+            {amplified.map(p => (
+              <PostCard key={p.id} post={{ ...p, amplifiedBy: null }} author={p.authorName} authorId={p.authorId}
+                tier toast={toast} onAuthor={onAuthor} onAmplify={onAmplify} amplified />
+            ))}
+            <Label>Your own posts · {feed.length}</Label>
+          </>
+        )}
 
         {feed.length === 0 ? (
           <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
@@ -718,10 +827,15 @@ export const MentorFeed = ({ u, name, userId, feed, publish, greetingUp, uploadG
  *
  * `readOnly` drops the XP buttons and reactions — a mentor looking at their own
  * profile can't collect XP for their own content.
+ *
+ * `authorName` / `authorId` are the whose-feed-is-this fallback. A post that
+ * carries its own author — anything a mentor relayed from a peer — keeps it,
+ * because attributing someone else's post to the mentor showing it would be a
+ * lie the amplification feature exists to avoid.
  */
 export const ContentTabs = ({
   feed = [], authorName, authorId, view, watched = {}, onWatch, reacted = {}, onReact,
-  emptyText, readOnly, toast, onAuthor, highlightPostId,
+  emptyText, readOnly, toast, onAuthor, onAmplify, highlightPostId,
 }) => {
   const resources = feed.filter(p => p.kind === "video" || p.kind === "resource");
   const list = view === "feed" ? feed : resources;
@@ -735,10 +849,13 @@ export const ContentTabs = ({
   );
 
   if (view === "feed") return list.map(p => (
-    <PostCard key={p.id} post={p} author={authorName} authorId={authorId || p.authorId} tier mine={readOnly}
+    <PostCard key={p.id} post={p} author={p.authorName || authorName} authorId={p.authorId || authorId}
+      tier mine={readOnly && !p.authorName}
       reacted={!!reacted[p.id]} onReact={onReact}
       onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]}
-      toast={toast} onAuthor={onAuthor} highlight={highlightPostId === p.id} />
+      toast={toast} onAuthor={onAuthor}
+      onAmplify={onAmplify} amplified={p.amplified}
+      highlight={highlightPostId === p.id} />
   ));
 
   return list.map(p => {

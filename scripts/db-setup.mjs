@@ -109,6 +109,16 @@ const indexes = [
   // someone twice and inflate the roster count.
   ["org_members", { orgId: 1, userId: 1 }, { unique: true, name: "org_user_unique" }],
   ["org_members", { userId: 1 }, { name: "userId" }],
+  // Mentor → mentor follows. Unique per direction: following is one-sided, so
+  // (a→b) and (b→a) are two different documents and both may exist.
+  ["follows", { followerId: 1, followingId: 1 }, { unique: true, name: "follow_unique" }],
+  ["follows", { followingId: 1 }, { name: "followers" }],
+  // One pointer per (mentor, post) into another mentor's Orbit. Unique so a
+  // double tap on "Add to my Orbit" can't put the same post there twice.
+  ["amplified_posts", { mentorId: 1, postId: 1 }, { unique: true, name: "mentor_post_unique" }],
+  ["amplified_posts", { mentorId: 1, createdAt: -1 }, { name: "mentor_recent" }],
+  // Read when a mentee opens an amplified post: which mentors relayed it.
+  ["amplified_posts", { postId: 1 }, { name: "post" }],
 ];
 
 for (const [col, spec, opts] of indexes) {

@@ -2,8 +2,9 @@ import { ObjectId } from "mongodb";
 import { handleUpload } from "@vercel/blob/client";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser, getUser } from "../lib/http.js";
-import { sideOf, hasAcceptedPair } from "../lib/matches.js";
+import { sideOf, hasAcceptedPair, acceptedFor } from "../lib/matches.js";
 import { orgContext, orgMemberIds } from "../lib/orgs.js";
+import { followingIds, amplifiedBy, amplifiedSet, amplifiedByAny } from "../lib/network.js";
 import { makeSlug, originOf, isCrawler, renderPostPage, renderMissingPage } from "../lib/post-page.js";
 import { ensureHandle, RESERVED_HANDLES } from "../lib/handles.js";
 import { canAccessAdminConsole } from "../lib/admin.js";
@@ -11,8 +12,9 @@ import { canAccessAdminConsole } from "../lib/admin.js";
 /**
  * /api/posts — mentor content, and the only thing that carries it to a mentee.
  *
- *   GET    /api/posts                own posts (mentor)
+ *   GET    /api/posts                own posts (mentor), plus what they amplified
  *   GET    /api/posts?mentorId=…     that mentor's cohort posts (mentee, paired only)
+ *   GET    /api/posts?scope=following  public posts from the mentors you follow
  *   GET    /api/posts?id=…           one post (access-checked; for share deep links)
  *   GET    /api/posts?id=…&comments=1  comment thread for that post
  *   GET    /api/posts?share=<slug>   the public page — no session
@@ -20,6 +22,9 @@ import { canAccessAdminConsole } from "../lib/admin.js";
  *   POST   /api/posts                publish
  *   POST   /api/posts?upload=1       Vercel Blob upload token
  *   PATCH  /api/posts {id, action}   record a view, reaction, comment, or comment_react
+ *   PATCH  /api/posts {id, action:"amplify"|"unamplify"}
+ *                                    put another mentor's public post into your
+ *                                    own Orbit, or take it back out
  *   PATCH  /api/posts {id, …fields}  edit / pin / change visibility (author only)
  *   DELETE /api/posts?id=…           soft delete (author only)
  *
@@ -166,22 +171,86 @@ async function withSlugs(db, rows) {
 }
 
 /**
- * Author, accepted mentee of the author, or org peer reading a profile-visible
- * post. Same gate for deep links, reactions, and comments — a share link is not
- * a back door around pairing.
+ * Author, accepted mentee of the author, org peer, mentor peer, or a mentee
+ * whose own mentor amplified it. Same gate for deep links, reactions, and
+ * comments — a share link is not a back door around pairing.
  */
 async function canAccessPost(db, user, post) {
   if (!post || post.deletedAt) return false;
   if (String(post.authorId) === String(user.id)) return true;
   if (await hasAcceptedPair({ menteeId: user.id, mentorId: post.authorId })) return true;
-  if (post.visibility === "public") {
-    const ctx = await orgContext(db, user.id);
-    if (ctx?.org?.orbitActive) {
-      const members = await orgMemberIds(db, ctx.org._id);
-      if (members.includes(String(post.authorId))) return true;
-    }
+  if (post.visibility !== "public") return false;
+
+  /* A public post already renders for a stranger at ryzn.one/{handle}/{slug}.
+     Mentors are invite-only accounts, so reading and engaging with a peer's
+     public post in-app grants nothing the logged-out web page doesn't — and it
+     is what the mentor network is built on. Mentees stay out of this branch:
+     for them a post still has to arrive through someone they're paired with. */
+  if (sideOf(user) === "mentor") return true;
+
+  const ctx = await orgContext(db, user.id);
+  if (ctx?.org?.orbitActive) {
+    const members = await orgMemberIds(db, ctx.org._id);
+    if (members.includes(String(post.authorId))) return true;
   }
+
+  /* Their own mentor put it in their Orbit. The pairing is still what carries
+     it — the amplification only says which post travelled. */
+  const mentorIds = (await acceptedFor(user.id, "mentee")).map((m) => m.mentorId);
+  if (await amplifiedByAny(db, post._id, mentorIds)) return true;
+
   return false;
+}
+
+/**
+ * Loads the posts a mentor has amplified, shaped for a reader.
+ *
+ * Re-checks `visibility` and `deletedAt` on every read rather than trusting the
+ * amplification record: the author can make a post private or delete it long
+ * after a peer relayed it, and the pointer must not outlive the permission that
+ * created it.
+ */
+async function amplifiedFeed(db, mentorId, { mentorName = null } = {}) {
+  const rows = await amplifiedBy(db, mentorId);
+  if (!rows.length) return [];
+
+  const posts = await db
+    .collection(collections.posts)
+    .find({ _id: { $in: rows.map((r) => r.postId) }, deletedAt: null, visibility: "public" })
+    .toArray();
+  if (!posts.length) return [];
+
+  const nameById = await namesFor(db, posts.map((p) => p.authorId));
+  await withSlugs(db, posts);
+  const addedAt = new Map(rows.map((r) => [String(r.postId), r.createdAt]));
+  const byId = new Map(posts.map((p) => [String(p._id), p]));
+
+  // Amplification order, not publication order: a mentor relaying a two-month-
+  // old post is putting it in front of their cohort today.
+  return rows
+    .map((r) => byId.get(String(r.postId)))
+    .filter(Boolean)
+    .map((p) => ({
+      ...shape(p),
+      authorName: nameById.get(String(p.authorId)) || "—",
+      // Never inherited: a pin belongs to the author's own feed, and the
+      // greeting is the introduction to *that* mentor, not to this one.
+      pinned: false,
+      greeting: false,
+      amplifiedBy: { id: String(mentorId), name: mentorName },
+      amplifiedAt: addedAt.get(String(p._id)) ?? p.createdAt,
+    }));
+}
+
+/** Display names for a set of author ids, as a Map keyed by string id. */
+async function namesFor(db, ids) {
+  const unique = [...new Set(ids.map(String))].filter((id) => ObjectId.isValid(id));
+  if (!unique.length) return new Map();
+  const rows = await db
+    .collection(collections.user)
+    .find({ _id: { $in: unique.map((id) => new ObjectId(id)) } }, { projection: { name: 1 } })
+    .toArray();
+  return new Map(rows.map((u) => [String(u._id), u.name]));
 }
 
 const shapeComment = (c, nameById, viewerId) => ({
@@ -204,13 +273,7 @@ async function loadComments(db, postId, viewerId) {
     .sort({ createdAt: 1 })
     .limit(100)
     .toArray();
-  const authorIds = [...new Set(rows.map((r) => String(r.authorId)))].filter(ObjectId.isValid);
-  const authors = authorIds.length
-    ? await db.collection(collections.user)
-        .find({ _id: { $in: authorIds.map((id) => new ObjectId(id)) } }, { projection: { name: 1 } })
-        .toArray()
-    : [];
-  const nameById = new Map(authors.map((a) => [String(a._id), a.name]));
+  const nameById = await namesFor(db, rows.map((r) => r.authorId));
   return rows.map((c) => shapeComment(c, nameById, viewerId));
 }
 
@@ -228,7 +291,15 @@ async function viewerState(db, userId, postIds) {
   };
 }
 
-async function readFeed(db, { authorId, viewer, cohortOnly }) {
+/**
+ * One mentor's Orbit as somebody reads it.
+ *
+ * `merge` folds in what the mentor amplified from their peers, which is what
+ * makes "put this in my Orbit" mean anything to a mentee. The mentor's own view
+ * keeps the two apart instead — their feed is the things they wrote, and what
+ * they relayed is a section they can take back down.
+ */
+async function readFeed(db, { authorId, viewer, cohortOnly, merge = false, mentorName = null }) {
   const filter = { authorId: String(authorId), deletedAt: null };
   if (cohortOnly) filter.visibility = { $in: ["cohort", "public"] };
   const rows = await db
@@ -240,8 +311,21 @@ async function readFeed(db, { authorId, viewer, cohortOnly }) {
     .limit(100)
     .toArray();
 
-  const posts = (await withSlugs(db, rows)).map(shape);
-  return { posts, viewerState: await viewerState(db, viewer, rows.map((r) => r._id)) };
+  const own = (await withSlugs(db, rows)).map(shape);
+  const relayed = await amplifiedFeed(db, authorId, { mentorName });
+  const ids = [...rows.map((r) => r._id), ...relayed.map((p) => new ObjectId(p.id))];
+  const state = await viewerState(db, viewer, ids);
+
+  if (!merge) return { posts: own, amplified: relayed, viewerState: state };
+
+  /* Pinned still wins outright — the greeting is meant to be first. Below that,
+     a relayed post sorts by when it was relayed, so adding one puts it where
+     the mentee will actually see it. */
+  const at = (p) => new Date(p.amplifiedAt ?? p.createdAt).getTime() || 0;
+  const posts = [...own, ...relayed].sort(
+    (a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || at(b) - at(a)
+  );
+  return { posts, viewerState: state };
 }
 
 async function handler(request, user) {
@@ -314,14 +398,7 @@ async function handler(request, user) {
             .toArray()
         : [];
 
-      const authorIds = [...new Set(rows.map((r) => String(r.authorId)))].filter(ObjectId.isValid);
-      const authors = authorIds.length
-        ? await db.collection(collections.user)
-            .find({ _id: { $in: authorIds.map((id) => new ObjectId(id)) } }, { projection: { name: 1 } })
-            .toArray()
-        : [];
-      const nameById = new Map(authors.map((a) => [String(a._id), a.name]));
-
+      const nameById = await namesFor(db, rows.map((r) => r.authorId));
       await withSlugs(db, rows);
       return json({
         posts: rows.map((p) => ({ ...shape(p), authorName: nameById.get(String(p.authorId)) || "—" })),
@@ -330,10 +407,40 @@ async function handler(request, user) {
       });
     }
 
+    /* The mentor network feed: what the mentors you follow have made public.
+       Public only, for the same reason the org Orbit is — following someone is
+       not the pairing that carries a cohort post. */
+    if (scope === "following") {
+      if (!isMentor) return fail(403, "mentors_only", "The mentor network is for mentors.");
+      const ids = await followingIds(db, user.id);
+      const empty = { watched: [], reacted: [] };
+      if (!ids.length) return json({ posts: [], viewerState: empty, following: 0 });
+
+      const rows = await posts
+        .find({ authorId: { $in: ids }, deletedAt: null, visibility: "public" })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .toArray();
+
+      const nameById = await namesFor(db, rows.map((r) => r.authorId));
+      const mine = await amplifiedSet(db, user.id, rows.map((r) => r._id));
+      await withSlugs(db, rows);
+      return json({
+        posts: rows.map((p) => ({
+          ...shape(p),
+          authorName: nameById.get(String(p.authorId)) || "—",
+          amplified: mine.has(String(p._id)),
+        })),
+        viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
+        following: ids.length,
+      });
+    }
+
     if (mentorId) {
       const paired = mentorId === user.id || (await hasAcceptedPair({ menteeId: user.id, mentorId }));
-      /* Profile previews (match deck / explore) can read posts marked public
-         without a pair. Full Orbit still requires an accepted match. */
+      /* Profile previews (match deck / explore / a peer's profile) can read
+         posts marked public without a pair. Full Orbit still requires an
+         accepted match. */
       if (!paired && scope === "profile") {
         const filter = { authorId: String(mentorId), deletedAt: null, visibility: "public" };
         const rows = await posts
@@ -341,17 +448,33 @@ async function handler(request, user) {
           .sort({ pinned: -1, createdAt: -1 })
           .limit(50)
           .toArray();
+        /* Which of these the caller already relays. Only a mentor can, so only
+           a mentor pays for the read. */
+        const mine = isMentor ? await amplifiedSet(db, user.id, rows.map((r) => r._id)) : null;
         return json({
-          posts: (await withSlugs(db, rows)).map(shape),
+          posts: (await withSlugs(db, rows)).map((p) => ({
+            ...shape(p),
+            ...(mine ? { amplified: mine.has(String(p._id)) } : {}),
+          })),
           viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
         });
       }
       if (!paired) {
         return fail(403, "not_paired", "You can only read the feed of a mentor you're working with.");
       }
-      return json(await readFeed(db, { authorId: mentorId, viewer: user.id, cohortOnly: mentorId !== user.id }));
+      /* A mentee reads one Orbit: what this mentor wrote and what they chose to
+         relay, in one list. Asking for your own id keeps them apart. */
+      const own = mentorId === user.id;
+      const nameById = own ? null : await namesFor(db, [mentorId]);
+      return json(await readFeed(db, {
+        authorId: mentorId,
+        viewer: user.id,
+        cohortOnly: !own,
+        merge: !own,
+        mentorName: own ? null : nameById.get(String(mentorId)) || null,
+      }));
     }
-    if (!isMentor) return json({ posts: [], viewerState: { watched: [], reacted: [] } });
+    if (!isMentor) return json({ posts: [], amplified: [], viewerState: { watched: [], reacted: [] } });
     return json(await readFeed(db, { authorId: user.id, viewer: user.id, cohortOnly: false }));
   }
 
@@ -507,6 +630,38 @@ async function handler(request, user) {
       });
     }
 
+    /* ————— carry a peer's post into your own Orbit ————— */
+    if (body.action === "amplify" || body.action === "unamplify") {
+      if (!isMentor) return fail(403, "mentors_only", "Only mentors have an Orbit to add to.");
+      const on = body.action === "amplify";
+      const amplified = db.collection(collections.amplified);
+
+      if (!on) {
+        const res = await amplified.deleteOne({ mentorId: user.id, postId: _id });
+        return json({ ok: true, amplified: false, changed: res.deletedCount > 0 });
+      }
+
+      if (String(post.authorId) === String(user.id)) {
+        return fail(400, "own_post", "That's already your post — your cohort sees it.");
+      }
+      /* Public only. A cohort post was written for its author's mentees and the
+         pairing is the only thing that carries it; relaying it into a different
+         cohort would hand it to people its author never wrote it for. */
+      if (post.visibility !== "public") {
+        return fail(403, "not_public", "Only a mentor's public posts can go into your Orbit.");
+      }
+
+      // Upsert, not insert: a double tap is the same state, not an error — and
+      // this holds even where the unique index hasn't been created yet.
+      const res = await amplified.updateOne(
+        { mentorId: user.id, postId: _id },
+        { $setOnInsert: { mentorId: user.id, postId: _id, authorId: String(post.authorId), createdAt: new Date() } },
+        { upsert: true }
+      );
+      const reach = (await acceptedFor(user.id, "mentor")).length;
+      return json({ ok: true, amplified: true, changed: !!res.upsertedCount, reach });
+    }
+
     if (body.action === "view" || body.action === "react") {
       if (!(await canAccessPost(db, user, post))) {
         return fail(403, "not_paired", "That isn’t a post you can engage with.");
@@ -570,6 +725,11 @@ async function handler(request, user) {
     if (!res.matchedCount) {
       return fail(404, "not_found", moderator ? "That post is already gone." : "That post is gone, or it isn't yours.");
     }
+    /* Drop the pointers any peer had into it. amplifiedFeed re-checks
+       deletedAt on every read, so this is tidiness rather than the guard —
+       it must not be able to fail the delete. */
+    db.collection(collections.amplified).deleteMany({ postId: _id })
+      .catch((err) => console.error("[api:posts] amplify cleanup:", err));
     return json({ ok: true });
   }
 
