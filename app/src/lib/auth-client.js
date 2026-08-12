@@ -74,6 +74,15 @@ export const fetchRoster = (params = {}) => {
     so the directory doesn't hide your own cohort from you. */
 export const exploreRoster = ({ q } = {}) => fetchRoster({ include: "all", q });
 
+/** The Teams deck: your own company only, under your org's programme rules.
+ *
+ *  Answers `{ scope, org: { name, division, divisions }, rules, people }` —
+ *  each person carrying their `division` — so the deck can label why it is
+ *  narrower than the platform one. 403s `no_org` if the caller has no org,
+ *  which is a client-side routing bug rather than an empty company. */
+export const fetchOrgRoster = ({ q, side, include } = {}) =>
+  fetchRoster({ scope: "org", q, side, include });
+
 /* ————— The mentor network —————
    Mentor ↔ mentor, which is a different relationship from mentor ↔ mentee: a
    follow is one-sided, needs no handshake, and commits neither side to a
@@ -158,6 +167,11 @@ export const setPhaseComplete = ({ menteeId, phaseId, completed }) =>
    Mentee writes today's paragraph; the server stores it, awards XP, bumps
    streak, and flips stage1Complete so Direct Connect opens. Mentors read a
    paired mentee's submissions with ?menteeId=. */
+/* ————— Impact history —————
+   The mentor's own Impact Score trend, aggregated server-side from the
+   xp_events ledger. Mentor-only; used to draw the dashboard sparkline. */
+export const fetchImpactHistory = () => api("/impact");
+
 export const fetchExercises = () => api("/exercises");
 export const fetchMenteeExercises = (menteeId) =>
   api(`/exercises?menteeId=${encodeURIComponent(menteeId)}`);
@@ -216,6 +230,12 @@ export const orgRevokeInvite = (code) => orgAction("revoke", { code });
 export const orgSetMemberRole = (userId, orgRole) => orgAction("role", { userId, orgRole });
 export const orgRemoveMember = (userId) => orgAction("remove", { userId });
 export const orgLeave = () => orgAction("leave");
+/** Programme rules — merged server-side, so sending one switch leaves the rest
+    alone. They are enforced by /api/roster, not by the console. */
+export const orgSetRules = (rules) => orgAction("rules", { rules });
+/** Moves someone between teams. `null` un-seats them, which the cross-division
+    rule reads as "shows them everyone". */
+export const orgSetDivision = (userId, division) => orgAction("division", { userId, division });
 /** The org Orbit feed: profile-visible posts from everyone in the org. */
 export const fetchOrgOrbit = () => api("/posts?scope=org");
 

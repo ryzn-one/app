@@ -1,10 +1,11 @@
 import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
-import { listMatches, MATCH_STATUS, sideOf } from "../lib/matches.js";
+import { listMatches, MATCH_STATUS, sideOf, mentorLoads, DEFAULT_MENTOR_CAPACITY } from "../lib/matches.js";
 import { isMentorRole } from "../lib/roles.js";
 import { asLabel } from "../lib/scalars.js";
 import { followEdges, followerCounts, setFollow } from "../lib/network.js";
+import { orgContext, orgSeats, orgRules, divisionsOf, DEFAULT_ORG_RULES } from "../lib/orgs.js";
 
 /**
  * /api/roster — the people directory.
@@ -37,6 +38,25 @@ import { followEdges, followerCounts, setFollow } from "../lib/network.js";
  *                  the onboarding decks must not have it, or they re-offer
  *                  someone already decided and the second request just 409s.
  *   ?q=            name / headline / industry / track / goals search.
+ *   ?scope=org     only the caller's own organisation, under that org's
+ *                  programme rules. See below.
+ *
+ * ————— org scope —————
+ *
+ * The Teams surface is not the platform deck with a different header: an
+ * employee browsing mentors is browsing *their company*, under rules their HR
+ * set. `?scope=org` is that read.
+ *
+ * It is opt-in rather than implied by membership, because the two decks answer
+ * different questions and a person in an org can legitimately be asked both —
+ * "who at Northbound can mentor me" and "who on Ryzn can". The client picks;
+ * the server decides whether it may have it.
+ *
+ * Scoping only ever narrows. The candidate id list *is* the org's membership,
+ * so no rule applied afterwards can re-admit somebody from outside the company,
+ * and a caller with no org gets a 403 rather than an empty list — answering []
+ * would read as "nobody from your company is on Ryzn", which is a different and
+ * much worse claim than "you asked the wrong question".
  */
 
 const LIMIT = 50;
@@ -126,8 +146,31 @@ async function handler(request, user) {
 
   const includeAll = url.searchParams.get("include") === "all";
   const q = (url.searchParams.get("q") || "").trim().slice(0, 80);
+  const orgScoped = url.searchParams.get("scope") === "org";
 
   const db = await getDb();
+
+  /* Org context, resolved before anything else — everything below narrows
+     against it. `seats` is the membership, and it doubles as the candidate id
+     list and the division lookup for each card. */
+  let seats = null;
+  let rules = DEFAULT_ORG_RULES;
+  let orgPayload = null;
+  let mySeat = {};
+  if (orgScoped) {
+    const ctx = await orgContext(db, user.id);
+    if (!ctx) return fail(403, "no_org", "You're not in an organisation yet.");
+    seats = await orgSeats(db, ctx.org._id);
+    mySeat = seats.get(user.id) || {};
+    rules = orgRules(ctx.org);
+    orgPayload = {
+      id: String(ctx.org._id),
+      name: ctx.org.name,
+      slug: ctx.org.slug,
+      division: mySeat.division ?? null,
+      divisions: divisionsOf(seats),
+    };
+  }
 
   // Anyone already requested, paired with, or passed on drops out of the deck.
   // Without this the deck re-offers people the caller has already answered for,
@@ -181,10 +224,17 @@ async function handler(request, user) {
     };
   }
 
+  /* The hard boundary of a scoped read. `idFilter` puts its own clause under
+     `$or`, so this top-level `_id` intersects with it rather than replacing it:
+     a search inside an org still cannot reach past the org. */
+  const orgFilter = orgScoped
+    ? { _id: { $in: [...seats.keys()].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }
+    : null;
+
   const users = await db
     .collection(collections.user)
     .find(
-      { ...roleFilter, ...(idFilter || {}) },
+      { ...roleFilter, ...(idFilter || {}), ...(orgFilter || {}) },
       { projection: { name: 1, image: 1, role: 1, createdAt: 1, onboardingComplete: 1 } }
     )
     .sort({ createdAt: 1 })
@@ -210,10 +260,41 @@ async function handler(request, user) {
     Boolean(u.onboardingComplete || p.onboardingComplete) ||
     (wanted === "mentor" && isMentorRole(u.role));
 
-  const shortlist = users
+  /* Division rule. Only bites on a matching deck — two mentors browsing each
+     other is not a pairing, so an org that keeps mentees in their own division
+     has said nothing about who its mentors may know.
+
+     It is also skipped when the viewer's own seat has no division: an
+     unassigned employee would otherwise match nobody and be shown an empty
+     deck they have no way to explain or fix. */
+  const divisionOk = (id) =>
+    !orgScoped || peers || rules.crossDivision || !mySeat.division ||
+    (seats.get(id)?.division ?? null) === mySeat.division;
+
+  const eligible = users
     .filter((u) => String(u._id) !== user.id && (includeAll || !answeredIds.has(String(u._id))))
     .filter((u) => ready(u, byUser.get(String(u._id)) || {}))
-    .slice(0, LIMIT);
+    .filter((u) => divisionOk(String(u._id)));
+
+  /* Capacity rule. A mentor whose cohort is already full is not an option, and
+     offering them anyway costs the mentee three written answers before
+     api/matches.js turns it down with `at_capacity`. Filtered before the slice,
+     so a full mentor gives up their place on the page rather than occupying it. */
+  let full = new Set();
+  if (orgScoped && rules.capacityGate && wanted === "mentor" && !peers) {
+    const loads = await mentorLoads(eligible.map((u) => String(u._id)));
+    full = new Set(
+      eligible
+        .filter((u) => {
+          const declared = Number(byUser.get(String(u._id))?.capacity);
+          const cap = Number.isFinite(declared) && declared > 0 ? declared : DEFAULT_MENTOR_CAPACITY;
+          return (loads.get(String(u._id)) ?? 0) >= cap;
+        })
+        .map((u) => String(u._id))
+    );
+  }
+
+  const shortlist = eligible.filter((u) => !full.has(String(u._id))).slice(0, LIMIT);
 
   /* Follow state, for a peer directory that has to render a button per row.
      Two indexed reads for the whole page rather than one per person. */
@@ -237,6 +318,10 @@ async function handler(request, user) {
         bannerUrl: p.bannerUrl ?? null,
         affinity: peers ? peerAffinity(viewerProfile, p) : affinity(viewerProfile, p, viewerRole),
         ...stateOf(String(u._id)),
+        // Only on a scoped read: outside an org this is not a fact about the
+        // person, and a null column on every platform card invites the client
+        // to render an empty label.
+        ...(orgScoped ? { division: seats.get(String(u._id))?.division ?? null } : {}),
         ...(peers
           ? {
               following: edges.following.has(String(u._id)),
@@ -272,7 +357,17 @@ async function handler(request, user) {
           };
     });
 
-  return json({ role: wanted, peers, people });
+  /* `rules` and `org` ride along on a scoped read so the deck can say why it is
+     narrower than the platform one — the prototype's "PRODUCT ONLY" chip needs
+     to come from the rule that was actually applied, not from a copy of the
+     setting kept in the client. */
+  return json({
+    role: wanted,
+    peers,
+    scope: orgScoped ? "org" : "platform",
+    ...(orgScoped ? { org: orgPayload, rules } : {}),
+    people,
+  });
 }
 
 export default { fetch: withUser(handler) };

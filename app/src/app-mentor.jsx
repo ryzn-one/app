@@ -7,13 +7,13 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2, Repeat2
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
 import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
 import { TagRow } from "./chatmatch.jsx";
-import { fetchMenteeExercises, fetchProgram, setPhaseComplete } from "./lib/auth-client.js";
+import { fetchMenteeExercises, fetchProgram, setPhaseComplete, fetchImpactHistory } from "./lib/auth-client.js";
 
 /* Suggested starter phases — one tap seeds a course so mentors aren't staring
    at a blank timeline wondering what "phase" means. */
@@ -114,6 +114,25 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
 export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
   const isDesktop = useIsDesktop();
   const firstName = (name || "").split(" ")[0];
+  const cohortCount = (u.cohort || []).length;
+
+  /* Trend line for the hero card — real points from the xp_events ledger,
+     not a fabricated curve. Fetched here rather than lifted to root state,
+     same as the mentee exercise journal and program timeline below. */
+  const [impactPoints, setImpactPoints] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { points } = await fetchImpactHistory();
+        if (!cancelled) setImpactPoints((points || []).map((p) => p.cumulative));
+      } catch {
+        if (!cancelled) setImpactPoints([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
   <div style={{ padding: "18px 20px 20px" }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -141,24 +160,32 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <ExternalLink size={15} color={C.gray} />
       </div>
     </Card>
-    <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
+      {/* Dynamic impact graph, pinned to the corner — real cumulative Impact
+          points from the xp_events ledger, not a decorative fake curve. */}
+      <div style={{ position: "absolute", top: 18, right: 18 }}>
+        <Sparkline points={impactPoints} color="#B7AFF2" />
+      </div>
+      <Label color="#9C93E8">Your cohort impact</Label>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 4 }}>
+        <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1.6, color: C.white, lineHeight: 1 }}>{cohortCount}</div>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: "#B5B3AE" }}>mentee{cohortCount === 1 ? "" : "s"} impacted</div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16 }}>
+        <div style={{ width: 26, height: 26, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Crown size={13} color={C.white} /></div>
         <div>
-          <Label color="#9C93E8">Impact Score</Label>
-          <div style={{ fontSize: 52, fontWeight: 700, letterSpacing: -2, color: "#B7AFF2", lineHeight: 1.05, marginTop: 4 }}>{u.impact}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#B7AFF2", lineHeight: 1.2 }}>
+            {u.impact} <span style={{ fontFamily: F.mono, fontSize: 9.5, fontWeight: 600, color: "#8B8985", letterSpacing: 0.5 }}>IMPACT · {(u.tier || "Scout").toUpperCase()}</span>
+          </div>
           {/* Was "RANK #12 OF 214" against a 214-mentor platform that does not
               exist. Rank renders only once the server has one. */}
-          <div style={{ fontFamily: F.mono, fontSize: 10, color: "#8B8985", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#8B8985", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
             {u.mentorRank ? `RANK #${u.mentorRank}` : "RANKING OPENS THIS QUARTER"}
             <ChevronRight size={11} color="#8B8985" />
           </div>
         </div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center" }}><Crown size={28} color={C.white} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 1, marginTop: 6, color: "#B7AFF2" }}>{(u.tier || "Scout").toUpperCase()}</div>
-        </div>
       </div>
-      {u.fresh && <div style={{ marginTop: 12 }}><Bar pct={u.impact / 400} color={C.purple} h={5} /><div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 5 }}>{u.impact}/400 → PATHFINDER</div></div>}
+      {u.fresh && <div style={{ marginTop: 14 }}><Bar pct={u.impact / 400} color={C.purple} h={5} /><div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 5 }}>{u.impact}/400 → PATHFINDER</div></div>}
     </Card>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "18px 2px 10px" }}>
       <Label>Your cohort · {(u.cohort || []).length} mentee{(u.cohort || []).length === 1 ? "" : "s"}</Label>

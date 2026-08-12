@@ -8,7 +8,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Newspaper
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary, firstNameOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
 import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, amplifyPost, unamplifyPost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
@@ -24,6 +24,7 @@ import { ExploreScreen } from "./explore.jsx";
 import { NetworkScreen } from "./network.jsx";
 import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
+import { TEAMS_NAV, TEAMS_TABS, TeamsHome, TeamsMentors, TeamsCohort, TeamsRoster, TeamsChat } from "./teams/TeamsApp.jsx";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
 import { fmtDate } from "./lib/calendar.js";
@@ -216,6 +217,31 @@ export default function RyznComplete() {
   const addXp = (n) => { setXp(x => x + n); toast(`+${n} ${role === "mentee" ? "XP" : "IMPACT"}`); };
   const addUserXp = (n) => setUser(u => u && u.xp !== undefined ? { ...u, xp: u.xp + n } : u);
   const addUserImpact = (n) => setUser(u => u && u.impact !== undefined ? { ...u, impact: u.impact + n } : u);
+
+  /* — solo or teams —
+     Belonging to an organisation changes which product this is. Somebody who
+     joined a company's programme is not browsing Ryzn-the-network; they are
+     inside their employer, under rules their HR set, and the surface reflects
+     that. `session.org` is the whole switch: the server writes it when an org
+     invite is claimed (api/invites/redeem.js) and drops it when they leave, so
+     being invited or removed flips the app on the next /api/me with nothing
+     stored locally to go stale. Declared here because `navTo` and the tab
+     guard both need it long before the screens do. */
+  const mode = session?.org ? "teams" : "solo";
+  const org = session?.org ?? null;
+
+  /* Teams has four tabs where solo has five, so a tab that exists in one mode
+     may not exist in the other. Without this, someone sitting on Badges when
+     their org invite lands renders an empty body until they tap something. */
+  useEffect(() => {
+    if (phase !== "app") return;
+    const allowed = mode === "teams"
+      ? TEAMS_TABS[role]
+      : (role === "mentee"
+        ? ["home", "exercises", "badges", "meets", "profile"]
+        : ["home", "feed", "sessions", "meets", "profile"]);
+    if (!allowed.includes(tab)) setTab("home");
+  }, [mode, role, tab, phase]);
 
   const resetAppState = () => {
     setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false);
@@ -438,7 +464,11 @@ export default function RyznComplete() {
     }
   }, []);
 
-  useEffect(() => { if (phase === "app" && tab === "meets") loadEvents(); }, [phase, tab, loadEvents]);
+  /* Meets is a tab in solo and an overlay in teams — load on either, or the
+     teams side opens a screen that never fetches. */
+  useEffect(() => {
+    if (phase === "app" && (tab === "meets" || overlay === "meets")) loadEvents();
+  }, [phase, tab, overlay, loadEvents]);
 
   const createEventHandler = async (body) => {
     const res = await createEvent(body);
@@ -835,6 +865,15 @@ export default function RyznComplete() {
   /* — notification deep links — */
   const navTo = (to) => {
     setOverlay(null);
+    /* Teams keeps four tabs, so most destinations are overlays there and two of
+       the remaining tabs are named differently. Mapped rather than ignored — a
+       notification deep link has to land on a real screen in both modes. */
+    if (mode === "teams") {
+      const asOverlay = ["exercises", "badges", "meets", "sessions", "cohort", "dm", "orbit", "board", "explore", "network"];
+      if (asOverlay.includes(to)) { setTimeout(() => setOverlay(to), 60); return; }
+      setTab({ feed: "roster", mentors: "mentors", chat: "chat", profile: "profile" }[to] || "home");
+      return;
+    }
     // Sessions is a tab on the mentor side and an overlay on the mentee side.
     const asOverlay = ["cohort", "dm", "orbit", "board", "explore", "network"].includes(to)
       || (to === "sessions" && role === "mentee");
@@ -922,6 +961,30 @@ export default function RyznComplete() {
         onResetTabHints={() => { resetTabHints(role); toast("Tab tips reset · they'll reappear as you navigate"); }}
       />
     );
+    /* Teams has four tabs, so the screens solo reaches from its tab bar are
+       reached from the Home card and the profile instead. Same components —
+       only the way in changes, and each gets the back affordance a tab body
+       never needed. */
+    if (overlay === "exercises") return (
+      <div>
+        <HeaderRow title="Your exercises" onBack={() => setOverlay(null)} />
+        <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />
+      </div>
+    );
+    if (overlay === "badges") return (
+      <div>
+        <HeaderRow title="Your progress" onBack={() => setOverlay(null)} />
+        <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />
+      </div>
+    );
+    if (overlay === "meets") return (
+      <div>
+        <HeaderRow title="Mentor Meets" onBack={() => setOverlay(null)} />
+        <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events}
+          eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin}
+          userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />
+      </div>
+    );
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
     /* Mentees reach the same screen from Home — the mentor has a tab for it. */
     if (overlay === "sessions") return (
@@ -974,9 +1037,11 @@ export default function RyznComplete() {
       <DMScreen
         name={overlay.dmPeer.name}
         otherId={overlay.dmPeer.id}
-        sub="YOUR MENTEE · STAGE 1 COMPLETE ✓"
+        /* Teams routes both sides through this overlay, so the subtitle can't
+           assume the person on the other end is a mentee. */
+        sub={role === "mentor" ? "YOUR MENTEE · DIRECT CONNECT" : "YOUR MENTOR · DIRECT CONNECT"}
         back={() => setOverlay(overlay.from || null)}
-        placeholder={`Message ${overlay.dmPeer.name.split(" ")[0]}…`}
+        placeholder={`Message ${firstNameOf(overlay.dmPeer.name)}…`}
       />
     );
     if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dmPeer: m, from: { mentee: m } })} />;
@@ -990,9 +1055,68 @@ export default function RyznComplete() {
     return null;
   };
 
+  /* — solo or teams —
+     Belonging to an organisation changes which product this is. Somebody who
+     joined a company's programme is not browsing Ryzn-the-network; they are
+     inside their employer, under rules their HR set, and the surface reflects
+     that. `session.org` is the whole switch: it is written by the server when
+     an org invite is claimed (api/invites/redeem.js) and cleared when they
+     leave, so being invited or removed flips the app on the next /api/me with
+     nothing stored locally to go stale.
+
+     It is a different set of screens, not a theme — see teams/TeamsApp.jsx for
+     what actually differs. The account underneath is identical either way.
+     `mode` and `org` are declared with the session state, above. */
+
+  /** Teams folds Exercises, Badges, Meets and the Orbit into overlays — the
+      tab bar is deliberately short, so everything else opens over it. */
+  const teamsOpen = (what) => {
+    if (what === "profile") { setOverlay(null); setTab("profile"); return; }
+    setOverlay(what);
+  };
+
+  const teamsContent = () => {
+    const common = { u: user, org, name: session?.user?.name, onOpen: teamsOpen };
+    if (role === "mentee") {
+      switch (tab) {
+        case "home": return (
+          <TeamsHome {...common} stage1={stage1} todayDone={todayDone} matches={matches} sessions={sessions}
+            go={(t) => { setOverlay(null); setTab(t); }} onRespond={respondInvite} busy={inviteBusy} />
+        );
+        case "mentors": return (
+          <TeamsMentors {...common} onDecide={decideMatch} onOpenMentor={openAuthorProfile}
+            toast={toast} seatsLeft={mentorSeatsLeft} />
+        );
+        case "chat": return (
+          <TeamsChat {...common} role={role} matches={matches} stage1={stage1}
+            onOpenThread={(p) => setOverlay({ dmPeer: p })} />
+        );
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} onUpdateProfile={updateUserProfile} />;
+        default: return null;
+      }
+    }
+    switch (tab) {
+      case "home": return (
+        <TeamsCohort {...common} matches={matches} sessions={sessions} onRespond={respondInvite}
+          onOpenMentee={(m) => setOverlay({ mentee: m })} busy={inviteBusy} capacity={mentorCapacity} />
+      );
+      case "roster": return (
+        <TeamsRoster {...common} onOpenMentor={openAuthorProfile} onInvite={addMentee}
+          toast={toast} cohortSeatsLeft={cohortSeatsLeft} />
+      );
+      case "chat": return (
+        <TeamsChat {...common} role={role} matches={matches} stage1
+          onOpenThread={(p) => setOverlay({ dmPeer: p })} />
+      );
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} />;
+      default: return null;
+    }
+  };
+
   /* — current tab content (always the active tab, regardless of overlay) — */
   const tabContent = () => {
     if (!user) return null;
+    if (mode === "teams") return teamsContent();
     if (role === "mentee") {
       switch (tab) {
         case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} />;
@@ -1021,7 +1145,7 @@ export default function RyznComplete() {
 
   const menteeNav = [["home", Home, "Home"], ["exercises", Zap, "Exercises"], ["badges", Award, "Badges"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
   const mentorNav = [["home", LayoutGrid, "Cohort"], ["feed", Newspaper, "Feed"], ["sessions", Calendar, "Sessions"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
-  const nav = role === "mentee" ? menteeNav : mentorNav;
+  const nav = mode === "teams" ? TEAMS_NAV[role] : (role === "mentee" ? menteeNav : mentorNav);
   const isDesktop = useIsDesktop();
   const reduced = useReducedMotion();
 
@@ -1111,6 +1235,7 @@ export default function RyznComplete() {
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
                 paddingTop: "env(safe-area-inset-top, 0px)",
+                paddingBottom: fullScreenOverlay ? 0 : 20,
               }}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div

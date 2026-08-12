@@ -169,6 +169,9 @@ async function handler(request, user) {
             userId: user.id,
             joinedAt: new Date(),
             invitedBy: claimed.createdByUserId ?? null,
+            // The team the code was minted for. $setOnInsert, not $set: a
+            // manager who has since moved them keeps that decision.
+            division: claimed.orgDivision ?? null,
           },
           $set: { orgRole },
         },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import React, { useState, useEffect, useRef, useMemo, useId, createContext, useContext } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
@@ -246,6 +246,39 @@ export const BadgeTile = ({ badge, i, size = 72, onClick, justEarned }) => {
       <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, color: earned ? C.ink : C.gray, lineHeight: 1.25 }}>{badge.name}</div>
       <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 2 }}>{badge.when}</div>
     </div>
+  );
+};
+/* Compact trend line for a corner of a card — cumulative values in, a line
+   (and, below two points, just a dashed placeholder) out. No fabricated
+   points: a mentor with one post gets a two-point line, not a fake curve. */
+export const Sparkline = ({ points = [], width = 84, height = 36, color = C.purple }) => {
+  const gid = useId();
+  if (!points || points.length < 2) {
+    return (
+      <svg width={width} height={height} style={{ display: "block" }}>
+        <line x1={3} y1={height - 4} x2={width - 3} y2={height - 4} stroke={color} strokeWidth={1.5} strokeDasharray="1 4" strokeLinecap="round" opacity={0.4} />
+      </svg>
+    );
+  }
+  const pad = 3;
+  const min = Math.min(...points), max = Math.max(...points);
+  const span = max - min || 1;
+  const stepX = (width - pad * 2) / (points.length - 1);
+  const coords = points.map((p, i) => [pad + i * stepX, height - pad - ((p - min) / span) * (height - pad * 2)]);
+  const line = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const area = `${line} L${coords[coords.length - 1][0].toFixed(1)},${height} L${coords[0][0].toFixed(1)},${height} Z`;
+  return (
+    <svg width={width} height={height} style={{ display: "block", overflow: "visible" }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.4" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={coords[coords.length - 1][0]} cy={coords[coords.length - 1][1]} r={2.5} fill={color} />
+    </svg>
   );
 };
 export const Heatmap = ({ weeks = 6 }) => {

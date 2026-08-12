@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Building2, Users, Send, Settings, Radio, Copy, ExternalLink, Plus, ChevronLeft,
-  Check, Shield, Trash2, RotateCcw, Globe,
+  Check, Shield, Trash2, RotateCcw, Globe, SlidersHorizontal,
 } from "lucide-react";
 import { C, F } from "../theme.js";
 import { Card, Label, Btn, Field, FormError, Monogram, firstNameOf } from "../ui.jsx";
@@ -11,6 +11,7 @@ import { PostCard } from "../feed.jsx";
 import {
   updateOrg, setOrgOrbit, orgMintInvites, orgRevokeInvite,
   orgSetMemberRole, orgRemoveMember, orgLeave, fetchOrgOrbit, messageFor, postAction,
+  orgSetRules, orgSetDivision,
 } from "../lib/auth-client.js";
 
 /* ————————————————— ORG CONSOLE —————————————————
@@ -47,6 +48,36 @@ const ROLE_CHIP = {
   admin: { c: C.teal, bg: C.tealTint, label: "ORG ADMIN" },
   member: { c: C.purple, bg: C.purpleTint, label: "MEMBER" },
 };
+
+/** The divisions this org actually uses, read off the roster. Never a second
+    list to maintain — a division exists because somebody is sitting in it. */
+const divisionsOf = (members) =>
+  [...new Set(members.map((m) => m.division).filter(Boolean))].sort();
+
+const Switch = ({ on, onChange, disabled }) => (
+  <button role="switch" aria-checked={!!on} disabled={disabled} onClick={() => onChange(!on)}
+    style={{
+      width: 46, height: 27, borderRadius: 14, border: "none", flexShrink: 0,
+      cursor: disabled ? "default" : "pointer", padding: 3, display: "flex",
+      justifyContent: on ? "flex-end" : "flex-start",
+      background: on ? C.purple : "#D6D4CE", opacity: disabled ? 0.5 : 1, transition: "background .15s",
+    }}>
+    <span style={{ width: 21, height: 21, borderRadius: "50%", background: C.white, display: "block" }} />
+  </button>
+);
+
+/** One programme rule: what it does, and what it costs when it's on. The body
+    text is the point — a switch labelled only "Cross-division" tells a manager
+    nothing about who stops appearing in their people's decks. */
+const Rule = ({ title, body, on, onChange, disabled }) => (
+  <div style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${C.line}` }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div>
+      <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.55, marginTop: 5 }}>{body}</div>
+    </div>
+    <Switch on={on} onChange={onChange} disabled={disabled} />
+  </div>
+);
 
 /* ————— overview ————— */
 function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
@@ -94,7 +125,41 @@ function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
 }
 
 /* ————— people ————— */
-function People({ org, members, canManage, isOwner, meId, onRole, onRemove, busy }) {
+
+/** Seats one person in a team. Free text with the org's existing divisions
+    offered as suggestions: an org chart is not ours to enumerate, but retyping
+    "Engineering" slightly differently would quietly split a division in two. */
+function DivisionCell({ member, divisions, onSet, busy }) {
+  const [value, setValue] = useState(member.division || "");
+  const listId = "divisions-list";
+  useEffect(() => { setValue(member.division || ""); }, [member.division]);
+
+  const commit = () => {
+    const next = value.trim();
+    if (next === (member.division || "")) return;
+    onSet(member.id, next || null);
+  };
+
+  return (
+    <>
+      <datalist id={listId}>{divisions.map((d) => <option key={d} value={d} />)}</datalist>
+      <input
+        value={value} list={listId} disabled={busy} placeholder="No division"
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setValue(member.division || ""); }}
+        style={{
+          width: 118, border: `1px solid ${member.division ? C.line : "transparent"}`, borderRadius: 9,
+          padding: "6px 8px", fontFamily: F.sans, fontSize: 12, color: member.division ? C.ink : C.gray,
+          background: member.division ? C.white : C.surface, outline: "none", boxSizing: "border-box",
+        }}
+      />
+    </>
+  );
+}
+
+function People({ org, members, canManage, isOwner, meId, onRole, onRemove, onDivision, busy }) {
+  const divisions = divisionsOf(members);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -119,6 +184,9 @@ function People({ org, members, canManage, isOwner, meId, onRole, onRemove, busy
               {m.impact != null && (
                 <span style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, whiteSpace: "nowrap" }}>{m.impact} IMPACT</span>
               )}
+              {canManage
+                ? <DivisionCell member={m} divisions={divisions} onSet={onDivision} busy={busy} />
+                : m.division && <Chip c={C.gray} bg={C.surface}>{m.division.toUpperCase()}</Chip>}
               <Chip c={chip.c} bg={chip.bg}>{chip.label}</Chip>
               {/* Only the owner reshuffles who runs the org — an org admin can
                   seat and unseat members, not promote a peer above themselves. */}
@@ -147,13 +215,14 @@ function People({ org, members, canManage, isOwner, meId, onRole, onRemove, busy
 }
 
 /* ————— invites ————— */
-function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
+function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, inviterName }) {
   const [to, setTo] = useState("");
   const [who, setWho] = useState("");
   const [count, setCount] = useState(1);
   const [days, setDays] = useState(90);
   const [role, setRole] = useState("mentor");
   const [orgRole, setOrgRole] = useState("member");
+  const [division, setDivision] = useState("");
   const addressed = to.trim().length > 0;
   const isMentee = role === "mentee";
 
@@ -232,12 +301,22 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
             <input type="number" min={1} max={365} value={days} onChange={(e) => setDays(e.target.value)}
               style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, fontFamily: F.mono, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
           </div>
+          {/* Set here so they land already seated in a team. Leaving it blank is
+              fine — a division-less person sees everyone regardless of the rule. */}
+          <div style={{ gridColumn: "span 2", minWidth: 0 }}>
+            <Label>Division (optional)</Label>
+            <input value={division} list="invite-divisions" onChange={(e) => setDivision(e.target.value)}
+              placeholder={divisions[0] ? `e.g. ${divisions[0]}` : "e.g. Engineering"}
+              style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, fontFamily: F.sans, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
+            <datalist id="invite-divisions">{divisions.map((d) => <option key={d} value={d} />)}</datalist>
+          </div>
         </div>
 
         <Btn style={{ marginTop: 14 }} disabled={busy}
           onClick={() => onMint({
             to: to.trim(), name: who.trim(), count: Number(count) || 1,
             expiresDays: Number(days) || 90, role, orgRole: isMentee ? "member" : orgRole,
+            division: division.trim(),
           }).then((ok) => { if (ok) { setTo(""); setWho(""); } })}>
           {addressed ? <Send size={15} /> : <Plus size={15} />}
           {busy ? "Working…" : addressed
@@ -261,6 +340,7 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
                 {(iv.role || "mentor").toUpperCase()}
               </Chip>
               {iv.orgRole === "admin" && <Chip c={C.amber} bg={C.amberTint}>ORG ADMIN</Chip>}
+              {iv.division && <Chip c={C.gray} bg={C.surface}>{iv.division.toUpperCase()}</Chip>}
               <Chip c={STATE_COLOR[iv.state]} bg={STATE_BG[iv.state]}>{iv.state.toUpperCase()}</Chip>
               <button onClick={() => copyText(linkFor(iv)).then(() => toast("Invite link copied"))} title="Copy invite link"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Copy size={13} color={C.gray} /></button>
@@ -290,10 +370,105 @@ function Invites({ org, invites, onMint, onRevoke, busy, toast, inviterName }) {
   );
 }
 
+/* ————— programme rules ————— */
+function Programme({ org, members, canManage, onRules, busy }) {
+  const rules = org.rules || {};
+  const divisions = divisionsOf(members);
+  const unseated = members.filter((m) => !m.division).length;
+  const mentors = members.filter((m) => m.role === "mentor" || m.role === "admin");
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card>
+        <Label color={C.purple}>Programme rules</Label>
+        <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.55 }}>
+          These decide who your people see when they browse mentors inside {org.name}. They are
+          applied by the server on every request, not by the app — so they hold no matter which
+          screen someone is looking at.
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <Rule
+            title="Mentors from any division"
+            body={
+              rules.crossDivision
+                ? "On. Anyone at the company can be matched with anyone — the widest pool, and the usual choice for a first cohort."
+                : `Off. People only see mentors sitting in their own division.${unseated ? ` ${unseated} of your ${members.length} still have no division, and they keep seeing everyone until you seat them.` : ""}`
+            }
+            on={!!rules.crossDivision}
+            disabled={!canManage || busy}
+            onChange={(v) => onRules({ crossDivision: v })}
+          />
+          <Rule
+            title="Hide mentors who are full"
+            body={
+              rules.capacityGate
+                ? "On. A mentor at their stated cohort size drops out of the deck until a seat frees up."
+                : "Off. Full mentors still appear. Someone can write out an application and only then be told the cohort is full."
+            }
+            on={!!rules.capacityGate}
+            disabled={!canManage || busy}
+            onChange={(v) => onRules({ capacityGate: v })}
+          />
+        </div>
+
+        {!canManage && (
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 1, marginTop: 14 }}>
+            THE OWNER AND ORG ADMINS SET THESE.
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <Label>Divisions · {divisions.length}</Label>
+        <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.55 }}>
+          A division is a team inside {org.name}. It exists because somebody is sitting in it —
+          set one on a person from the People tab, or on the invitation before you send it.
+        </div>
+        {divisions.length === 0 ? (
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 1, marginTop: 14 }}>
+            NOBODY IS SEATED IN ONE YET.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 14 }}>
+            {divisions.map((d) => {
+              const n = members.filter((m) => m.division === d).length;
+              const withMentors = mentors.some((m) => m.division === d);
+              return (
+                <span key={d} style={{
+                  display: "inline-flex", alignItems: "center", gap: 7, background: C.surface,
+                  border: `1px solid ${C.line}`, borderRadius: 10, padding: "7px 11px", fontSize: 12.5, fontWeight: 600,
+                }}>
+                  {d}
+                  <span style={{ fontFamily: F.mono, fontSize: 9, color: withMentors ? "#A5A39D" : C.coral }}>
+                    {n} {withMentors ? "" : "· NO MENTOR"}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {/* The failure mode of the division rule, stated before it bites: a
+            division with no mentor in it shows its people an empty deck. */}
+        {!rules.crossDivision && divisions.some((d) => !mentors.some((m) => m.division === d)) && (
+          <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: C.coralTint, borderRadius: 12, padding: 12, marginTop: 14 }}>
+            <Shield size={15} color={C.coral} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
+              A division with no mentor in it shows its people an empty deck while “mentors from any
+              division” is off. Seat a mentor there, or turn the rule back on.
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 /* ————— orbit ————— */
 function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
   const [state, setState] = useState({ loading: true, posts: [], error: null, members: 0 });
   const [reacted, setReacted] = useState({});
+  const [opened, setOpened] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -304,6 +479,7 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
         if (cancelled) return;
         setState({ loading: false, posts: res.posts || [], error: null, members: res.orbit?.members || 0 });
         setReacted(Object.fromEntries((res.viewerState?.reacted || []).map((id) => [id, true])));
+        setOpened(Object.fromEntries((res.viewerState?.watched || []).map((id) => [id, true])));
       })
       .catch((e) => { if (!cancelled) setState({ loading: false, posts: [], members: 0, error: messageFor(e, "Couldn’t load the Orbit.") }); });
     return () => { cancelled = true; };
@@ -329,6 +505,20 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
     } catch (e) {
       setReacted((r) => { const n = { ...r }; delete n[id]; return n; });
       throw e;
+    }
+  };
+
+  /* PostCard calls `onOpen` unguarded for a colleague's video or resource, so a
+     feed rendered without one throws the moment anybody taps Watch. */
+  const onOpen = async (post) => {
+    if (opened[post.id]) return;
+    setOpened((o) => ({ ...o, [post.id]: true }));
+    try {
+      const { xp } = await postAction(post.id, "view");
+      if (xp) toast?.(`+${xp} XP · reviewed`);
+    } catch (e) {
+      setOpened((o) => { const n = { ...o }; delete n[post.id]; return n; });
+      toast?.(messageFor(e, "Couldn’t open that."));
     }
   };
 
@@ -393,6 +583,8 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
           mine={meId && String(p.authorId) === String(meId)}
           reacted={!!reacted[p.id]}
           onReact={onReact}
+          done={!!opened[p.id]}
+          onOpen={onOpen}
           toast={toast}
         />
       ))}
@@ -500,15 +692,16 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
     ["overview", "Overview", Building2],
     ["people", `People · ${members.length}`, Users],
     ...(canManage ? [["invites", "Invites", Send]] : []),
+    ["programme", "Programme", SlidersHorizontal],
     ["orbit", "Orbit", Radio],
     ["settings", "Settings", Settings],
   ];
 
-  const mint = async ({ to, name, count, expiresDays, role, orgRole }) => {
+  const mint = async ({ to, name, count, expiresDays, role, orgRole, division }) => {
     const res = await run(
       () => orgMintInvites({
         to: to || undefined, name: name || undefined, count, expiresDays,
-        role, orgRole,
+        role, orgRole, division: division || undefined,
       }),
       null
     );
@@ -533,10 +726,14 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
       onNav={setNav} onOrbit={(v) => run(() => setOrgOrbit(v), v ? "Orbit is open" : "Orbit closed")} />,
     people: <People org={org} members={members} canManage={canManage} isOwner={isOwner} meId={meId} busy={busy}
       onRole={(userId, orgRole) => run(() => orgSetMemberRole(userId, orgRole), orgRole === "admin" ? "Promoted to org admin" : "Now a member")}
+      onDivision={(userId, division) => run(() => orgSetDivision(userId, division), division ? `Seated in ${division}` : "Division cleared")}
       onRemove={(m) => { if (window.confirm(`Remove ${m.name} from ${org.name}?`)) run(() => orgRemoveMember(m.id), `${firstNameOf(m.name)} removed`); }} />,
     invites: <Invites org={org} invites={invites} busy={busy} toast={toast} onMint={mint}
+      divisions={divisionsOf(members)}
       inviterName={me?.user?.name || org.name}
       onRevoke={(code) => run(() => orgRevokeInvite(code), `${code} revoked`)} />,
+    programme: <Programme org={org} members={members} canManage={canManage} busy={busy}
+      onRules={(patch) => run(() => orgSetRules(patch), "Rule saved")} />,
     orbit: <Orbit org={org} canManage={canManage} busy={busy} toast={toast} meId={me?.user?.id}
       onOrbit={(v) => run(() => setOrgOrbit(v), v ? "Orbit is open" : "Orbit closed")} />,
     settings: <OrgSettings org={org} canManage={canManage} isOwner={isOwner} busy={busy}

@@ -8,7 +8,8 @@ import { sendEmail, orgInviteEmail } from "../lib/email.js";
 import { inviteUrl, nameFromEmail } from "../lib/invite-url.js";
 import {
   GRANTABLE_ORG_ROLES, canManageOrg, cleanName, cleanShort, cleanMission,
-  cleanWebsite, freeSlug, orgContext, publicOrg,
+  cleanWebsite, cleanDivision, cleanRules, DEFAULT_ORG_RULES,
+  freeSlug, orgContext, publicOrg,
 } from "../lib/orgs.js";
 
 /**
@@ -17,10 +18,12 @@ import {
  *   GET                                       my org, my standing in it, its people
  *   POST  { name, size, website, mission }    create one (mentors only) and own it
  *   PATCH { action: "update", … }             rename / edit, managers
+ *   PATCH { action: "rules", … }              programme rules, managers
  *   PATCH { action: "orbit", enabled }        open or close the org Orbit
  *   PATCH { action: "invite", to?, count? }   mint org-scoped mentor codes
  *   PATCH { action: "revoke", code }          kill an unclaimed org code
  *   PATCH { action: "role", userId, orgRole } owner promotes/demotes
+ *   PATCH { action: "division", userId, … }   managers seat someone in a team
  *   PATCH { action: "remove", userId }        managers remove someone
  *   PATCH { action: "leave" }                 anyone but the owner walks out
  *
@@ -80,6 +83,7 @@ async function peopleOf(db, orgId, { withEmail }) {
       email: withEmail ? u?.email ?? null : null,
       role: u?.role || "mentee",
       orgRole: m.orgRole,
+      division: m.division ?? null,
       headline: p.headline ?? null,
       impact: p.impact ?? null,
       tier: p.tier ?? null,
@@ -103,6 +107,7 @@ async function invitesOf(db, orgId) {
     state: inviteState(i, now),
     role: GRANTABLE_ROLES.has(i.role) ? i.role : "mentor",
     orgRole: i.orgRole || "member",
+    division: i.orgDivision ?? null,
     note: i.note || null,
     createdAt: i.createdAt,
     expiresAt: i.expiresAt || null,
@@ -205,6 +210,9 @@ async function handler(request, user) {
       // worse than a closed one, so the owner opens it when there's a roster.
       orbitActive: false,
       orbitActivatedAt: null,
+      // Written explicitly rather than left absent, so a new org's rules are
+      // visible in the document a manager is about to edit.
+      rules: { ...DEFAULT_ORG_RULES },
       createdAt: now,
       updatedAt: now,
     };
@@ -271,6 +279,28 @@ async function handler(request, user) {
     return json(await contextPayload(db, user, await orgContext(db, user.id)));
   }
 
+  if (action === "rules") {
+    const denied = managerOnly();
+    if (denied) return denied;
+    /* Merged against what's stored, so a console that only knows one switch
+       cannot blank the others by omitting them. */
+    const rules = cleanRules(body.rules ?? body, org.rules);
+    await orgs.updateOne({ _id: org._id }, { $set: { rules, updatedAt: new Date() } });
+    return json(await contextPayload(db, user, await orgContext(db, user.id)));
+  }
+
+  if (action === "division") {
+    const denied = managerOnly();
+    if (denied) return denied;
+    const userId = String(body.userId || "");
+    // null is a real value here — it un-seats someone from a team, which the
+    // cross-division rule then reads as "shows them everyone".
+    const division = cleanDivision(body.division);
+    const res = await orgMembers.updateOne({ orgId, userId }, { $set: { division } });
+    if (!res.matchedCount) return fail(404, "not_a_member", "They're not in this organisation.");
+    return json(await contextPayload(db, user, ctx));
+  }
+
   if (action === "orbit") {
     const denied = managerOnly();
     if (denied) return denied;
@@ -302,6 +332,11 @@ async function handler(request, user) {
     const days = Number(body.expiresDays) > 0 ? Number(body.expiresDays) : 90;
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     const note = cleanShort(body.note) || org.name;
+    /* Which team they're joining, decided at invite time. Carried on the code
+       and copied onto the membership at redeem, so an employee lands already
+       seated — otherwise every new hire starts division-less and the
+       cross-division rule has nothing to match them on. */
+    const division = cleanDivision(body.division);
 
     const docs = Array.from({ length: count }, () => ({
       code: newInviteCode(),
@@ -310,6 +345,7 @@ async function handler(request, user) {
       role,
       orgId,
       orgRole,
+      orgDivision: division,
       orgName: org.name,
       createdAt: new Date(),
       createdBy: user.email,

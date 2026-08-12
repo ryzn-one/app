@@ -384,10 +384,10 @@ export const CardGrid = ({ deck, renderCard, stampRight, stampLeft, canRight, on
    gets the full width back — hence NoCloseGutter. Closing is `close` here. */
 export const DetailShell = ({ title, right, close, footer, children }) => (
   <NoCloseGutter>
-    <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column", borderRadius: 24, overflow: "hidden" }}>
+    <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column", borderRadius: 24, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
       <HeaderRow title={title} onBack={close} right={right} />
       <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>{children}</div>
-      <div style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}`, flexShrink: 0 }}>{footer}</div>
+      <div style={{ padding: "10px 20px calc(16px + env(safe-area-inset-bottom, 0px))", background: C.white, borderTop: `1px solid ${C.line}`, flexShrink: 0 }}>{footer}</div>
     </div>
   </NoCloseGutter>
 );
@@ -798,9 +798,13 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
       {isDesktop
         ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
         : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={requested.length < 3} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
-      {activeMentor && (
+      {(activeMentor || requested.length > 0) && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
-          <Btn onClick={() => onEnterApp(activeMentor)}>Enter Ryzn · Week 1 with {(activeMentor.person?.name || "your mentor").split(" ")[0]}</Btn>
+          <Btn onClick={() => onEnterApp(activeMentor)}>
+            {activeMentor
+              ? `Enter Ryzn · Week 1 with ${(activeMentor.person?.name || "your mentor").split(" ")[0]}`
+              : `Continue to Day 1 · ${openReqs} request${openReqs === 1 ? "" : "s"} pending`}
+          </Btn>
         </div>
       )}
       {detail && (
