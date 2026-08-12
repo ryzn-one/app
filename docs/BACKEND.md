@@ -165,10 +165,18 @@ stops a double-tap from opening two matches. The accept is a
 `findOneAndUpdate` filtered on `status: "pending"`, so two concurrent accepts
 produce exactly one winner.
 
-A mentee holds three seats — one `active`, up to two `support`. A mentor's limit
-is the `capacity` they answered in onboarding. `/api/me` derives `mentor`,
-`supportMentors` and `cohort` from this collection on every call; none of it is
-denormalised onto the profile.
+A mentee holds three seats and the seats are equal. A mentor's limit is the
+`capacity` they answered in onboarding. `/api/me` derives `mentors` (a flat
+list, oldest pairing first) and `cohort` from this collection on every call;
+none of it is denormalised onto the profile.
+
+There used to be one `active` seat and two `support` seats, assigned by accept
+order, and the client rendered a product for the active one only — one Orbit,
+one feed, one thread. A mentee with two mentors therefore had a second mentor
+who was a name in a list. Each mentor now opens their own Orbit off
+`?mentorId=`, which every relevant endpoint already took, so nothing ranks them
+and `seat` is no longer written. Old documents may still carry a stale value;
+nothing reads it. The `promote` action on `PATCH /api/matches` is gone with it.
 
 Run `npm run db:setup` before this works properly — the unique index is created
 there, and without it concurrent requests can duplicate a pair.

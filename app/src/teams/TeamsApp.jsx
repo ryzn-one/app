@@ -141,7 +141,13 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
   const next = sessions
     .filter((s) => s.status === "confirmed" && s.confirmedSlot?.start)
     .sort((a, b) => new Date(a.confirmedSlot.start) - new Date(b.confirmedSlot.start))[0];
-  const mentorFirst = u.mentorName ? firstNameOf(u.mentorName) : null;
+  /* The next-step card speaks to one person, so it names the first mentor and
+     says how many others are behind it rather than pretending there is only
+     one. Stage 1 is the mentee's own milestone — it opens Direct Connect with
+     every mentor at once, not just this one. */
+  const mentors = u.mentors || [];
+  const mentorFirst = mentors.length ? firstNameOf(mentors[0].name) : null;
+  const others = mentors.length - 1;
 
   const step = invite
     ? {
@@ -156,7 +162,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
           </div>
         ),
       }
-    : !u.mentorName
+    : !mentors.length
       ? {
           key: "find", tone: C.purple, whoLabel: org?.name, who: "Nobody yet",
           title: "Find your mentor",
@@ -165,10 +171,10 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
         }
       : !stage1
         ? {
-            key: "stage1", tone: C.purple, who: u.mentorName, whoLabel: "For your mentor",
+            key: "stage1", tone: C.purple, who: mentors[0].name, whoLabel: others > 0 ? `And ${others} more` : "For your mentor",
             title: "Write your first exercise",
-            why: `A short piece ${mentorFirst} reads before your first session. Finishing it opens Direct Connect with them.`,
-            unlocks: [[MessageCircle, `Chat with ${mentorFirst}`], [Calendar, "Session booking"]],
+            why: `A short piece ${mentorFirst} reads before your first session. Finishing it opens Direct Connect with ${others > 0 ? "all your mentors" : "them"}.`,
+            unlocks: [[MessageCircle, others > 0 ? "Chat with your mentors" : `Chat with ${mentorFirst}`], [Calendar, "Session booking"]],
             action: <Btn onClick={() => onOpen("exercises")}>Start · +25 XP</Btn>,
           }
         : proposal
@@ -180,9 +186,9 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
             }
           : !todayDone
             ? {
-                key: "today", tone: C.ink, who: u.mentorName, whoLabel: "With",
+                key: "today", tone: C.ink, who: mentors[0].name, whoLabel: "With",
                 title: "Today’s exercise",
-                why: `Keeps your ${u.streak || 0}-day streak alive. ${mentorFirst} reads what you write.`,
+                why: `Keeps your ${u.streak || 0}-day streak alive. ${others > 0 ? "Your mentors read" : `${mentorFirst} reads`} what you write.`,
                 action: <Btn onClick={() => onOpen("exercises")}>Start · +25 XP</Btn>,
               }
             : null;
@@ -233,9 +239,11 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
             <div style={{ fontSize: 13, color: C.teal, marginTop: 6 }}>
               Streak safe at {u.streak || 0} day{(u.streak || 0) === 1 ? "" : "s"}. See you tomorrow.
             </div>
-            {u.mentorId && (
+            {mentors.length > 0 && (
               <Btn small kind="ghost" style={{ marginTop: 14, background: C.white, borderColor: C.teal, color: C.teal }}
-                onClick={() => onOpen("orbit")}>Read {mentorFirst}’s library</Btn>
+                onClick={() => (others > 0 ? go("mentors") : onOpen({ orbit: mentors[0].id }))}>
+                {others > 0 ? "Read your mentors’ libraries" : `Read ${mentorFirst}’s library`}
+              </Btn>
             )}
           </Card>
         )}
@@ -308,7 +316,8 @@ const PersonRow = ({ p, right, onClick }) => (
 
 /* ————— mentee: mentors ————— */
 export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toast, seatsLeft }) => {
-  const [view, setView] = useState(u.mentorName ? "mine" : "discover");
+  const mentors = u.mentors || [];
+  const [view, setView] = useState(mentors.length ? "mine" : "discover");
   const [division, setDivision] = useState("All");
   const [showFilter, setShowFilter] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -347,38 +356,36 @@ export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toa
         name={name} avatarUrl={u.avatarUrl} onAvatar={() => onOpen("profile")} />
       <Body>
         <Seg value={view} onChange={setView}
-          options={[["discover", "Discover"], ["mine", "My mentor"], ["orbit", "Orbit"]]} />
+          options={[["discover", "Discover"], ["mine", mentors.length > 1 ? "My mentors" : "My mentor"], ["orbit", "Orbit"]]} />
 
         {view === "orbit" && <OrgOrbit org={org} toast={toast} />}
 
+        {/* One card per mentor, each with its own Library and Message. The
+            second and third used to render as bare rows under "Also supporting
+            you" with neither button — the Library they were missing existed the
+            whole time, behind /api/posts?mentorId=. */}
         {view === "mine" && (
-          u.mentorName ? (
-            <>
-              <Card onClick={() => onOpenMentor({ id: u.mentorId, name: u.mentorName, headline: u.mentorTitle, avatarUrl: u.mentorAvatarUrl, tier: u.mentorTier, matchState: "accepted" })}>
+          mentors.length ? (
+            mentors.map((m) => (
+              <Card key={m.id} onClick={() => onOpenMentor({ ...m, matchState: "accepted" })}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Avatar src={u.mentorAvatarUrl} name={u.mentorName} size={52} />
+                  <Avatar src={m.avatarUrl} name={m.name} size={52} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{u.mentorName}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>{m.name}</div>
                     <div style={{ fontFamily: F.mono, fontSize: 9, color: C.mute, marginTop: 3 }}>
-                      {(u.mentorTitle || "YOUR MENTOR").toUpperCase()}
+                      {(m.headline || "YOUR MENTOR").toUpperCase()}
                     </div>
                   </div>
                   <ChevronRight size={18} color={C.mute} />
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-                  <Btn small kind="soft" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onOpen("orbit"); }}>Library</Btn>
-                  <Btn small style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onOpen("dm"); }}>
+                  <Btn small kind="soft" style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onOpen({ orbit: m.id }); }}>Library</Btn>
+                  <Btn small style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); onOpen({ dmPeer: m }); }}>
                     <MessageCircle size={13} /> Message
                   </Btn>
                 </div>
               </Card>
-              {(u.supportMentors || []).length > 0 && (
-                <Card>
-                  <Label>Also supporting you</Label>
-                  {(u.supportMentors || []).map((m) => <PersonRow key={m.id} p={m} />)}
-                </Card>
-              )}
-            </>
+            ))
           ) : (
             <Empty title="No mentor yet."
               body={`Apply to someone from Discover. They see your goals and answer in their own time.`}

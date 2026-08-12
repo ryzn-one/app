@@ -17,9 +17,13 @@ import {
  * mentor list can no longer disagree, and neither survives only until refresh.
  */
 
-/* A mentee's first accepted mentor is the active engagement; the rest are
-   supports. One active at a time is a product rule, not a UI detail. */
-const seatFor = (hasActiveSeat) => (hasActiveSeat ? "support" : "active");
+/* A mentee's accepted mentors are peers. There used to be an `active` seat and
+   two `support` seats, assigned by accept order, and only the active one got a
+   working product — the other two had no Orbit, no feed and no thread. Each
+   mentor now gets their own Orbit, so which one arrived first decides nothing.
+   `seat` is no longer written; old documents may still carry a stale value and
+   nothing reads it. MENTEE_SEATS survives as what it always really was — a
+   count of how many mentors one mentee may hold at once. */
 
 async function getMatches(request, user) {
   const rows = await listMatches(user);
@@ -73,7 +77,7 @@ async function createMatch(request, user) {
     await col.updateOne(
       pair,
       {
-        $set: { ...pair, status: MATCH_STATUS.DECLINED, seat: null, respondedAt: now, updatedAt: now },
+        $set: { ...pair, status: MATCH_STATUS.DECLINED, respondedAt: now, updatedAt: now },
         $setOnInsert: { requestedBy: side, createdAt: now },
       },
       { upsert: true }
@@ -106,7 +110,6 @@ async function createMatch(request, user) {
     ...pair,
     status: MATCH_STATUS.PENDING,
     requestedBy: side,
-    seat: null,
     createdAt: now,
     updatedAt: now,
     respondedAt: null,
@@ -142,12 +145,6 @@ async function acceptMatch(user, match) {
     if (use.accepted >= cap) return fail(409, "at_capacity", `Your cohort is full at ${cap}.`);
   }
 
-  // The mentee's seat is decided by the mentee's own existing matches,
-  // whichever side is doing the accepting.
-  const menteeUsage = side === "mentee"
-    ? use
-    : await usage({ id: match.menteeId, role: "mentee" });
-
   const col = await (await getDb()).collection(collections.matches);
   const now = new Date();
 
@@ -158,7 +155,6 @@ async function acceptMatch(user, match) {
     {
       $set: {
         status: MATCH_STATUS.ACCEPTED,
-        seat: seatFor(menteeUsage.hasActiveSeat),
         respondedAt: now,
         updatedAt: now,
       },
@@ -202,22 +198,13 @@ async function patchMatch(request, user) {
 
   if (action === "end") {
     if (match.status !== MATCH_STATUS.ACCEPTED) return fail(409, "not_accepted", "Nothing to end.");
-    await col.updateOne({ _id: match._id }, { $set: { status: MATCH_STATUS.ENDED, seat: null, updatedAt: now } });
+    await col.updateOne({ _id: match._id }, { $set: { status: MATCH_STATUS.ENDED, updatedAt: now } });
     return json({ ok: true, status: MATCH_STATUS.ENDED });
   }
 
-  // Promoting a support mentor to the active engagement. The demoted one keeps
-  // its seat as support rather than being dropped.
-  if (action === "promote") {
-    if (sideOf(user) !== "mentee") return fail(403, "mentee_only", "Only a mentee sets their active mentor.");
-    if (match.status !== MATCH_STATUS.ACCEPTED) return fail(409, "not_accepted", "Not an active pairing.");
-    await col.updateMany(
-      { menteeId: user.id, status: MATCH_STATUS.ACCEPTED, seat: "active" },
-      { $set: { seat: "support", updatedAt: now } }
-    );
-    await col.updateOne({ _id: match._id }, { $set: { seat: "active", updatedAt: now } });
-    return json({ ok: true, seat: "active" });
-  }
+  /* `promote` is gone. It set one mentor as the active engagement and demoted
+     the previous one, which was only ever needed because a single Orbit had to
+     choose an occupant. Mentees now hold every mentor at once. */
 
   return fail(400, "bad_request", "Unknown action.");
 }

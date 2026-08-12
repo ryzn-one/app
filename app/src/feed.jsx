@@ -4,7 +4,7 @@ import {
   Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe, Repeat2,
 } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, VideoCaptureModal, firstNameOf } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
 import { sharePostLink, isPublicPost } from "./lib/share.js";
@@ -889,9 +889,19 @@ export const ContentTabBar = ({ view, setView, count }) => (
   </div>
 );
 
-export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, onReact, openDm, back, go, toast, onAuthor, highlightPostId }) => {
+/**
+ * One mentor's Orbit: their posts, their program, the way into their thread.
+ *
+ * It takes the mentor as a prop rather than reading `u.mentorId` off the
+ * signed-in user, which is what makes a second and third Orbit possible at all
+ * — the mentee holds up to three and each renders this same screen with a
+ * different mentor, feed and program. Nothing here is the mentee's own
+ * progress; that lives on Home and does not change when they switch Orbits.
+ */
+export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWatch, reacted, onReact, openDm, back, go, toast, onAuthor, highlightPostId }) => {
   const [view, setView] = useState("feed");
-  if (!u.mentorName) return (
+  const resources = useMemo(() => feed.filter(p => p.kind === "video" || p.kind === "resource"), [feed]);
+  if (!mentor) return (
     <div>
       <HeaderRow title="Orbit" onBack={back} />
       <div style={{ padding: "0 20px 20px" }}>
@@ -902,16 +912,17 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
       </div>
     </div>
   );
-  const first = u.mentorName.split(" ")[0];
-  const resources = useMemo(() => feed.filter(p => p.kind === "video" || p.kind === "resource"), [feed]);
+  const first = mentor.name.split(" ")[0];
   const reviewed = resources.filter(p => watched[p.id]).length;
+  const phases = program?.phases || [];
+  const completedIds = program?.completedPhaseIds || [];
 
   const openMentorProfile = () => onAuthor?.({
-    id: u.mentorId,
-    name: u.mentorName,
-    headline: u.mentorTitle,
-    avatarUrl: u.mentorAvatarUrl,
-    tier: u.mentorTier,
+    id: mentor.id,
+    name: mentor.name,
+    headline: mentor.headline,
+    avatarUrl: mentor.avatarUrl,
+    tier: mentor.tier,
     matchState: "accepted",
   });
 
@@ -921,11 +932,11 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20, cursor: onAuthor ? "pointer" : "default" }} onClick={openMentorProfile}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <Avatar src={u.mentorAvatarUrl} name={u.mentorName} size={54} bg={C.purple} color={C.white} radius={0} />
+            <Avatar src={mentor.avatarUrl} name={mentor.name} size={54} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{u.mentorName}</div>
-              {u.mentorTitle && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{u.mentorTitle}</div>}
-              {u.mentorTier && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {u.mentorTier.toUpperCase()} MENTOR</div>}
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{mentor.name}</div>
+              {mentor.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{mentor.headline}</div>}
+              {mentor.tier && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {mentor.tier.toUpperCase()} MENTOR</div>}
             </div>
           </div>
           {/* Was a hard-coded "847 IMPACT · 11 GRADUATED" beside whoever the
@@ -960,9 +971,24 @@ export const OrbitScreen = ({ u, stage1, feed = [], watched, onWatch, reacted, o
           </Card>
         )}
 
+        {/* This mentor's program, not "the" program — each mentor writes their
+            own, so it belongs beside their posts rather than on a Profile that
+            has no way to say whose phases these are. */}
+        {phases.length > 0 && (
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Label>{first}’s program</Label>
+              <Label color={C.teal}>{completedIds.length} OF {phases.length} DONE</Label>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <ProgramTimeline phases={phases} completedIds={completedIds} />
+            </div>
+          </Card>
+        )}
+
         <ContentTabBar view={view} setView={setView} count={resources.length} />
 
-        <ContentTabs feed={feed} authorName={u.mentorName} authorId={u.mentorId} view={view}
+        <ContentTabs feed={feed} authorName={mentor.name} authorId={mentor.id} view={view}
           watched={watched} onWatch={onWatch} reacted={reacted} onReact={onReact}
           toast={toast} onAuthor={onAuthor} highlightPostId={highlightPostId}
           emptyText={`${first} hasn’t posted yet. Everything they share lands here first.`} />

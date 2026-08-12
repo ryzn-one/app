@@ -86,9 +86,9 @@ export const makeMenteeBadges = (earned = {}, streak = 0, milestones = 0, firstS
 
 /** Shapes an /api/me payload into the object every screen already reads.
  *
- *  `me.mentor`, `me.supportMentors` and `me.cohort` are derived server-side
- *  from the matches collection, so both halves of a pairing read the same
- *  record and neither is invented locally. */
+ *  `me.mentors` and `me.cohort` are derived server-side from the matches
+ *  collection, so both halves of a pairing read the same record and neither is
+ *  invented locally. */
 function toAppUser(me) {
   const p = me.profile || {};
   // Founders (`admin`) only ever use the mentor product surface.
@@ -135,18 +135,13 @@ function toAppUser(me) {
     rank: p.rank ?? null,
     stage1Complete: !!p.stage1Complete,
     todayExercise: me.exercise?.today ?? null,
-    // Null until a mentor actually accepts. Screens must handle "no mentor yet"
-    // rather than falling back to a name.
-    mentorName: me.mentor?.name ?? null,
-    mentorTitle: me.mentor?.headline ?? null,
-    mentorAvatarUrl: me.mentor?.avatarUrl ?? null,
-    mentorTier: me.mentor?.tier ?? null,
-    mentorMatchId: me.mentor?.matchId ?? null,
-    // The mentor's *user* id, not the match id — it's what /api/posts needs to
-    // fetch their feed. Only the match id was exposed before, so a mentee had
-    // no way to ask for their own mentor's content.
-    mentorId: me.mentor?.id ?? null,
-    supportMentors: me.supportMentors ?? [],
+    /* Every accepted mentor, equal, oldest first. Empty until one accepts —
+       screens must handle "no mentor yet" rather than falling back to a name.
+       Each entry carries the mentor's *user* id, which is what /api/posts,
+       /api/program and /api/messages all key on; `matchId` is only for ending
+       the pairing. There is deliberately no "active mentor" here: a mentee with
+       three mentors has three Orbits, not one plus two names in a list. */
+    mentors: me.mentors ?? [],
     track: Array.isArray(p.track) ? (p.track[0] ?? null) : (p.track ?? null),
     goals: p.goals ?? [],
     skills: p.skills ?? [],
@@ -202,9 +197,15 @@ export default function RyznComplete() {
      from `mentorFeed` because they are not theirs to edit, pin or delete — only
      to stop relaying. A mentee's Orbit gets the two already merged server-side. */
   const [relayed, setRelayed] = useState([]);
+  /* The mentee side: one feed per mentor, keyed by mentor user id, because a
+     mentee holds up to three and each Orbit shows only its own. `mentorFeed`
+     above stays what its name says — the signed-in mentor's own posts. */
+  const [feeds, setFeeds] = useState({});
   const [highlightPostId, setHighlightPostId] = useState(null);
   const [menteeAdds, setMenteeAdds] = useState(0);
   const [program, setProgram] = useState({ phases: [], completedPhaseIds: [] });
+  /* The mentee side: one program per mentor, keyed the same way as `feeds`. */
+  const [programs, setPrograms] = useState({});
   const [events, setEvents] = useState([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState(null);
@@ -368,15 +369,45 @@ export default function RyznComplete() {
   }, [phase, loadMatches]);
 
   /* — mentor content —
-     A mentor loads their own feed; a mentee loads their active mentor's. Same
-     endpoint, and the server decides what each is allowed to see. `viewerState`
-     restores what's already been watched and reacted to, which used to be
-     useState maps wiped by every refresh. */
-  const mentorId = user?.mentorId ?? null;
+     A mentor loads their own feed; a mentee loads one per mentor they hold.
+     Same endpoint, and the server decides what each is allowed to see —
+     /api/posts?mentorId= has always been per-mentor and pair-authorised, so
+     this is the client catching up to it. It previously fetched only the
+     "active" mentor's posts, which is why a second mentor's Orbit was empty of
+     content that existed and was already readable.
+
+     `viewerState` restores what's already been watched and reacted to. It comes
+     back per request, so the maps are merged across mentors rather than
+     replaced — otherwise the last feed to land would erase the others. */
+  const mentorIds = useMemo(
+    () => (role === "mentee" ? (user?.mentors || []).map(m => m.id) : []),
+    [role, user?.mentors]
+  );
+  // Stable across renders that don't change the set — the loaders depend on it.
+  const mentorIdKey = mentorIds.join(",");
+
   const loadFeed = useCallback(async () => {
-    if (role === "mentee" && !mentorId) { setMentorFeed([]); setRelayed([]); return; }
+    if (role === "mentee") {
+      const ids = mentorIdKey ? mentorIdKey.split(",") : [];
+      if (!ids.length) { setFeeds({}); setWatched({}); setReacted({}); return; }
+      const results = await Promise.all(ids.map(async (id) => {
+        try {
+          const { posts, viewerState } = await fetchPosts({ mentorId: id });
+          return [id, posts || [], viewerState];
+        } catch (err) {
+          console.error(`[ryzn] /api/posts?mentorId=${id} failed:`, err);
+          return [id, [], null];
+        }
+      }));
+      setFeeds(Object.fromEntries(results.map(([id, posts]) => [id, posts])));
+      const watchedIds = results.flatMap(([, , vs]) => vs?.watched || []);
+      const reactedIds = results.flatMap(([, , vs]) => vs?.reacted || []);
+      setWatched(Object.fromEntries(watchedIds.map(id => [id, true])));
+      setReacted(Object.fromEntries(reactedIds.map(id => [id, true])));
+      return;
+    }
     try {
-      const { posts, amplified, viewerState } = await fetchPosts(role === "mentee" ? { mentorId } : {});
+      const { posts, amplified, viewerState } = await fetchPosts({});
       setMentorFeed(posts || []);
       setRelayed(amplified || []);
       setWatched(Object.fromEntries((viewerState?.watched || []).map(id => [id, true])));
@@ -384,7 +415,7 @@ export default function RyznComplete() {
     } catch (err) {
       console.error("[ryzn] /api/posts failed:", err);
     }
-  }, [role, mentorId]);
+  }, [role, mentorIdKey]);
 
   useEffect(() => { if (phase === "app") loadFeed(); }, [phase, loadFeed]);
 
@@ -400,7 +431,13 @@ export default function RyznComplete() {
         if (cancelled || !post) return;
         setHighlightPostId(post.id);
         if (role === "mentee") {
-          setOverlay("orbit");
+          /* Into the Orbit of whoever wrote it. A shared post used to open
+             "the" Orbit, which was the wrong mentor's whenever the author was
+             one of the other two. Amplified posts carry a foreign author, so
+             fall back to the first Orbit rather than opening none. */
+          const owner = (user.mentors || []).find(m => String(m.id) === String(post.authorId))
+            || (user.mentors || [])[0];
+          if (owner) setOverlay({ orbit: owner.id });
         } else if (String(post.authorId) === String(session?.user?.id)) {
           setTab("feed");
           setOverlay(null);
@@ -424,23 +461,39 @@ export default function RyznComplete() {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, user?.mentorId, role, session?.user?.id]);
+  }, [phase, mentorIdKey, role, session?.user?.id]);
 
   /* Derived, not stored: the greeting *is* a post, so the feed is the only
      thing that can answer whether one exists. */
   const greetingUp = mentorFeed.some(p => p.greeting);
 
-  /* The mentor's authored program: same "own vs. paired party's" shape as the
-     feed above. A mentee with no active mentor yet has nothing to load. */
+  /* The authored program. A mentor has one; a mentee reads one per mentor, and
+     each is that mentor's own curriculum with the mentee's progress against it
+     — so they are held apart by mentor id and never merged into a single
+     timeline. `program` stays the mentor's own for the mentor side. */
   const loadProgram = useCallback(async () => {
-    if (role === "mentee" && !mentorId) { setProgram({ phases: [], completedPhaseIds: [] }); return; }
+    if (role === "mentee") {
+      const ids = mentorIdKey ? mentorIdKey.split(",") : [];
+      if (!ids.length) { setPrograms({}); return; }
+      const results = await Promise.all(ids.map(async (id) => {
+        try {
+          const data = await fetchProgram({ mentorId: id });
+          return [id, { phases: data.phases || [], completedPhaseIds: data.completedPhaseIds || [] }];
+        } catch (err) {
+          console.error(`[ryzn] /api/program?mentorId=${id} failed:`, err);
+          return [id, { phases: [], completedPhaseIds: [] }];
+        }
+      }));
+      setPrograms(Object.fromEntries(results));
+      return;
+    }
     try {
-      const data = await fetchProgram(role === "mentee" ? { mentorId } : {});
+      const data = await fetchProgram({});
       setProgram({ phases: data.phases || [], completedPhaseIds: data.completedPhaseIds || [] });
     } catch (err) {
       console.error("[ryzn] /api/program failed:", err);
     }
-  }, [role, mentorId]);
+  }, [role, mentorIdKey]);
 
   useEffect(() => { if (phase === "app") loadProgram(); }, [phase, loadProgram]);
 
@@ -514,10 +567,7 @@ export default function RyznComplete() {
   const sessionPeople = useMemo(() => {
     if (!user) return [];
     if (role === "mentor") return (user.cohort || []).map(m => ({ id: m.id, name: m.name, week: m.week }));
-    return [
-      ...(user.mentorId ? [{ id: user.mentorId, name: user.mentorName, week: user.week }] : []),
-      ...(user.supportMentors || []).map(m => ({ id: m.id, name: m.name, week: user.week })),
-    ];
+    return (user.mentors || []).map(m => ({ id: m.id, name: m.name, week: user.week }));
   }, [user, role]);
 
   const createSessionHandler = async (body) => {
@@ -682,7 +732,14 @@ export default function RyznComplete() {
         todayExercise: res.exercise ?? u.todayExercise,
       }));
       toast(`+${res.awarded || todayEx.xp} XP · streak day ${res.streak ?? (user?.streak || 0)}`);
-      if (user?.mentorName) setTimeout(() => toast(`Direct Connect unlocked · message ${user.mentorName.split(" ")[0]}`), 2300);
+      /* Direct Connect is earned once and opens every orbit at once, so the
+         message names the count rather than one mentor. */
+      if (user?.mentors?.length) {
+        const n = user.mentors.length;
+        setTimeout(() => toast(n === 1
+          ? `Direct Connect unlocked · message ${user.mentors[0].name.split(" ")[0]}`
+          : `Direct Connect unlocked · message any of your ${n} mentors`), 2300);
+      }
     } catch (err) {
       throw err;
     } finally {
@@ -725,9 +782,13 @@ export default function RyznComplete() {
         setReacted(r => { const n = { ...r }; delete n[id]; return n; });
         return res;
       }
-      setMentorFeed((feed) => (feed || []).map((p) => (
-        p.id === id ? { ...p, reactions: (p.reactions ?? 0) + 1 } : p
-      )));
+      /* The post lives in the mentor's own feed or in one of the mentee's
+         per-mentor feeds — patch wherever it is rather than guessing which. */
+      const bump = (p) => (p.id === id ? { ...p, reactions: (p.reactions ?? 0) + 1 } : p);
+      setMentorFeed((feed) => (feed || []).map(bump));
+      setFeeds((byMentor) => Object.fromEntries(
+        Object.entries(byMentor).map(([mid, posts]) => [mid, (posts || []).map(bump)])
+      ));
       toast("Liked");
       return res;
     } catch (e) {
@@ -744,16 +805,24 @@ export default function RyznComplete() {
       setTab("profile");
       return;
     }
-    const from = overlay === "orbit" ? "orbit" : undefined;
-    // Active mentor from Orbit / post header.
-    if (role === "mentee" && user?.mentorId && String(person.id) === String(user.mentorId)) {
+    /* Returning to the Orbit the profile was opened from means remembering
+       *which* Orbit — `from` carries the whole overlay, not a bare string. */
+    const from = (overlay === "orbit" || overlay?.orbit) ? overlay : undefined;
+    /* One of the mentee's own mentors, tapped from an Orbit or a post header.
+       Checked against every mentor they hold, not just one: the details on the
+       card come from the match, so the wrong lookup renders a real mentor
+       under a stranger's name. */
+    const own = role === "mentee"
+      ? (user?.mentors || []).find(m => String(m.id) === String(person.id))
+      : null;
+    if (own) {
       setOverlay({
         mentorProfile: {
-          id: user.mentorId,
-          name: user.mentorName,
-          headline: user.mentorTitle,
-          avatarUrl: user.mentorAvatarUrl,
-          tier: user.mentorTier,
+          id: own.id,
+          name: own.name,
+          headline: own.headline,
+          avatarUrl: own.avatarUrl,
+          tier: own.tier,
           matchState: "accepted",
         },
         from,
@@ -767,7 +836,7 @@ export default function RyznComplete() {
         headline: person.headline,
         avatarUrl: person.avatarUrl,
         tier: person.tier,
-        matchState: person.matchState || (user?.mentorId && String(person.id) === String(user.mentorId) ? "accepted" : undefined),
+        matchState: person.matchState,
       },
       from,
     });
@@ -822,21 +891,15 @@ export default function RyznComplete() {
       toast(`Request sent to ${m.name.split(" ")[0]}`);
     } catch (e) { toast(e.message || "Couldn’t send that request."); }
   };
-  /* Promote/drop write to the shared match record, so the mentor sees the same
-     change. Previously both were local array shuffles the other side never saw. */
-  const promoteMentor = async (m) => {
-    try {
-      await respondToMatch(m.matchId, "promote");
-      await refreshUser();
-      toast(`${m.name.split(" ")[0]} is now your active mentor`);
-    } catch (e) { toast(e.message || "Couldn’t change your active mentor."); }
-  };
-  const dropMentor = async (m) => {
+  /* Leaving writes to the shared match record, so the mentor sees the same
+     change. There is no promote any more — mentors aren't ranked, so there is
+     nothing to promote a mentor to. */
+  const leaveMentor = async (m) => {
     try {
       await respondToMatch(m.matchId, "end");
       await Promise.all([loadRoster(), refreshUser()]);
-      toast(`${m.name.split(" ")[0]} dropped · seat opened`);
-    } catch (e) { toast(e.message || "Couldn’t drop that mentor."); }
+      toast(`Left ${m.name.split(" ")[0]}’s orbit · seat opened`);
+    } catch (e) { toast(e.message || "Couldn’t leave that orbit."); }
   };
   const addMentee = async (m) => {
     try {
@@ -859,7 +922,8 @@ export default function RyznComplete() {
   /* Seats, in one place — Explore and the add decks must agree on whether
      there’s room, and the answer differs per side. */
   const mentorCapacity = session?.profile?.capacity ?? 4;
-  const mentorSeatsLeft = 3 - ((user?.mentorName ? 1 : 0) + (user?.supportMentors?.length || 0));
+  const mentorsHeld = user?.mentors?.length || 0;
+  const mentorSeatsLeft = 3 - mentorsHeld;
   const cohortSeatsLeft = mentorCapacity - (user?.cohort?.length || 0);
 
   /* — notification deep links — */
@@ -995,7 +1059,7 @@ export default function RyznComplete() {
         back={() => setOverlay(null)}
       />
     );
-    if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
+    if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={mentorsHeld} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "explore") return (
       <ExploreScreen
@@ -1006,7 +1070,8 @@ export default function RyznComplete() {
         capacityNote={role === "mentee" ? "Mentor seats full · 3 of 3" : `Cohort full · ${mentorCapacity} seats`}
         openAccepted={(p) => {
           setOverlay(null);
-          if (role === "mentee") setTimeout(() => setOverlay("orbit"), 60);
+          // Their Orbit, not "the" Orbit — the mentee may hold three.
+          if (role === "mentee") setTimeout(() => setOverlay({ orbit: p.id }), 60);
           else { const m = user.cohort?.find(c => c.id === p.id); if (m) setTimeout(() => setOverlay({ mentee: m }), 60); }
         }}
       />
@@ -1021,7 +1086,31 @@ export default function RyznComplete() {
         onAmplifyChange={loadFeed}
       />
     );
-    if (overlay === "orbit") return <OrbitScreen u={user} stage1={stage1} feed={mentorFeed} back={() => setOverlay(null)} watched={watched} onWatch={watchContent} reacted={reacted} onReact={reactToPost} openDm={() => setOverlay("dm")} go={() => { setOverlay(null); setTab("exercises"); }} toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId} />;
+    /* One Orbit per mentor, addressed by mentor id. A bare "orbit" still
+       arrives from notification deep links, which know a destination but not a
+       mentor; it falls back to the first, which is the only Orbit that exists
+       in the common case. */
+    if (overlay === "orbit" || overlay?.orbit) {
+      const list = user.mentors || [];
+      const m = overlay?.orbit
+        ? list.find(x => String(x.id) === String(overlay.orbit))
+        : list[0];
+      if (!m) return <OrbitScreen mentor={null} back={() => setOverlay(null)} />;
+      return (
+        <OrbitScreen
+          mentor={m}
+          stage1={stage1}
+          feed={feeds[m.id] || []}
+          program={programs[m.id] || { phases: [], completedPhaseIds: [] }}
+          back={() => setOverlay(null)}
+          watched={watched} onWatch={watchContent}
+          reacted={reacted} onReact={reactToPost}
+          openDm={() => setOverlay({ dmPeer: m, from: { orbit: m.id } })}
+          go={() => { setOverlay(null); setTab("exercises"); }}
+          toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId}
+        />
+      );
+    }
     if (overlay === "board") return <MentorBoard u={user} back={() => setOverlay(null)} />;
     if (overlay === "course") return (
       <CourseDesigner
@@ -1030,9 +1119,16 @@ export default function RyznComplete() {
         back={() => setOverlay(null)}
       />
     );
-    if (overlay === "dm") return user.mentorId ? (
-      <DMScreen name={user.mentorName} otherId={user.mentorId} sub="DIRECT CONNECT · EARNED AT STAGE 1" back={() => setOverlay(null)} placeholder={`Message ${user.mentorName.split(" ")[0]}…`} />
-    ) : null;
+    /* A bare "dm" is the same deep-link case as a bare "orbit": no person
+       attached, so it opens the first mentor's thread. Every other route into
+       messaging names its peer, which is what lets a mentee message all three
+       of their mentors rather than only the one the app used to hard-code. */
+    if (overlay === "dm") {
+      const m = (user.mentors || [])[0];
+      return m ? (
+        <DMScreen name={m.name} otherId={m.id} sub="DIRECT CONNECT · EARNED AT STAGE 1" back={() => setOverlay(null)} placeholder={`Message ${m.name.split(" ")[0]}…`} />
+      ) : null;
+    }
     if (overlay.dmPeer) return (
       <DMScreen
         name={overlay.dmPeer.name}
@@ -1091,7 +1187,7 @@ export default function RyznComplete() {
           <TeamsChat {...common} role={role} matches={matches} stage1={stage1}
             onOpenThread={(p) => setOverlay({ dmPeer: p })} />
         );
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} onUpdateProfile={updateUserProfile} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} />;
         default: return null;
       }
     }
@@ -1119,11 +1215,11 @@ export default function RyznComplete() {
     if (mode === "teams") return teamsContent();
     if (role === "mentee") {
       switch (tab) {
-        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} todayDone={todayDone} stage1={stage1} mentorSeats={(user.mentorName ? 1 : 0) + (user.supportMentors?.length || 0)} toast={toast} feed={mentorFeed} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} />;
+        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} todayDone={todayDone} stage1={stage1} mentorSeats={mentorsHeld} toast={toast} feeds={feeds} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} />;
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} extraMentors={user.supportMentors || []} onPromote={promoteMentor} onDrop={dropMentor} program={program} onUpdateProfile={updateUserProfile} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} />;
         default: return null;
       }
     }

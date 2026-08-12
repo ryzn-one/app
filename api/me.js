@@ -96,7 +96,7 @@ async function handler(request, user) {
     // Founders (`admin`) get a mentor-shaped profile — they never sit on the mentee side.
     ...(isMentorRole(user.role)
       ? { impact: 0, tier: "Scout", mentorRank: null, cohort: [], greetingUploaded: false }
-      : { week: 1, streak: 0, xp: 0, rank: null, mentorUserId: null, supportMentorIds: [], earned: {} }),
+      : { week: 1, streak: 0, xp: 0, rank: null, earned: {} }),
   };
 
   // Upsert-on-read: $setOnInsert means an existing profile is never clobbered.
@@ -127,8 +127,10 @@ async function handler(request, user) {
   const otherIds = accepted.map((m) => (side === "mentor" ? m.menteeId : m.mentorId));
   const { users: otherUsers, profiles: otherProfiles } = await peopleById(db, otherIds);
 
-  let mentor = null;
-  let supportMentors = [];
+  /* Every accepted mentor, oldest pairing first — a flat list, because each one
+     opens its own Orbit and none of them outranks the others. This used to be
+     `mentor` plus `supportMentors`, and only `mentor` had a product behind it. */
+  let mentors = [];
   let cohort = [];
 
   if (side === "mentee") {
@@ -142,11 +144,13 @@ async function handler(request, user) {
         headline: p.headline ?? null,
         avatarUrl: p.avatarUrl ?? u?.image ?? null,
         tier: p.tier ?? "Scout",
-        seat: m.seat,
+        since: m.respondedAt ?? m.createdAt ?? null,
       };
     };
-    mentor = accepted.filter((m) => m.seat === "active").map(shape)[0] ?? null;
-    supportMentors = accepted.filter((m) => m.seat !== "active").map(shape);
+    mentors = accepted
+      .slice()
+      .sort((a, b) => new Date(a.respondedAt ?? a.createdAt ?? 0) - new Date(b.respondedAt ?? b.createdAt ?? 0))
+      .map(shape);
   } else {
     cohort = accepted.map((m) => {
       const u = otherUsers.get(m.menteeId);
@@ -225,8 +229,7 @@ async function handler(request, user) {
       onboardingComplete,
       _id: undefined,
     },
-    mentor,
-    supportMentors,
+    mentors,
     cohort,
     exercise,
     /* Their organisation, if they're in one — two indexed reads, and it's what

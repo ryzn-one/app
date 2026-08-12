@@ -199,8 +199,9 @@ async function handler(request, user) {
 
   // Mentees are the default role and may predate the field being written, so
   // match on absent-or-"mentee" rather than an exact equality that would miss them.
+  // Admins count as mentors (isMentorRole) so they surface in mentor search too.
   const roleFilter =
-    wanted === "mentee" ? { role: { $in: [null, "mentee"] } } : { role: "mentor" };
+    wanted === "mentee" ? { role: { $in: [null, "mentee"] } } : { role: { $in: ["mentor", "admin"] } };
 
   /* Search spans two collections — name lives on `user`, everything else on
      `profiles`. Two indexed queries and a union of ids beats a $lookup here,

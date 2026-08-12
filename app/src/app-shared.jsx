@@ -304,7 +304,9 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
     });
   }
   if (role === "mentee") {
-    if (u.mentorName) items.push({ icon: Check, c: C.teal, bg: C.tealTint, t: `${u.mentorName.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" });
+    /* One line per mentor — the mentee may hold three, and "they accepted"
+       naming only the first would drop the other two off the list entirely. */
+    (u.mentors || []).forEach(m => items.push({ icon: Check, c: C.teal, bg: C.tealTint, t: `${m.name.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" }));
     if (u.earned?.goal) items.push({ icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: `Verified and shareable. ${BADGE_DEFS.length - 1} more to go.`, when: u.earned.goal, to: "badges" });
     items.push({ icon: Flame, c: C.coral, bg: C.coralTint, t: u.streak > 0 ? `Streak: day ${u.streak}` : "Start your streak", d: "Today’s exercise takes a few minutes. Finishing it earns XP and unlocks Direct Connect.", when: "Today", to: "exercises" });
   } else {
