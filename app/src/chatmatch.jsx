@@ -717,10 +717,10 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
           {m.headline && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{m.headline}</div>}
-          {m.why && <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 8, overflow: "hidden", flex: 1 }}>{m.why}</div>}
-          <div style={{ marginTop: 8 }}><TagRow items={m.expertise} limit={3} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 9, letterSpacing: 0.5 }}>IMPACT {m.impact ?? 0}{m.capacity ? ` · ${m.capacity} SEAT${m.capacity === 1 ? "" : "S"} THIS COHORT` : ""}</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, padding: "6px 0", background: C.purpleTint, borderRadius: 10, color: C.purple, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8 }}>TAP FOR FULL PROFILE</div>
+          {m.why && <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 8, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", flexShrink: 0 }}>{m.why}</div>}
+          <div style={{ marginTop: 8, flexShrink: 0 }}><TagRow items={m.expertise} limit={3} /></div>
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 9, letterSpacing: 0.5, flexShrink: 0 }}>IMPACT {m.impact ?? 0}{m.capacity ? ` · ${m.capacity} SEAT${m.capacity === 1 ? "" : "S"} THIS COHORT` : ""}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, padding: "6px 0", background: C.purpleTint, borderRadius: 10, color: C.purple, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, flexShrink: 0 }}>TAP FOR FULL PROFILE</div>
         </div>
       </div>
     );
@@ -901,14 +901,14 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
           {m.goals?.[0] && (
-            <div style={{ background: C.surface, borderRadius: 10, padding: "8px 11px", marginTop: 8 }}>
+            <div style={{ background: C.surface, borderRadius: 10, padding: "8px 11px", marginTop: 8, flexShrink: 0 }}>
               <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, letterSpacing: 0.8 }}>GOAL 1 OF {m.goals.length}</span>
-              <div style={{ fontSize: 12.5, fontStyle: "italic", marginTop: 2 }}>“{m.goals[0]}”</div>
+              <div style={{ fontSize: 12.5, fontStyle: "italic", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>“{m.goals[0]}”</div>
             </div>
           )}
-          <div style={{ marginTop: 8, flex: 1 }}><TagRow items={m.interests} limit={3} /></div>
-          <div style={{ marginTop: 6 }}><TagRow items={m.skills} limit={2} bg={C.tealTint} color={C.teal} border={false} /></div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, padding: "6px 0", background: C.purpleTint, borderRadius: 10, color: C.purple, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8 }}>TAP FOR FULL PROFILE</div>
+          <div style={{ marginTop: 8, flex: 1, minHeight: 0, overflow: "hidden" }}><TagRow items={m.interests} limit={3} /></div>
+          <div style={{ marginTop: 6, flexShrink: 0 }}><TagRow items={m.skills} limit={2} bg={C.tealTint} color={C.teal} border={false} /></div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, padding: "6px 0", background: C.purpleTint, borderRadius: 10, color: C.purple, fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, flexShrink: 0 }}>TAP FOR FULL PROFILE</div>
         </div>
       </div>
     );

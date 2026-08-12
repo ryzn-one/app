@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "npm --prefix app run dev",
+    "dev:api": "node --env-file=.env.local --watch scripts/dev-api.mjs",
     "build": "npm --prefix app install && npm --prefix app run build && node scripts/assemble.mjs",
     "preview": "npx --yes serve dist",
     "db:setup": "node --env-file=.env.local scripts/db-setup.mjs",

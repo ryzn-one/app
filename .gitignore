@@ -1,9 +1,9 @@
 node_modules
 dist
 .env
-.env.local
+.env.local*
 app/.env
-app/.env.local
+app/.env.local*
 app/node_modules
 app/dist
 
