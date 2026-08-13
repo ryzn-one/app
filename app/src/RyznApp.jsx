@@ -5,13 +5,13 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Newspaper
+  X, SlidersHorizontal, RotateCcw, Search, Newspaper, UserPlus, UserCheck
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary, firstNameOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
-import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, amplifyPost, unamplifyPost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction } from "./lib/auth-client.js";
+import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, amplifyPost, unamplifyPost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction, followMentor, unfollowMentor } from "./lib/auth-client.js";
 import { appSide, isMentorRole, isOnboardingDone } from "./lib/roles.js";
 import { stashPendingInvite, readPendingInvite, claimPendingInvite } from "./lib/pending-invite.js";
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
@@ -184,6 +184,7 @@ export default function RyznComplete() {
   // app state
   const [tab, setTab] = useState("home");
   const [overlay, setOverlay] = useState(null);
+  const [profileFollowBusy, setProfileFollowBusy] = useState(false);
   const [badgeModal, setBadgeModal] = useState(null);
   const [todayDone, setTodayDone] = useState(false);
   const [submittingExercise, setSubmittingExercise] = useState(false);
@@ -837,9 +838,64 @@ export default function RyznComplete() {
         avatarUrl: person.avatarUrl,
         tier: person.tier,
         matchState: person.matchState,
+        // Carried over when the caller already knows it (e.g. the mentor
+        // network list) so the button doesn't flash "Follow" before the
+        // lookup below resolves it.
+        following: typeof person.following === "boolean" ? person.following : undefined,
       },
       from,
     });
+  };
+
+  /* Follow lives on `overlay.mentorProfile` itself rather than separate state,
+     same as network.jsx keeps it on `detail` — one object to keep in sync
+     instead of two. Resolved lazily: most callers (a feed post's byline, a
+     match card) don't know the viewer's follow state up front, only the
+     mentor network list does. Mentor-to-mentor only, matching api/roster.js —
+     a mentee viewing their own mentor, or a mentor viewing themselves, never
+     gets a follow lookup or button. */
+  useEffect(() => {
+    const target = overlay?.mentorProfile;
+    if (role !== "mentor" || !target?.id) return;
+    if (session?.user?.id && String(target.id) === String(session.user.id)) return;
+    if (typeof target.following === "boolean") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { people } = await fetchRoster({ side: "mentors", q: target.name });
+        const match = (people || []).find((p) => String(p.id) === String(target.id));
+        if (!cancelled && typeof match?.following === "boolean") {
+          setOverlay((o) => (o?.mentorProfile?.id === target.id
+            ? { ...o, mentorProfile: { ...o.mentorProfile, following: match.following } }
+            : o));
+        }
+      } catch {
+        // A failed lookup just leaves the button unresolved for this open —
+        // it still works, starting from "Follow" rather than blocking on it.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [overlay?.mentorProfile?.id, overlay?.mentorProfile?.following, role, session?.user?.id]);
+
+  const toggleProfileFollow = async () => {
+    const target = overlay?.mentorProfile;
+    if (!target?.id || profileFollowBusy) return;
+    const next = !target.following;
+    setProfileFollowBusy(true);
+    setOverlay((o) => (o?.mentorProfile?.id === target.id
+      ? { ...o, mentorProfile: { ...o.mentorProfile, following: next } }
+      : o));
+    try {
+      await (next ? followMentor(target.id) : unfollowMentor(target.id));
+      toast(next ? `Following ${firstNameOf(target.name)}` : `Unfollowed ${firstNameOf(target.name)}`);
+    } catch (e) {
+      setOverlay((o) => (o?.mentorProfile?.id === target.id
+        ? { ...o, mentorProfile: { ...o.mentorProfile, following: !next } }
+        : o));
+      toast(e?.message || "Couldn’t save that.");
+    } finally {
+      setProfileFollowBusy(false);
+    }
   };
 
   const pinPost = async (id, pinned) => {
@@ -1141,13 +1197,33 @@ export default function RyznComplete() {
       />
     );
     if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dmPeer: m, from: { mentee: m } })} />;
-    if (overlay.mentorProfile) return (
-      <MentorDetailSheet
-        m={overlay.mentorProfile}
-        close={() => setOverlay(overlay.from || null)}
-        footer={<Btn kind="dark" onClick={() => setOverlay(overlay.from || null)}>Done</Btn>}
-      />
-    );
+    if (overlay.mentorProfile) {
+      // Following is a mentor-to-mentor thing only (see api/roster.js) — a
+      // mentee never gets the button, and neither does a mentor on their own
+      // profile, which can't reach this branch anyway (openAuthorProfile
+      // routes that to the Profile tab instead).
+      const canFollow = role === "mentor" && overlay.mentorProfile.id
+        && String(overlay.mentorProfile.id) !== String(session?.user?.id);
+      return (
+        <MentorDetailSheet
+          m={overlay.mentorProfile}
+          close={() => setOverlay(overlay.from || null)}
+          footer={canFollow ? (
+            <Btn
+              kind={overlay.mentorProfile.following ? "ghost" : "primary"}
+              disabled={profileFollowBusy}
+              style={overlay.mentorProfile.following ? { borderColor: C.purple, color: C.purple } : undefined}
+              onClick={toggleProfileFollow}>
+              {overlay.mentorProfile.following
+                ? <><UserCheck size={15} /> Following {firstNameOf(overlay.mentorProfile.name)}</>
+                : <><UserPlus size={15} /> Follow {firstNameOf(overlay.mentorProfile.name)}</>}
+            </Btn>
+          ) : (
+            <Btn kind="dark" onClick={() => setOverlay(overlay.from || null)}>Done</Btn>
+          )}
+        />
+      );
+    }
     return null;
   };
 
