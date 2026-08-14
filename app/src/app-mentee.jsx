@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  // Crown left with the ACTIVE badge — mentors aren't ranked any more.
-  Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame,
+  Crown, Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
@@ -9,10 +8,10 @@ import {
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 /* ProgramTimeline moved to OrbitScreen with the programs themselves. */
-import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { EXERCISE_TRACK } from "./data.js";
-import { fetchMessages, sendMessage } from "./lib/auth-client.js";
+import { fetchMessages, sendMessage, fetchImpactHistory } from "./lib/auth-client.js";
 import { countdown, fmtRange } from "./lib/calendar.js";
 
 /* ————————————————— APP: MENTEE ————————————————— */
@@ -356,18 +355,40 @@ export const MenteeBadges = ({ badges, openBadge, justEarnedId }) => (
    "Anonymised leaderboard" where a user would reasonably read them as peers.
    There is no XP ledger yet (see docs/PRODUCTION.md), so the only honest board
    is the caller's own standing. */
-export const CohortScreen = ({ u, back }) => (
+export const CohortScreen = ({ u, back }) => {
+  const [impactPoints, setImpactPoints] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { points } = await fetchImpactHistory();
+        if (!cancelled) setImpactPoints((points || []).map((p) => p.cumulative));
+      } catch {
+        if (!cancelled) setImpactPoints([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
   <div>
     <HeaderRow title="Cohort" onBack={back} right={<Label>FOUNDING</Label>} />
     <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-      <Card style={{ background: C.purple, border: "none", color: C.white, padding: 20 }}>
-        <Label color="#C9C3F2">Your standing</Label>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 8 }}>
-          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1.5 }}>{Number(u.xp || 0).toLocaleString()}</span>
-          <span style={{ fontFamily: F.mono, fontSize: 11, letterSpacing: 1 }}>XP</span>
+      <Card style={{ background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 18, right: 18 }}>
+          <Sparkline points={impactPoints} color="#B7AFF2" />
         </div>
-        <div style={{ fontFamily: F.mono, fontSize: 10, color: "#DDD9F6", marginTop: 6, letterSpacing: 0.6 }}>
-          {u.rank ? `RANK #${u.rank}` : "RANK OPENS WHEN THE COHORT IS FULL"} · {u.streak} DAY STREAK
+        <Label color="#9C93E8">Your cohort impact</Label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
+          <div style={{ width: 26, height: 26, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Crown size={13} color={C.white} /></div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#B7AFF2", lineHeight: 1.2 }}>
+              {Number(u.xp || 0).toLocaleString()} <span style={{ fontFamily: F.mono, fontSize: 9.5, fontWeight: 600, color: "#8B8985", letterSpacing: 0.5 }}>XP</span>
+            </div>
+            <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#8B8985", marginTop: 3 }}>
+              {u.rank ? `RANK #${u.rank}` : "RANK OPENS WHEN THE COHORT IS FULL"} · {u.streak} DAY STREAK
+            </div>
+          </div>
         </div>
       </Card>
       <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
@@ -381,7 +402,8 @@ export const CohortScreen = ({ u, back }) => (
       </Card>
     </div>
   </div>
-);
+  );
+};
 
 /* Direct Connect — persisted via /api/messages. Fake mentor replies that used
    to fire 1.4s after send are gone; both sides read the same thread. */

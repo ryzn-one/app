@@ -1407,7 +1407,7 @@ export default function RyznComplete() {
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
                 paddingTop: "env(safe-area-inset-top, 0px)",
-                paddingBottom: fullScreenOverlay ? 0 : 20,
+                paddingBottom: fullScreenOverlay ? 0 : "calc(80px + env(safe-area-inset-bottom, 0px))",
               }}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
@@ -1425,7 +1425,7 @@ export default function RyznComplete() {
               </div>
             </div>
             {!fullScreenOverlay && (
-              <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}>
+              <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))", zIndex: 1000 }}>
                 {nav.map(([id, Icon, label]) => {
                   const active = tab === id && !overlay;
                   return (
