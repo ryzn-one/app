@@ -13,7 +13,14 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Ryzn" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default", not "black-translucent": translucent buys us the strip
+         behind the clock and costs us the same strip at the bottom, because
+         iOS shifts the web view up without making it any taller. See the note
+         in src/index.css. With "default" the view sits below the status bar
+         and reaches the home indicator, so the tab bar lands on the real
+         bottom edge. safe-area-inset-top then reports 0 and the paddingTop
+         env() calls through the app collapse on their own. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="16x16" href="/branding/ryzn-brand-kit/icon/png/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/branding/ryzn-brand-kit/icon/png/favicon-32.png" />
