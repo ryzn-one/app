@@ -33,6 +33,22 @@ html, body, #root {
   inset: 0;
   background: #E9E8E4;
 }
+
+/* ...except that fixed inset is still one status bar short on an installed
+   iOS app. `apple-mobile-web-app-status-bar-style: black-translucent` moves
+   the document's origin up to the physical top of the screen so we can paint
+   under the status bar, but WebKit leaves the layout viewport at
+   (screen - status bar). Everything therefore ends that many points early and
+   the tab bar floats above a dead strip. Growing the root by exactly the top
+   inset puts its bottom edge back on the bottom of the screen.
+
+   Scoped to standalone on purpose: in Safari the viewport is already correct
+   and adding the inset there would push the tab bar off the screen instead.
+   If WebKit ever fixes the offset, safe-area-inset-top on a non-notched
+   device is 0 and this resolves back to plain 100%. */
+@media (display-mode: standalone) {
+  html, body, #root { height: calc(100% + env(safe-area-inset-top, 0px)); }
+}
 * { -webkit-font-smoothing: antialiased; }
 .full-h { height: 100%; }
 
