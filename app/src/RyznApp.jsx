@@ -1424,7 +1424,7 @@ export default function RyznComplete() {
               </div>
             </div>
             {!fullScreenOverlay && (
-              <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))", flexShrink: 0 }}>
+              <div className="mobile-tab-bar" style={{ borderTop: `1px solid ${C.line}` }}>
                 {nav.map(([id, Icon, label]) => {
                   const active = tab === id && !overlay;
                   return (
