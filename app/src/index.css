@@ -21,29 +21,24 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html {
-  height: -webkit-fill-available;
-}
+/* Lock the root to the visual viewport. 100vh/100dvh leave a gap under the
+   tab bar on iOS standalone PWAs; fixed inset fills the real screen. */
 html, body, #root {
   margin: 0;
-  height: 100%;
-  min-height: 100%;
-  min-height: -webkit-fill-available;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
   background: #E9E8E4;
 }
 * { -webkit-font-smoothing: antialiased; }
-.full-h { height: 100vh; height: 100dvh; min-height: -webkit-fill-available; }
+.full-h { height: 100%; }
 
-/* Pinned to the physical screen bottom in iOS standalone PWA (home indicator). */
+/* In-flow footer of the mobile shell — white extends into the home-indicator area. */
 .mobile-tab-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
+  flex-shrink: 0;
   display: flex;
   background: #FFFFFF;
   padding: 8px 6px;

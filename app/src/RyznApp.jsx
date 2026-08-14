@@ -1340,7 +1340,7 @@ export default function RyznComplete() {
   );
 
   return (
-    <div className="full-h" style={{ fontFamily: F.sans, color: C.ink, overflow: "hidden", width: "100%", maxWidth: "100%" }}>
+    <div className="full-h" style={{ fontFamily: F.sans, color: C.ink, width: "100%", maxWidth: "100%", position: "relative" }}>
 
       {phase === "journey" && (
         <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
@@ -1402,11 +1402,11 @@ export default function RyznComplete() {
             </AnimatePresence>
           </div>
         ) : (
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column", zIndex: 1 }}>
-            <div style={{ flex: 1, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
-                paddingBottom: fullScreenOverlay ? 0 : "calc(72px + env(safe-area-inset-bottom, 0px))",
+                paddingBottom: fullScreenOverlay ? 0 : 20,
               }}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div

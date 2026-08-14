@@ -25,7 +25,7 @@
  *                      visitors for a whole cache generation.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const PRECACHE = `ryzn-precache-${VERSION}`;
 const RUNTIME = `ryzn-runtime-${VERSION}`;
 
