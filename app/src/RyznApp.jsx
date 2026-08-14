@@ -1402,12 +1402,11 @@ export default function RyznComplete() {
             </AnimatePresence>
           </div>
         ) : (
-          <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column", zIndex: 1 }}>
+            <div style={{ flex: 1, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
-                paddingTop: "env(safe-area-inset-top, 0px)",
-                paddingBottom: fullScreenOverlay ? 0 : "calc(80px + env(safe-area-inset-bottom, 0px))",
+                paddingBottom: fullScreenOverlay ? 0 : "calc(72px + env(safe-area-inset-bottom, 0px))",
               }}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
@@ -1425,7 +1424,7 @@ export default function RyznComplete() {
               </div>
             </div>
             {!fullScreenOverlay && (
-              <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))", zIndex: 1000 }}>
+              <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, padding: "8px 6px", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))", flexShrink: 0 }}>
                 {nav.map(([id, Icon, label]) => {
                   const active = tab === id && !overlay;
                   return (
