@@ -42,11 +42,33 @@ export const INFLUENCERS_BY_CATEGORY = {
 /* ————— Ryzn AI setup scripts —————
    Functions, not constants: the opening line greets the person who actually
    signed in. Passing no name drops the greeting rather than substituting one —
-   addressing a real user by an invented name was the bug that started all this. */
+   addressing a real user by an invented name was the bug that started all this.
 
-export const menteeScript = (firstName) => [
+   Conversational onboarding is the front door in *every* orbit — there is no
+   form anywhere, including behind an HR invite. What changes per orbit is one
+   sentence of context: an employee who lands here from their company's invite
+   should be told where they are, by name, before they are asked anything. That
+   is presentation, not behaviour: the questions, the XP and the ending are
+   identical in all three orbits. */
+
+/** The opening line's context sentence. `orbit` is the resolved orbit payload;
+    no orbit (or the public one) gets no extra sentence — Ryzn is the default
+    place and saying so would be noise. */
+export const orbitIntro = (orbit) => {
+  if (!orbit || orbit.kind === "public") return null;
+  if (orbit.kind === "community") {
+    return `You're joining ${orbit.name} — a circle run by one person, not by Ryzn. Your XP, badges and follows come with you and stay yours.`;
+  }
+  return `You're setting up inside ${orbit.name}'s orbit. Your answers here are visible to your mentor, not to your manager — and your XP, badges and follows are yours, not your employer's.`;
+};
+
+export const menteeScript = (firstName, orbit) => [
   { id: "track", xp: 20, type: "single",
-    ai: [`Welcome to Ryzn${firstName ? `, ${firstName}` : ""}. I’m your setup guide — five questions, about two minutes. Every answer earns XP and sharpens your mentor match.`, "First: where are you right now?"],
+    ai: [
+      `Welcome to Ryzn${firstName ? `, ${firstName}` : ""}. I’m your setup guide — five questions, about two minutes. Every answer earns XP and sharpens your mentor match.`,
+      ...(orbitIntro(orbit) ? [orbitIntro(orbit)] : []),
+      "First: where are you right now?",
+    ],
     options: ["High school", "University"] },
   { id: "interests", xp: 40, type: "multi", min: 3, custom: true,
     ai: ["What pulls at you? Pick at least three. If the list misses something, write your own — specifics beat categories."],
@@ -62,9 +84,13 @@ export const menteeScript = (firstName) => [
     placeholders: ["Land a summer internship in product", "Build a portfolio that gets replies", "Speak confidently in interviews"] },
 ];
 
-export const mentorScript = (firstName) => [
+export const mentorScript = (firstName, orbit) => [
   { id: "role", xp: 30, type: "write",
-    ai: [`Welcome to the Roster${firstName ? `, ${firstName}` : ""}. Your invitation checked out.`, "Six questions, then I’ll show you the mentees matched to you. First: your current role and company, in your own words."],
+    ai: [
+      `Welcome to the Roster${firstName ? `, ${firstName}` : ""}. Your invitation checked out.`,
+      ...(orbitIntro(orbit) ? [orbitIntro(orbit)] : []),
+      "Six questions, then I’ll show you the mentees matched to you. First: your current role and company, in your own words.",
+    ],
     placeholder: "Head of Product at —" },
   { id: "industry", xp: 20, type: "single", ai: ["Which industry do you call home?"],
     options: ["Technology", "Finance", "Design & media", "Health", "Law", "Climate & energy"] },

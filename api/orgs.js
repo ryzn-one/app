@@ -11,6 +11,7 @@ import {
   cleanWebsite, cleanDivision, cleanRules, DEFAULT_ORG_RULES,
   freeSlug, orgContext, publicOrg,
 } from "../lib/orgs.js";
+import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel } from "../lib/orbits.js";
 
 /**
  * /api/orgs — a mentor's own organisation.
@@ -24,6 +25,7 @@ import {
  *   PATCH { action: "revoke", code }          kill an unclaimed org code
  *   PATCH { action: "role", userId, orgRole } owner promotes/demotes
  *   PATCH { action: "division", userId, … }   managers seat someone in a team
+ *   PATCH { action: "level", userId, level }  managers grade a seat (levelGate)
  *   PATCH { action: "remove", userId }        managers remove someone
  *   PATCH { action: "leave" }                 anyone but the owner walks out
  *
@@ -84,6 +86,8 @@ async function peopleOf(db, orgId, { withEmail }) {
       role: u?.role || "mentee",
       orgRole: m.orgRole,
       division: m.division ?? null,
+      // Seniority inside this orbit — what `policy.levelGate` filters the deck on.
+      level: m.level ?? null,
       headline: p.headline ?? null,
       impact: p.impact ?? null,
       tier: p.tier ?? null,
@@ -213,6 +217,15 @@ async function handler(request, user) {
       // Written explicitly rather than left absent, so a new org's rules are
       // visible in the document a manager is about to edit.
       rules: { ...DEFAULT_ORG_RULES },
+      // An org is a private orbit. Stamped at create so `kindOf` never has to
+      // guess for anything written after v2, and so a circle and a company
+      // orbit are told apart by a field rather than by which console made them.
+      kind: "private",
+      policy: { ...DEFAULT_PRIVATE_POLICY },
+      /* §6.5 — may posts by mentors a member follows outside this orbit appear
+         inside it? Default on: the follow graph is the product. Enterprises with
+         strict content policies switch it off in Org settings. */
+      allowExternal: true,
       createdAt: now,
       updatedAt: now,
     };
@@ -285,7 +298,12 @@ async function handler(request, user) {
     /* Merged against what's stored, so a console that only knows one switch
        cannot blank the others by omitting them. */
     const rules = cleanRules(body.rules ?? body, org.rules);
-    await orgs.updateOne({ _id: org._id }, { $set: { rules, updatedAt: new Date() } });
+    /* Cross-division is one rule with two consoles editing it: this one calls it
+       `rules.crossDivision`, the orbit console calls it `policy.crossDiv`. The
+       write goes to both so whichever console is opened next reads what the
+       other just set — `resolvePolicy` treats `policy` as the authority. */
+    const policy = { ...resolvePolicy(org), crossDiv: rules.crossDivision };
+    await orgs.updateOne({ _id: org._id }, { $set: { rules, policy, updatedAt: new Date() } });
     return json(await contextPayload(db, user, await orgContext(db, user.id)));
   }
 
@@ -297,6 +315,19 @@ async function handler(request, user) {
     // cross-division rule then reads as "shows them everyone".
     const division = cleanDivision(body.division);
     const res = await orgMembers.updateOne({ orgId, userId }, { $set: { division } });
+    if (!res.matchedCount) return fail(404, "not_a_member", "They're not in this organisation.");
+    return json(await contextPayload(db, user, ctx));
+  }
+
+  if (action === "level") {
+    const denied = managerOnly();
+    if (denied) return denied;
+    const userId = String(body.userId || "");
+    /* null un-grades a seat, which `policy.levelGate` reads as "does not clear
+       the gate". An ungraded mentor appearing in a Staff+-only deck would make
+       the switch look broken to the mentee and to the admin who set it. */
+    const level = cleanLevel(body.level);
+    const res = await orgMembers.updateOne({ orgId, userId }, { $set: { level } });
     if (!res.matchedCount) return fail(404, "not_a_member", "They're not in this organisation.");
     return json(await contextPayload(db, user, ctx));
   }

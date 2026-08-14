@@ -94,6 +94,135 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
       }}>{children}</motion.button>
   );
 };
+/* ————— Policy-facing primitives —————
+
+   These four were each written twice, once in the consumer app and once in
+   Teams, which is exactly the divergence v2 exists to end. A chip that means
+   "this is the rule here" has to look identical on a phone and in a console, or
+   the two stop reading as one product. No business logic lives in any of them.  */
+
+/** Mono uppercase micro-label: tier, status, policy state, counts. */
+export const Chip = ({ children, c = C.purple, bg = C.purpleTint, style }) => (
+  <span style={{
+    fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase",
+    color: c, background: bg, padding: "4px 8px", borderRadius: 7, display: "inline-flex",
+    alignItems: "center", gap: 5, whiteSpace: "nowrap", ...style,
+  }}>{children}</span>
+);
+
+/** Segmented control. Drives Discover (3), Studio (2), Explore (2). */
+export const Seg = ({ options, value, onChange, small, style }) => (
+  <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 3, gap: 3, ...style }}>
+    {options.map((o) => (
+      <button key={o} onClick={() => onChange(o)} aria-pressed={value === o} style={{
+        flex: 1, border: "none", borderRadius: 9, cursor: "pointer", padding: small ? "6px 8px" : "8px 10px",
+        fontFamily: F.sans, fontWeight: 700, fontSize: small ? 11.5 : 12.5,
+        background: value === o ? C.white : "transparent",
+        color: value === o ? C.ink : C.gray,
+        boxShadow: value === o ? "0 1px 3px rgba(26,26,26,.08)" : "none",
+      }}>{o}</button>
+    ))}
+  </div>
+);
+
+/** Policy booleans only. Anything with a third state is a `Seg`, not a toggle. */
+export const Toggle = ({ on, onChange, disabled, label }) => (
+  <button role="switch" aria-checked={!!on} aria-label={label} disabled={disabled}
+    onClick={disabled ? undefined : () => onChange(!on)}
+    style={{
+      width: 44, height: 26, borderRadius: 13, border: "none", padding: 3, flexShrink: 0,
+      background: on ? C.purple : "#D8D6D0", cursor: disabled ? "default" : "pointer",
+      opacity: disabled ? 0.5 : 1, display: "flex", justifyContent: on ? "flex-end" : "flex-start",
+    }}>
+    <span style={{ width: 20, height: 20, borderRadius: 10, background: C.white, display: "block" }} />
+  </button>
+);
+
+/**
+ * The tab bar, with locks.
+ *
+ * `locked` is why this is a primitive rather than a map over buttons: a gated
+ * tab renders *present and padlocked*, never hidden. Hiding it removes the goal
+ * gradient — the mentee can't want a thing they can't see — and the padlock is
+ * the single most load-bearing piece of the retention loop.
+ *
+ * `tabs` is [[id, label, Icon]]; a tab id present in `locked` is rendered with
+ * the padlock and still fires `setTab`, because the locked screen is a designed
+ * destination that explains the unlock condition, not a dead end.
+ */
+export const TabBar = ({ tabs, tab, setTab, locked = {} }) => (
+  <nav style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, flexShrink: 0 }}>
+    {tabs.map(([id, label, Icon]) => {
+      const on = tab === id;
+      const isLocked = !!locked[id];
+      return (
+        <button key={id} onClick={() => setTab(id)} aria-current={on ? "page" : undefined}
+          style={{
+            flex: 1, border: "none", background: "transparent", cursor: "pointer",
+            padding: "9px 2px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+          }}>
+          <span style={{ position: "relative", display: "block", lineHeight: 0 }}>
+            <Icon size={19} color={on ? C.purple : isLocked ? C.mute : C.gray} />
+            {isLocked && (
+              <span style={{ position: "absolute", right: -6, top: -4, background: C.ink, borderRadius: 5, padding: 2, display: "flex" }}>
+                <Lock size={8} color={C.white} />
+              </span>
+            )}
+          </span>
+          <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.5, textTransform: "uppercase", color: on ? C.purple : isLocked ? C.mute : C.gray }}>{label}</span>
+        </button>
+      );
+    })}
+  </nav>
+);
+
+/* ————— Settings chrome —————
+   One sheet component serves both roles and all three orbit kinds; the sections
+   inside it appear conditionally. See §6.4. */
+
+export const Sheet = ({ title, onClose, children, footer }) => (
+  <div className="app-scroll" style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 60, display: "flex", flexDirection: "column" }}>
+    <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.white, borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
+      <button onClick={onClose} aria-label="Close" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4, display: "flex" }}>
+        <X size={18} color={C.ink} />
+      </button>
+      <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 16 }}>{title}</span>
+    </header>
+    <div className="app-scroll sheet-up" style={{ flex: 1, overflowY: "auto", padding: 16 }}>{children}</div>
+    {footer}
+  </div>
+);
+
+export const SecLabel = ({ children }) => (
+  <div style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 1.1, textTransform: "uppercase", color: C.purple, margin: "18px 2px 8px" }}>{children}</div>
+);
+
+/** A settings row: label, optional sub-line, control on the right. */
+export const SettingRow = ({ label, sub, children, last }) => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "12px 0", borderBottom: last ? "none" : `1px solid ${C.line}` }}>
+    <span style={{ minWidth: 0 }}>
+      <span style={{ display: "block", fontFamily: F.sans, fontSize: 13.5, fontWeight: 600, color: C.ink }}>{label}</span>
+      {sub && <span style={{ display: "block", fontSize: 11.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>{sub}</span>}
+    </span>
+    <span style={{ flexShrink: 0 }}>{children}</span>
+  </div>
+);
+
+/**
+ * A value that comes from somewhere else and cannot be edited here.
+ *
+ * In a company orbit, email and division come from SSO. Rendering them greyed
+ * out with a padlock is a *trust signal*, not a limitation: it tells an employee
+ * that their employer's directory is the source, and that Ryzn is not quietly
+ * keeping a second copy of it. The identical screen in the public orbit makes
+ * the same fields editable.
+ */
+export const Locked = ({ children }) => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: C.gray }}>
+    {children} <Lock size={10} color={C.mute} />
+  </span>
+);
+
 /* Name helpers. Every screen greets people by first name and stamps initials on
    cards, and every one of those was a bare `name.split(" ")` — one null name
    anywhere threw during render. A missing name is a real state (Google sign-in

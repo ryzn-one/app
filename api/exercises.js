@@ -2,6 +2,8 @@ import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair } from "../lib/matches.js";
 import { rateLimit } from "../lib/ratelimit.js";
+import { orbitContext, PUBLIC_ORBIT_ID } from "../lib/orbits.js";
+import { recordStep } from "../lib/stage.js";
 
 /**
  * /api/exercises — daily mentee writing, with XP/streak that survive a refresh.
@@ -156,6 +158,16 @@ async function handler(request, user) {
       }),
     ]);
 
+    /* The paragraph completes Stage 1 *in the orbit it was written in*. The
+       profile flag above stays — /api/me and older screens still read it — but
+       it is no longer the answer to "has this person finished the track", because
+       that question now has a different answer per orbit. Someone six weeks into
+       their company programme is still on step one in a circle they joined
+       yesterday, and this is the write that keeps those apart. */
+    const ctx = await orbitContext(db, user.id, body?.orbitId);
+    const scope = ctx?.orbit.id ?? PUBLIC_ORBIT_ID;
+    await recordStep(db, user.id, scope, "first-exercise");
+
     const updated = await profiles.findOne({ userId: user.id }, { projection: { xp: 1, streak: 1, stage1Complete: 1 } });
     const doc = await col.findOne({ _id: insertedId });
 
@@ -164,6 +176,7 @@ async function handler(request, user) {
       xp: updated?.xp ?? def.xp,
       streak: updated?.streak ?? streak,
       stage1Complete: true,
+      orbitId: scope,
       awarded: def.xp,
     });
   }

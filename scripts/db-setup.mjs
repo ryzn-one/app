@@ -38,6 +38,33 @@ await client.connect();
 const db = client.db(process.env.MONGODB_DB || "ryzn");
 console.log(`Connected to "${db.databaseName}".\n`);
 
+/* ————— migrations —————
+ *
+ * Idempotent by construction: each one is a no-op on a database that has already
+ * had it applied, so this stays a script that is safe to re-run by hand.
+ */
+
+/* v2 orbits. Every org written before orbits existed is a private orbit — that
+   is what an org *was*. Stamping `kind` explicitly rather than inferring it on
+   read is what lets the partial unique index below see these documents, and what
+   keeps `kindOf`'s fallback a safety net instead of the actual mechanism. */
+{
+  const res = await db.collection("orgs").updateMany({ kind: { $exists: false } }, { $set: { kind: "private" } });
+  if (res.modifiedCount) console.log(`  migrate     orgs.kind="private" on ${res.modifiedCount} document(s)`);
+}
+
+/* The one-org-per-owner index is being replaced by a partial one so a person can
+   own a company orbit and run a circle. Dropped by its old name first: creating
+   an index with the same name and different options is an error Mongo reports
+   rather than a change it applies, so leaving this one in place would silently
+   keep the old constraint. */
+try {
+  await db.collection("orgs").dropIndex("owner_unique");
+  console.log("  migrate     dropped orgs.owner_unique (superseded by owner_private_unique)");
+} catch {
+  // Not there — either already migrated, or a database that never had it.
+}
+
 /* ————— indexes ————— */
 
 const indexes = [
@@ -104,7 +131,18 @@ const indexes = [
   // owner is enforced by the database rather than by a check the create path
   // could race past.
   ["orgs", { slug: 1 }, { unique: true, name: "slug_unique" }],
-  ["orgs", { ownerId: 1 }, { unique: true, name: "owner_unique" }],
+  /* One company orbit per owner, enforced by the database rather than by a check
+     the create path could race past.
+     Partial since v2: the same collection now also holds community circles, and
+     a person may own a company orbit *and* run a circle — they are different
+     kinds of space with different jobs. The filter is what keeps the one-org-
+     per-owner guarantee from quietly becoming one-space-per-owner. The backfill
+     above is what lets the filter see orgs written before `kind` existed. */
+  ["orgs", { ownerId: 1 }, { unique: true, name: "owner_private_unique", partialFilterExpression: { kind: "private" } }],
+  // Orbit-scoped Stage 1 progress: one doc per person per orbit. Unique, because
+  // two progress docs for one (person, orbit) is two answers to "what step am I
+  // on" and the screen would show whichever came back first.
+  ["stage_progress", { userId: 1, orbitId: 1 }, { unique: true, name: "user_orbit_unique" }],
   // One membership per person per org — a double-claimed invite can't seat
   // someone twice and inflate the roster count.
   ["org_members", { orgId: 1, userId: 1 }, { unique: true, name: "org_user_unique" }],

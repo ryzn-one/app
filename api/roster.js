@@ -6,6 +6,10 @@ import { isMentorRole } from "../lib/roles.js";
 import { asLabel } from "../lib/scalars.js";
 import { followEdges, followerCounts, setFollow } from "../lib/network.js";
 import { orgContext, orgSeats, orgRules, divisionsOf, DEFAULT_ORG_RULES } from "../lib/orgs.js";
+import {
+  orbitContext, orbitSeats, visibleInDeck, resolvePolicy, kindOf,
+  PUBLIC_POLICY, PUBLIC_ORBIT_ID,
+} from "../lib/orbits.js";
 
 /**
  * /api/roster — the people directory.
@@ -146,31 +150,62 @@ async function handler(request, user) {
 
   const includeAll = url.searchParams.get("include") === "all";
   const q = (url.searchParams.get("q") || "").trim().slice(0, 80);
-  const orgScoped = url.searchParams.get("scope") === "org";
+  /* Which orbit's pool this deck is drawn from.
+     `?orbitId=` is the v2 form. `?scope=org` predates orbits and still means
+     "my company orbit" — kept working rather than migrated at every call site,
+     since the two resolve to the same document. */
+  const askedOrbit = url.searchParams.get("orbitId");
+  const legacyOrgScope = url.searchParams.get("scope") === "org";
 
   const db = await getDb();
 
-  /* Org context, resolved before anything else — everything below narrows
+  /* Orbit context, resolved before anything else — everything below narrows
      against it. `seats` is the membership, and it doubles as the candidate id
-     list and the division lookup for each card. */
+     list, the division lookup and the seniority lookup for each card.
+
+     The public orbit has no membership table, so it stays unscoped: its pool is
+     everyone, which is what `PUBLIC_POLICY` says with `crossDiv: true` and
+     `levelGate: false`. */
   let seats = null;
   let rules = DEFAULT_ORG_RULES;
+  let policy = PUBLIC_POLICY;
   let orgPayload = null;
   let mySeat = {};
-  if (orgScoped) {
-    const ctx = await orgContext(db, user.id);
-    if (!ctx) return fail(403, "no_org", "You're not in an organisation yet.");
-    seats = await orgSeats(db, ctx.org._id);
-    mySeat = seats.get(user.id) || {};
-    rules = orgRules(ctx.org);
-    orgPayload = {
-      id: String(ctx.org._id),
-      name: ctx.org.name,
-      slug: ctx.org.slug,
-      division: mySeat.division ?? null,
-      divisions: divisionsOf(seats),
-    };
+  let scopeId = PUBLIC_ORBIT_ID;
+
+  if (askedOrbit || legacyOrgScope) {
+    let doc = null;
+    let membership = null;
+    if (askedOrbit) {
+      const ctx = await orbitContext(db, user.id, askedOrbit);
+      if (!ctx) return fail(403, "no_orbit", "That's not one of your orbits.");
+      doc = ctx.doc;
+      membership = ctx.membership;
+      policy = ctx.policy;
+    } else {
+      const ctx = await orgContext(db, user.id);
+      if (!ctx) return fail(403, "no_org", "You're not in an organisation yet.");
+      doc = ctx.org;
+      membership = ctx.membership;
+      policy = resolvePolicy(ctx.org);
+    }
+    if (doc) {
+      scopeId = String(doc._id);
+      seats = await orbitSeats(db, scopeId);
+      mySeat = seats.get(user.id) || {};
+      rules = orgRules(doc);
+      orgPayload = {
+        id: scopeId,
+        kind: kindOf(doc),
+        name: doc.name,
+        slug: doc.slug ?? null,
+        division: membership?.division ?? null,
+        divisions: divisionsOf(seats),
+      };
+    }
   }
+
+  const orbitScoped = seats !== null;
 
   // Anyone already requested, paired with, or passed on drops out of the deck.
   // Without this the deck re-offers people the caller has already answered for,
@@ -228,7 +263,7 @@ async function handler(request, user) {
   /* The hard boundary of a scoped read. `idFilter` puts its own clause under
      `$or`, so this top-level `_id` intersects with it rather than replacing it:
      a search inside an org still cannot reach past the org. */
-  const orgFilter = orgScoped
+  const orgFilter = orbitScoped
     ? { _id: { $in: [...seats.keys()].filter(ObjectId.isValid).map((id) => new ObjectId(id)) } }
     : null;
 
@@ -261,28 +296,38 @@ async function handler(request, user) {
     Boolean(u.onboardingComplete || p.onboardingComplete) ||
     (wanted === "mentor" && isMentorRole(u.role));
 
-  /* Division rule. Only bites on a matching deck — two mentors browsing each
-     other is not a pairing, so an org that keeps mentees in their own division
-     has said nothing about who its mentors may know.
+  /* The two pool filters, both of them policy fields — `crossDiv` and
+     `levelGate` — applied through the one helper api/matches.js enforces with,
+     so a deck cannot show someone the write path will then refuse.
 
-     It is also skipped when the viewer's own seat has no division: an
-     unassigned employee would otherwise match nobody and be shown an empty
-     deck they have no way to explain or fix. */
-  const divisionOk = (id) =>
-    !orgScoped || peers || rules.crossDivision || !mySeat.division ||
-    (seats.get(id)?.division ?? null) === mySeat.division;
+     Only bites on a matching deck: two mentors browsing each other is not a
+     pairing, so an orbit that keeps mentees in their own division has said
+     nothing about who its mentors may know. `visibleInDeck` also skips the
+     division rule when the viewer's own seat has none — an unassigned employee
+     would otherwise match nobody and be shown an empty deck they have no way to
+     explain or fix. */
+  const poolOk = (id) => {
+    if (!orbitScoped || peers) return true;
+    const seat = seats.get(id) || {};
+    /* `levelGate` hides mentors below Staff+ *from a mentee's deck*. It says
+       nothing about who a mentor may take on, so a cohort deck is graded by
+       nobody — passing the gate a mentee-side policy would filter a mentor's
+       own candidates by a rule written for the other direction. */
+    const forThisSide = wanted === "mentor" ? policy : { ...policy, levelGate: false };
+    return visibleInDeck(forThisSide, mySeat, seat);
+  };
 
   const eligible = users
     .filter((u) => String(u._id) !== user.id && (includeAll || !answeredIds.has(String(u._id))))
     .filter((u) => ready(u, byUser.get(String(u._id)) || {}))
-    .filter((u) => divisionOk(String(u._id)));
+    .filter((u) => poolOk(String(u._id)));
 
   /* Capacity rule. A mentor whose cohort is already full is not an option, and
      offering them anyway costs the mentee three written answers before
      api/matches.js turns it down with `at_capacity`. Filtered before the slice,
      so a full mentor gives up their place on the page rather than occupying it. */
   let full = new Set();
-  if (orgScoped && rules.capacityGate && wanted === "mentor" && !peers) {
+  if (orbitScoped && rules.capacityGate && wanted === "mentor" && !peers) {
     const loads = await mentorLoads(eligible.map((u) => String(u._id)));
     full = new Set(
       eligible
@@ -322,7 +367,12 @@ async function handler(request, user) {
         // Only on a scoped read: outside an org this is not a fact about the
         // person, and a null column on every platform card invites the client
         // to render an empty label.
-        ...(orgScoped ? { division: seats.get(String(u._id))?.division ?? null } : {}),
+        ...(orbitScoped ? {
+          division: seats.get(String(u._id))?.division ?? null,
+          // Seniority in this orbit — what `levelGate` filters on, shown so a
+          // narrow deck reads as a rule rather than as a shortage of people.
+          level: seats.get(String(u._id))?.level ?? null,
+        } : {}),
         ...(peers
           ? {
               following: edges.following.has(String(u._id)),
@@ -358,15 +408,49 @@ async function handler(request, user) {
           };
     });
 
-  /* `rules` and `org` ride along on a scoped read so the deck can say why it is
-     narrower than the platform one — the prototype's "PRODUCT ONLY" chip needs
-     to come from the rule that was actually applied, not from a copy of the
-     setting kept in the client. */
+  /* `policy`, `rules` and `org` ride along on a scoped read so the deck can say
+     why it is narrower than the platform one — the "PRODUCT ONLY" and "STAFF+"
+     chips have to come from the rules that were actually applied here, not from
+     a copy of the settings kept in the client. Same reason the CTA reads
+     `policy.matchMode` off this payload rather than deciding for itself. */
+  /**
+   * The Roster's stats banner — the mentor guild.
+   *
+   * Counted, never cached, and only on a peer read because that is the only
+   * screen that renders it. The first two numbers are the same in every orbit
+   * because the guild **lives above orbits**: a mentor belongs to it, not to the
+   * space they happen to be standing in. The third adapts — "here" is the one
+   * fact that depends on where they are, and it is what makes the banner feel
+   * like a place rather than a statistic.
+   *
+   * This is the mentor-retention moat. A mentor whose cohort is quiet still has
+   * a reason to open the app if there are 200 people doing the same work.
+   */
+  let guild = null;
+  if (peers) {
+    const [worldwide, chapters] = await Promise.all([
+      db.collection(collections.user).countDocuments({ role: { $in: ["mentor", "admin"] } }),
+      db.collection(collections.orbits).countDocuments({}),
+    ]);
+    guild = {
+      worldwide,
+      chapters,
+      // Mentors in the orbit the caller is standing in. Null in the public
+      // orbit, which has no membership table and therefore no "here" that is
+      // narrower than "worldwide".
+      here: orbitScoped ? eligible.length + 1 : null,
+      hereLabel: orgPayload?.name ?? null,
+    };
+  }
+
   return json({
     role: wanted,
     peers,
-    scope: orgScoped ? "org" : "platform",
-    ...(orgScoped ? { org: orgPayload, rules } : {}),
+    scope: orbitScoped ? "org" : "platform",
+    orbitId: scopeId,
+    policy,
+    ...(guild ? { guild } : {}),
+    ...(orbitScoped ? { org: orgPayload, rules } : {}),
     people,
   });
 }

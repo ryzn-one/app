@@ -24,10 +24,14 @@ import { ContentTabs, ContentTabBar } from "./feed.jsx";
  * to be persisted — they used to die with the component, which is why a
  * returning user was asked the same six questions forever.
  */
-export const ChatScreen = ({ role, xp, addXp, onComplete, firstName }) => {
+export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) => {
+  /* Same script in every orbit, plus one sentence of context. Someone arriving
+     from a company invite is told whose orbit they are in and what stays theirs
+     before the first question — the reassurance has to come before the answers,
+     not in a settings screen they may never open. */
   const script = useMemo(
-    () => (role === "mentee" ? menteeScript(firstName) : mentorScript(firstName)),
-    [role, firstName]
+    () => (role === "mentee" ? menteeScript(firstName, orbit) : mentorScript(firstName, orbit)),
+    [role, firstName, orbit]
   );
   const [msgs, setMsgs] = useState([]);
   const [stepIdx, setStepIdx] = useState(0);
@@ -962,19 +966,36 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, fontWeight: 700 }}>{taken}/{cap} SEATS · +30 IMPACT EACH</span>
         </div>
       </div>
+      {/* The applications inbox. In an Apply orbit each row carries what the
+          person wrote to qualify — that answer is the entire reason this inbox
+          is a decision rather than a name to rubber-stamp. Where the orbit is
+          Open there is no answer to show, so the row falls back to their first
+          goal and reads as a request rather than an application. */}
       {inbox.length > 0 && (
         <div style={{ padding: "10px 20px 0" }}>
-          <Label color={C.purple}>Asked for you · {inbox.length}</Label>
+          <Label color={C.purple}>
+            {inbox.some(m => m.answer) ? "Applications" : "Asked for you"} · {inbox.length}
+          </Label>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {inbox.map(m => (
-              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.purpleTint, borderRadius: 12, padding: "9px 12px" }}>
-                <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
-                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
-                  {m.person?.goals?.[0] && <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>}
+              <div key={m.id} style={{ background: C.purpleTint, borderRadius: 12, padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
+                  <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                    {!m.answer && m.person?.goals?.[0] && (
+                      <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>
+                    )}
+                  </div>
+                  <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
+                  <Btn small disabled={busy || taken >= cap} onClick={() => respond(m, "accept")}>Accept</Btn>
                 </div>
-                <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
-                <Btn small disabled={busy || taken >= cap} onClick={() => respond(m, "accept")}>Accept</Btn>
+                {m.answer && (
+                  <div style={{ background: C.white, borderRadius: 10, padding: "9px 11px", marginTop: 9 }}>
+                    <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.purple, letterSpacing: 0.8, fontWeight: 700 }}>WHAT THEY WANT TO WORK ON</span>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3, color: C.ink }}>“{m.answer}”</div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

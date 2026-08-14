@@ -11,10 +11,48 @@ import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { EXERCISE_TRACK } from "./data.js";
+import { UnlockTrackCard } from "./unlock.jsx";
 import { fetchMessages, sendMessage, fetchImpactHistory } from "./lib/auth-client.js";
 import { countdown, fmtRange } from "./lib/calendar.js";
 
 /* ————————————————— APP: MENTEE ————————————————— */
+
+/**
+ * The Chat tab's open state: one row per mentor held in this orbit.
+ *
+ * Only reached once the track is finished — the locked half of this tab is a
+ * screen of its own (see unlock.jsx). The empty state here is the third case,
+ * and it is a real one: chat can be unlocked while nobody is on the other end
+ * of it yet.
+ */
+export const MenteeChatList = ({ mentors = [], onOpenThread }) => (
+  <div style={{ padding: "18px 20px 20px" }}>
+    <Label color={C.purple}>Direct Connect</Label>
+    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>Your threads.</div>
+    {mentors.length === 0 ? (
+      <Card style={{ marginTop: 16, textAlign: "center", padding: "28px 20px" }}>
+        <MessageCircle size={24} color={C.mute} />
+        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10 }}>Chat is open — you just need someone to talk to.</div>
+        <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
+          Find a mentor here and this fills up.
+        </div>
+      </Card>
+    ) : (
+      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+        {mentors.map((m) => (
+          <Card key={m.id} onClick={() => onOpenThread(m)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
+            <Avatar src={m.avatarUrl} name={m.name} size={38} radius={12} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+              {m.headline && <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.headline}</div>}
+            </div>
+            <ChevronRight size={16} color={C.mute} />
+          </Card>
+        ))}
+      </div>
+    )}
+  </div>
+);
 
 /** Every mentor this mentee holds, in pairing order. Never null, never ranked. */
 const mentorsOf = (u) => u?.mentors || [];
@@ -30,7 +68,12 @@ const mentorsOf = (u) => u?.mentors || [];
  * feed, program and thread. `feeds` is keyed by mentor id for exactly that
  * reason: there is no single feed to show here.
  */
-export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayDone, stage1, mentorSeats, toast, feeds = {}, watched = {}, invites = [], sessions = [] }) => {
+/* Home, in the order §6.1 sets out — and the order matters more than any single
+   card on it. The unlock track sits above the daily rep and below only an
+   at-risk nudge, because until Stage 1 is done it is the *only* thing this
+   person needs to be looking at. Everything below it is for someone who already
+   has a habit. */
+export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayDone, stage1, mentorSeats, toast, feeds = {}, watched = {}, invites = [], sessions = [], stage, policy, orbit, atRisk = null }) => {
   const nextBadge = badges.find(b => !b.earned);
   const nextIdx = badges.indexOf(nextBadge);
   const todayEx = EXERCISE_TRACK[0];
@@ -75,6 +118,48 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
             <ChevronRight size={16} color={C.purple} />
           </div>
         </Card>
+      )}
+
+      {/* The at-risk nudge. First in the order, and it comes from a person.
+          The detection may have happened in an HR console, but the sentence a
+          mentee reads never says so — "your programme administrator noticed" is
+          the line that makes someone close the app, and the whole point of
+          attributing it to their mentor is that it doesn't. */}
+      {atRisk && (
+        <Card style={{ marginTop: 14, border: `1.5px solid ${C.amber}`, background: C.amberTint }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <Avatar src={mentors[0]?.avatarUrl} name={atRisk.mentorName} size={36} radius={11} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>
+                {(atRisk.mentorName || "Your mentor").split(" ")[0]} noticed you've been away
+              </div>
+              <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 3 }}>
+                {atRisk.daysSince} days since your last paragraph. Pick it back up — one is enough to start again.
+              </div>
+              <Btn small style={{ marginTop: 11 }} onClick={() => go("exercises")}>
+                Write today's · +{todayEx.xp} XP
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* The unlock track — first, and alone, until it's finished. It routes to
+          whichever screen the current step lives on rather than owning the work
+          itself: the track is a map, not a second place to do things. */}
+      {stage && !stage.complete && (
+        <div style={{ marginTop: 18 }}>
+          <UnlockTrackCard
+            stage={stage}
+            mentor={mentors[0] || null}
+            chatGate={!!policy?.chatGate}
+            onStart={(step) => {
+              if (step.id === "mentor") { openOverlay("addmentor"); return; }
+              if (step.id === "setup") { openOverlay("settings"); return; }
+              go("exercises");
+            }}
+          />
+        </div>
       )}
 
       <Card data-tour="mentee-home-progress" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 18 }}>

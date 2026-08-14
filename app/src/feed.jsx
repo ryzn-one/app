@@ -4,6 +4,7 @@ import {
   Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe, Repeat2,
 } from "lucide-react";
 import { C, F } from "./theme.js";
+import { StudioStats, ProfileStrength, PostOverflow, StudioSeg, StudioEmpty } from "./studio.jsx";
 import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
@@ -741,22 +742,58 @@ function GreetingCard({ onDone, userId }) {
 export const MentorFeed = ({
   u, name, userId, feed, amplified = [], publish, greetingUp, uploadGreeting,
   toast, onAuthor, onVisibility, onAmplify, openNetwork, highlightPostId,
+  followers = 0, onPin, onDelete, go,
 }) => {
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
   const reach = u.cohort ? u.cohort.length : 0;
+  /* Studio and Public view are two segments of one screen, not two screens: a
+     mentor who cannot see their profile the way a stranger does keeps writing
+     for an audience they are imagining. */
+  const [seg, setSeg] = useState("Studio");
+
+  if (seg === "Public view") {
+    return (
+      <div>
+        <HeaderRow title="Your feed" right={<Label color={C.purple}>AS OTHERS SEE IT</Label>} />
+        <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <StudioSeg value={seg} onChange={setSeg} />
+          <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Avatar src={u.avatarUrl} name={name} size={46} radius={14} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{name}</div>
+              {u.headline && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2 }}>{u.headline}</div>}
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, marginTop: 4, letterSpacing: 0.6 }}>
+                {Number(followers).toLocaleString()} FOLLOWER{followers === 1 ? "" : "S"}
+              </div>
+            </div>
+          </Card>
+          {u.why && (
+            <Card>
+              <Label color={C.purple}>Why I mentor</Label>
+              <div style={{ fontSize: 13.5, lineHeight: 1.6, marginTop: 7 }}>{u.why}</div>
+            </Card>
+          )}
+          {/* The same post components, read-only. That is what makes this a
+              preview rather than a mock of one. */}
+          {feed.length === 0
+            ? <StudioEmpty />
+            : feed.map(p => (
+                <PostCard key={p.id} post={p} author={name} authorId={userId} tier readOnly toast={toast} />
+              ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <HeaderRow title="Your feed" right={<Label color={C.purple}>+10 IMPACT PER POST</Label>} />
       <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-          {[[String(reach), "in your orbit", C.purple], [views.toLocaleString(), "views", C.ink], [String(reactions), "reactions", C.coral]].map(([n, l, c]) => (
-            <Card key={l} style={{ padding: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 19, fontWeight: 700, color: c }}>{n}</div>
-              <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>
-            </Card>
-          ))}
-        </div>
+        <StudioSeg value={seg} onChange={setSeg} />
+        <StudioStats inOrbit={reach} followers={followers} views={views} reactions={reactions} />
+
+        <ProfileStrength u={u} hasGreeting={greetingUp} postCount={feed.length} onGo={go} />
 
         {!greetingUp && <GreetingCard onDone={uploadGreeting} userId={userId} />}
 
@@ -797,16 +834,18 @@ export const MentorFeed = ({
           </>
         )}
 
-        {feed.length === 0 ? (
-          <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
-            <Sparkles size={18} color={C.purple} />
-            <div style={{ fontWeight: 700, fontSize: 14, marginTop: 8 }}>Nothing posted yet</div>
-            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>Your first post lands in every mentee’s Orbit — no message required, no meeting needed.</div>
-          </Card>
-        ) : (
+        {feed.length === 0 ? <StudioEmpty /> : (
           feed.map(p => (
-            <PostCard key={p.id} post={p} author={name} authorId={userId} tier mine
-              toast={toast} onAuthor={onAuthor} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
+            <div key={p.id} style={{ position: "relative" }}>
+              {/* Pin and Delete behind the overflow, never beside Publish. */}
+              {(onPin || onDelete) && (
+                <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5 }}>
+                  <PostOverflow post={p} onPin={onPin} onDelete={onDelete} />
+                </div>
+              )}
+              <PostCard post={p} author={name} authorId={userId} tier mine
+                toast={toast} onAuthor={onAuthor} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
+            </div>
           ))
         )}
       </div>

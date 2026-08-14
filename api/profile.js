@@ -1,14 +1,18 @@
 import { handleUpload } from "@vercel/blob/client";
 import { del } from "@vercel/blob";
+import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
+import { cleanPrefs } from "../lib/prefs.js";
 import { json, fail, withUser, getUser } from "../lib/http.js";
 
 /**
  * /api/profile — the fields people write about themselves.
  *
- *   PATCH /api/profile            headline, education, experience, industry,
- *                                 avatarUrl, bannerUrl
- *   POST  /api/profile?upload=1   Vercel Blob token for an avatar / banner
+ *   PATCH  /api/profile            headline, education, experience, industry,
+ *                                  avatarUrl, bannerUrl, prefs
+ *   GET    /api/profile?export=1   everything we hold about you, as JSON
+ *   DELETE /api/profile            erase the account and everything it owns
+ *   POST   /api/profile?upload=1   Vercel Blob token for an avatar / banner
  *
  * The upload token lives here rather than in its own function because Vercel
  * counts functions per deployment and this project sits near the ceiling.
@@ -58,16 +62,110 @@ async function forget(url) {
   try { await del(url); } catch (err) { console.warn("[profile] stale blob left behind:", err?.message); }
 }
 
-async function handler(request, user) {
-  if (request.method !== "PATCH") {
-    return fail(405, "method_not_allowed", "Use PATCH.");
+/**
+ * Everything Ryzn holds about the caller, as one JSON file.
+ *
+ * A compliance blocker for any enterprise pilot, and — more usefully — the
+ * honest version of "your data is yours". It reads the caller's own rows only,
+ * and it deliberately omits other people's words: a mentor's replies in a shared
+ * thread are that mentor's, and an export that carried them would hand over
+ * someone else's writing under the guise of your own.
+ */
+async function exportData(db, user) {
+  const [profile, answers, exercises, xpEvents, posts, memberships, stage, sent] = await Promise.all([
+    db.collection(collections.profiles).findOne({ userId: user.id }),
+    db.collection(collections.onboardingAnswers).findOne({ userId: user.id }),
+    db.collection(collections.exercises).find({ userId: user.id }).sort({ createdAt: 1 }).toArray(),
+    db.collection(collections.xpEvents).find({ userId: user.id }).sort({ createdAt: 1 }).limit(2000).toArray(),
+    db.collection(collections.posts).find({ authorId: user.id }).sort({ createdAt: 1 }).toArray(),
+    db.collection(collections.orbitMembers).find({ userId: user.id }).toArray(),
+    db.collection(collections.stageProgress).find({ userId: user.id }).toArray(),
+    db.collection(collections.messages).find({ senderId: user.id }).sort({ createdAt: 1 }).limit(2000).toArray(),
+  ]);
+
+  const strip = ({ _id, ...rest }) => rest;
+  return {
+    exportedAt: new Date().toISOString(),
+    account: { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt ?? null },
+    profile: profile ? strip(profile) : null,
+    onboardingAnswers: answers ? strip(answers) : null,
+    orbitMemberships: memberships.map(strip),
+    stageProgress: stage.map(strip),
+    exercises: exercises.map(strip),
+    posts: posts.map(strip),
+    xpLedger: xpEvents.map(strip),
+    // Only what you wrote. The other half of each thread belongs to them.
+    messagesYouSent: sent.map(strip),
+  };
+}
+
+/**
+ * Delete the account and everything it owns.
+ *
+ * Refused while the caller still owns an orbit — a company orbit or a circle
+ * with members would be left ownerless, and the people in it would lose a space
+ * because someone else closed their account. Hand it over first.
+ */
+async function deleteAccount(db, user) {
+  const owned = await db.collection(collections.orbits).findOne({ ownerId: user.id }, { projection: { name: 1 } });
+  if (owned) {
+    return fail(409, "owns_orbit", `Hand ${owned.name} to someone else before you delete your account.`);
   }
 
+  const id = user.id;
+  await Promise.all([
+    db.collection(collections.profiles).deleteMany({ userId: id }),
+    db.collection(collections.onboardingAnswers).deleteMany({ userId: id }),
+    db.collection(collections.exercises).deleteMany({ userId: id }),
+    db.collection(collections.xpEvents).deleteMany({ userId: id }),
+    db.collection(collections.stageProgress).deleteMany({ userId: id }),
+    db.collection(collections.orbitMembers).deleteMany({ userId: id }),
+    db.collection(collections.posts).deleteMany({ authorId: id }),
+    db.collection(collections.postEvents).deleteMany({ userId: id }),
+    db.collection(collections.matches).deleteMany({ $or: [{ menteeId: id }, { mentorId: id }] }),
+    db.collection(collections.messages).deleteMany({ senderId: id }),
+    db.collection(collections.follows).deleteMany({ $or: [{ followerId: id }, { followingId: id }] }),
+    db.collection(collections.amplified).deleteMany({ mentorId: id }),
+    db.collection(collections.sessions1v1).deleteMany({ $or: [{ menteeId: id }, { mentorId: id }] }),
+    db.collection(collections.session).deleteMany({ userId: id }),
+    db.collection(collections.account).deleteMany({ userId: id }),
+  ]);
+  await db.collection(collections.user).deleteOne({ _id: new ObjectId(id) });
+  return json({ ok: true, deleted: true });
+}
+
+async function handler(request, user) {
   const db = await getDb();
+
+  /* Export and delete ride on this function rather than their own. Vercel counts
+     functions per deployment and this project sits near the ceiling — the same
+     reason the upload token lives here. */
+  if (request.method === "GET") {
+    if (new URL(request.url).searchParams.get("export") === "1") {
+      return json(await exportData(db, user), 200, {
+        "Content-Disposition": `attachment; filename="ryzn-my-data.json"`,
+      });
+    }
+    return fail(400, "bad_request", "Nothing to read here.");
+  }
+
+  if (request.method === "DELETE") return deleteAccount(db, user);
+
+  if (request.method !== "PATCH") {
+    return fail(405, "method_not_allowed", "Use PATCH, GET ?export=1 or DELETE.");
+  }
+
   const profiles = db.collection(collections.profiles);
   const body = await request.json().catch(() => ({}));
 
   const updates = {};
+
+  /* Preferences, merged server-side so a screen that knows three switches can't
+     blank the other nine by omitting them. */
+  if (body.prefs && typeof body.prefs === "object") {
+    const existing = await profiles.findOne({ userId: user.id }, { projection: { prefs: 1 } });
+    updates.prefs = cleanPrefs(body.prefs, existing?.prefs);
+  }
 
   for (const [key, limit] of Object.entries(MAX)) {
     if (!(key in body)) continue;

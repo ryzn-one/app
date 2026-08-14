@@ -63,6 +63,25 @@ export const saveOnboarding = (answers) => api("/onboarding", { method: "POST", 
 /** Update profile fields like education, experience, headline, etc. */
 export const updateProfile = (updates) => api("/profile", { method: "PATCH", body: updates });
 
+/* ————— Preferences, export, deletion —————
+   Preferences are identity-level: notification, visibility and availability
+   settings follow a person across every orbit, because nobody should configure
+   streak reminders once per employer and again per circle. Merged server-side,
+   so sending one switch leaves the rest alone. */
+export const updatePrefs = (prefs) => api("/profile", { method: "PATCH", body: { prefs } });
+
+/** Everything Ryzn holds about the caller. Fetched rather than linked so the
+    session cookie authenticates it — a data export is not a public URL. */
+export async function exportMyData() {
+  const res = await fetch("/api/profile?export=1", { credentials: "include" });
+  if (!res.ok) throw new Error("Couldn't build your export.");
+  return res.blob();
+}
+
+/** Erase the account and everything it owns. Refused while the caller still owns
+    an orbit — the people in it would lose a space because someone else left. */
+export const deleteMyAccount = () => api("/profile", { method: "DELETE" });
+
 /** Real people on the other side of the platform — mentors for a mentee,
     mentees for a mentor. Returns `{ role, people }`; `people` is often empty
     in an early cohort, and that is a valid answer, not an error. */
@@ -83,13 +102,25 @@ export const exploreRoster = ({ q } = {}) => fetchRoster({ include: "all", q });
 export const fetchOrgRoster = ({ q, side, include } = {}) =>
   fetchRoster({ scope: "org", q, side, include });
 
+/** The deck for one orbit, drawn from its pool under its policy.
+ *
+ *  Answers `{ policy, org, rules, people }` — the policy that was *applied*, not
+ *  a copy of it, so the deck's CTA, its seat counter and its "why is this narrow"
+ *  chips all describe the rules the server just enforced. The public orbit is
+ *  unscoped: its pool is everyone. */
+export const fetchOrbitRoster = ({ orbitId, q, side, include } = {}) =>
+  fetchRoster({ orbitId, q, side, include });
+
 /* ————— The mentor network —————
    Mentor ↔ mentor, which is a different relationship from mentor ↔ mentee: a
    follow is one-sided, needs no handshake, and commits neither side to a
    pairing. It decides one thing — whose posts land in your network feed. */
 
-/** Other mentors, with `following` / `followsYou` / `followers` per row. */
-export const fetchMentorPeers = ({ q } = {}) => fetchRoster({ side: "mentors", q });
+/** Other mentors, with `following` / `followsYou` / `followers` per row.
+    The Roster. `guild` rides along: mentors worldwide, chapters, and — only when
+    an orbit is named — how many are here. The first two are the same in every
+    orbit, because the guild lives above them. */
+export const fetchMentorPeers = ({ q, orbitId } = {}) => fetchRoster({ side: "mentors", q, orbitId });
 export const followMentor = (mentorId) =>
   api("/roster", { method: "POST", body: { mentorId, action: "follow" } });
 export const unfollowMentor = (mentorId) =>
@@ -98,6 +129,18 @@ export const unfollowMentor = (mentorId) =>
 /** Public posts from the mentors you follow. Each carries `amplified`: whether
     you've already put it in your own Orbit. */
 export const fetchNetworkFeed = () => api("/posts?scope=following");
+
+/**
+ * Discover — the orbit feed.
+ *
+ * One store, one filter: posts by this orbit's pool, plus everyone you follow.
+ * There are no per-orbit copies of a post; the union *is* the cross-orbit reach
+ * property, which is why a creator's post lands in a member's company orbit at
+ * all. A company orbit whose admin switched `allowExternal` off drops the second
+ * half of that union, and each post says which half it arrived through.
+ */
+export const fetchOrbitFeed = (orbitId) =>
+  api(`/posts?scope=orbit${orbitId ? `&orbitId=${encodeURIComponent(orbitId)}` : ""}`);
 /** Put another mentor's public post into your Orbit — your mentees read it
     alongside your own. A pointer, not a copy: the byline, the counters and the
     delete button all stay with whoever wrote it. Idempotent. */
@@ -108,11 +151,19 @@ export const unamplifyPost = (id) => api("/posts", { method: "PATCH", body: { id
    A pairing is one shared document, so both sides read the same truth and it
    survives a refresh. Opening a match against someone who already asked you
    *is* the accept — the server collapses that case. */
-export const fetchMatches = () => api("/matches");
+/** Every pairing the caller has, in every orbit, each tagged with `orbitId`.
+    `usage.limit` is the active orbit's `cap` for a mentee — pass `orbitId` so
+    the seat counter describes the orbit they are actually looking at. */
+export const fetchMatches = (orbitId) =>
+  api(`/matches${orbitId ? `?orbitId=${encodeURIComponent(orbitId)}` : ""}`);
 /** `action` is "request" or "pass" — a pass is recorded so the deck doesn't
-    re-offer someone you already said no to. `otherId` is a user id here. */
-export const requestMatch = (otherId, action = "request") =>
-  api("/matches", { method: "POST", body: { otherId, action } });
+    re-offer someone you already said no to. `otherId` is a user id here.
+
+    `answer` is what the applicant wrote to qualify, and is required when the
+    orbit's `policy.matchMode` is "Apply". In "Open" it is ignored server-side —
+    a rule that is switched off must not keep collecting what it would need. */
+export const requestMatch = (otherId, action = "request", { orbitId, answer } = {}) =>
+  api("/matches", { method: "POST", body: { otherId, action, orbitId, answer } });
 /** `id` is a match id, not a user id: accept | decline | end | promote. */
 export const respondToMatch = (id, action) => api("/matches", { method: "PATCH", body: { id, action } });
 
@@ -175,8 +226,10 @@ export const fetchImpactHistory = () => api("/impact");
 export const fetchExercises = () => api("/exercises");
 export const fetchMenteeExercises = (menteeId) =>
   api(`/exercises?menteeId=${encodeURIComponent(menteeId)}`);
-export const submitExercise = ({ text, exerciseId } = {}) =>
-  api("/exercises", { method: "POST", body: { text, exerciseId } });
+/** `orbitId` decides which orbit's Stage 1 track this paragraph completes. The
+    XP and streak are identity-level and count everywhere; the track is not. */
+export const submitExercise = ({ text, exerciseId, orbitId } = {}) =>
+  api("/exercises", { method: "POST", body: { text, exerciseId, orbitId } });
 
 /* ————— Direct Connect —————
    Accepted mentee↔mentor only; locked until the mentee finishes Stage 1. */
@@ -238,6 +291,38 @@ export const orgSetRules = (rules) => orgAction("rules", { rules });
 export const orgSetDivision = (userId, division) => orgAction("division", { userId, division });
 /** The org Orbit feed: profile-visible posts from everyone in the org. */
 export const fetchOrgOrbit = () => api("/posts?scope=org");
+
+/* ————— Orbits —————
+   The spaces one identity moves through: the public orbit, community circles,
+   and private company orbits. Every call answers with the caller's whole orbit
+   list so a write and a refresh are one round trip and the switcher can never
+   render a stale policy next to a fresh one.
+
+   The `policy` on each orbit is already resolved server-side. Nothing here
+   merges defaults or reads a policy field off a kind — if a screen wants to know
+   what an orbit does, it reads `orbit.policy`. */
+export const fetchOrbits = () => api("/orbits");
+/** A circle's join page by its link. Works before joining — that is the point —
+    and answers `{ circle, joined }` with no roster and no policy internals. */
+export const fetchCircle = (slug) => api(`/orbits?slug=${encodeURIComponent(slug)}`);
+export const createCircle = (body) => api("/orbits", { method: "POST", body });
+const orbitAction = (action, extra = {}) => api("/orbits", { method: "PATCH", body: { action, ...extra } });
+/** Free join, and it follows the creator — the follow is what makes their next
+    post reach you in every orbit you're in, not only this one. */
+export const joinCircle = ({ slug, orbitId } = {}) => orbitAction("join", { slug, orbitId });
+/** Identity survives: XP, tier, badges and follows are yours, not the orbit's.
+    Only the orbit-scoped progress ends. */
+export const leaveOrbit = (orbitId) => orbitAction("leave", { orbitId });
+/** The six switches every screen branches on. Merged server-side, so sending one
+    leaves the rest alone, and clamped to what the orbit's kind can mean. */
+export const setOrbitPolicy = (orbitId, policy) => orbitAction("policy", { orbitId, policy });
+/** Orbit identity — name, tagline, accent, cover — plus `allowExternal` on a
+    company orbit: whether posts from mentors a member follows elsewhere may
+    appear inside it. */
+export const setOrbitSettings = (orbitId, patch) => orbitAction("settings", { orbitId, ...patch });
+/** A person's seat: which team they sit in (`crossDiv` reads it) and how senior
+    they are (`levelGate` reads it). */
+export const setOrbitSeat = (orbitId, userId, patch) => orbitAction("seat", { orbitId, userId, ...patch });
 
 /* Founder console. Every one of these 403s unless the caller is an admin —
    see lib/admin.js. */

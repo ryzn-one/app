@@ -4,6 +4,7 @@ import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser, getUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair, acceptedFor } from "../lib/matches.js";
 import { orgContext, orgMemberIds } from "../lib/orgs.js";
+import { orbitContext, PUBLIC_ORBIT_ID } from "../lib/orbits.js";
 import { followingIds, amplifiedBy, amplifiedSet, amplifiedByAny } from "../lib/network.js";
 import { makeSlug, originOf, isCrawler, renderPostPage, renderMissingPage } from "../lib/post-page.js";
 import { ensureHandle, RESERVED_HANDLES } from "../lib/handles.js";
@@ -404,6 +405,69 @@ async function handler(request, user) {
         posts: rows.map((p) => ({ ...shape(p), authorName: nameById.get(String(p.authorId)) || "—" })),
         viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
         orbit: { active: true, org: ctx.org.name, members: memberIds.length },
+      });
+    }
+
+    /**
+     * The orbit feed — Discover.
+     *
+     * One store, one filter. §4: `visible = post.byId ∈ orbitPool(orbit) ∪
+     * viewer.follows`. There are no per-orbit copies of a post and there must
+     * never be: the cross-orbit reach property — a creator's post following
+     * their followers into every orbit those people are in — *is* the union
+     * above, and duplicating rows would replace it with a fan-out job that gets
+     * the counters wrong.
+     *
+     * The one thing that narrows it is `allowExternal`, the enterprise answer to
+     * content leakage (§6.5): a company orbit whose admin switches it off shows
+     * only its own members' posts, and the follows half of the union drops. On
+     * by default — the follow graph is the product — and always on in a circle,
+     * which is nothing *but* external reach.
+     */
+    if (scope === "orbit") {
+      const empty = { watched: [], reacted: [] };
+      const ctx = await orbitContext(db, user.id, url.searchParams.get("orbitId"));
+      if (!ctx) return fail(404, "no_orbit", "That's not one of your orbits.");
+
+      const follows = await followingIds(db, user.id);
+
+      let authorIds;
+      let external = true;
+      if (ctx.orbit.id === PUBLIC_ORBIT_ID) {
+        /* The public orbit's pool is everyone, so there is nothing to intersect:
+           the filter below is `visibility: "public"` and nothing more. */
+        authorIds = null;
+      } else {
+        const members = await orgMemberIds(db, ctx.orbit.id);
+        external = ctx.orbit.allowExternal !== false;
+        authorIds = external ? [...new Set([...members, ...follows])] : members;
+      }
+
+      const filter = { deletedAt: null, visibility: "public" };
+      if (authorIds) {
+        if (!authorIds.length) {
+          return json({ posts: [], viewerState: empty, orbit: { id: ctx.orbit.id, name: ctx.orbit.name, allowExternal: external } });
+        }
+        filter.authorId = { $in: authorIds };
+      }
+
+      const rows = await posts.find(filter).sort({ createdAt: -1 }).limit(50).toArray();
+      const nameById = await namesFor(db, rows.map((r) => r.authorId));
+      await withSlugs(db, rows);
+      const followSet = new Set(follows);
+      return json({
+        posts: rows.map((p) => ({
+          ...shape(p),
+          authorName: nameById.get(String(p.authorId)) || "—",
+          // Whether this post reached the reader through the follow graph rather
+          // than through the orbit — the client labels those, because a post
+          // from outside your company arriving in your company orbit should say
+          // so rather than look like a colleague wrote it.
+          viaFollow: followSet.has(String(p.authorId)),
+          following: followSet.has(String(p.authorId)),
+        })),
+        viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
+        orbit: { id: ctx.orbit.id, name: ctx.orbit.name, allowExternal: external },
       });
     }
 

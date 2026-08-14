@@ -288,7 +288,20 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
 
    Pending invites (`awaitingYou`) are the one thing that used to go missing:
    a mentor could invite a mentee and the mentee had no surface that showed it. */
-export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo, onRespond, busy }) => {
+/**
+ * The notification centre.
+ *
+ * Every row carries the preference that admits it (`pref`), and a row whose
+ * preference is off is not rendered. That is the whole reason preferences ship
+ * alongside the loop rather than after it: a switch labelled "leaderboard
+ * movement" that goes on turning up in the centre teaches people their settings
+ * are decorative, and nothing they set afterwards is believed.
+ *
+ * Rows with no `pref` are not preferences — they are things waiting on this
+ * person. A pending invitation and a session proposal are somebody else's action
+ * blocked on an answer; muting those would lose the answer, not the noise.
+ */
+export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo, onRespond, busy, prefs = {}, nudge = null }) => {
   const inbox = (Array.isArray(matches) ? matches : []).filter(m => m.awaitingYou);
   const items = [];
   /* A proposed session is a real thing waiting on this person — it belongs at
@@ -297,22 +310,39 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
   if (sessionsToAnswer.length > 0) {
     const first = (sessionsToAnswer[0].person?.name || "Someone").split(" ")[0];
     items.push({
-      icon: Calendar, c: C.amber, bg: C.amberTint,
+      icon: Calendar, c: C.amber, bg: C.amberTint, pref: "sessions",
       t: sessionsToAnswer.length === 1 ? `${first} proposed a session` : `${sessionsToAnswer.length} sessions need a time`,
       d: "Pick one of the times they offered — that books it for both of you.",
       when: "New", to: "sessions",
     });
   }
   if (role === "mentee") {
+    /* A nudge comes from the mentor, never from the system or the console that
+       detected it. Social accountability outperforms administrative email, and
+       "your programme administrator noticed" is the sentence that makes someone
+       close the app. */
+    if (nudge) {
+      items.push({
+        icon: MessageCircle, c: C.purple, bg: C.purpleTint, pref: "notes",
+        t: `${nudge.from} noticed`, d: nudge.text, when: "Today", to: nudge.to || "exercises",
+      });
+    }
     /* One line per mentor — the mentee may hold three, and "they accepted"
        naming only the first would drop the other two off the list entirely. */
-    (u.mentors || []).forEach(m => items.push({ icon: Check, c: C.teal, bg: C.tealTint, t: `${m.name.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" }));
+    (u.mentors || []).forEach(m => items.push({ icon: Check, c: C.teal, bg: C.tealTint, pref: "notes", t: `${m.name.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" }));
     if (u.earned?.goal) items.push({ icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: `Verified and shareable. ${BADGE_DEFS.length - 1} more to go.`, when: u.earned.goal, to: "badges" });
-    items.push({ icon: Flame, c: C.coral, bg: C.coralTint, t: u.streak > 0 ? `Streak: day ${u.streak}` : "Start your streak", d: "Today’s exercise takes a few minutes. Finishing it earns XP and unlocks Direct Connect.", when: "Today", to: "exercises" });
+    items.push({ icon: Flame, c: C.coral, bg: C.coralTint, pref: "streak", t: u.streak > 0 ? `Streak: day ${u.streak}` : "Start your streak", d: "Today’s exercise takes a few minutes. Finishing it earns XP and unlocks Direct Connect.", when: "Today", to: "exercises" });
   } else {
-    if ((u.cohort || []).length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Propose times for their opening session.`, when: "Recent", to: "sessions" });
-    items.push({ icon: Crown, c: C.amber, bg: C.amberTint, t: `Tier: ${u.tier || "Scout"}`, d: `Impact Score live at ${u.impact ?? 0}. Pathfinder at 400.`, when: "Today", to: "board" });
+    if ((u.cohort || []).length > 0) items.push({ icon: Users, c: C.purple, bg: C.purpleTint, pref: "notes", t: "Cohort forming", d: `${u.cohort.length} mentee${u.cohort.length === 1 ? "" : "s"} joined. Propose times for their opening session.`, when: "Recent", to: "sessions" });
+    items.push({ icon: Crown, c: C.amber, bg: C.amberTint, pref: "board", t: `Tier: ${u.tier || "Scout"}`, d: `Impact Score live at ${u.impact ?? 0}. Pathfinder at 400.`, when: "Today", to: "board" });
   }
+
+  /* A row with no `pref` is always shown; one with a `pref` obeys it. Defaulting
+     an unknown key to *shown* rather than hidden is deliberate — a preference
+     that hasn't loaded yet must not silently swallow a notification. */
+  const visible = items.filter((n) => !n.pref || prefs[n.pref] !== false);
+  const muted = items.length - visible.length;
+
   return (
     <div>
       <HeaderRow title="Notifications" onBack={back} />
@@ -338,7 +368,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
             </Card>
           );
         })}
-        {items.map((n, i) => (
+        {visible.map((n, i) => (
           <Card key={i} onClick={() => navTo(n.to)} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <div style={{ width: 36, height: 36, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><n.icon size={16} color={n.c} /></div>
             <div style={{ flex: 1 }}>
@@ -351,6 +381,13 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
             <ChevronRight size={14} color="#C9C6C0" style={{ marginTop: 4 }} />
           </Card>
         ))}
+        {/* Says the switches are working rather than leaving someone to wonder
+            whether the app is quiet or broken. */}
+        {muted > 0 && (
+          <div style={{ fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.6, color: "#A5A39D", textAlign: "center", padding: "6px 0" }}>
+            {muted} MUTED BY YOUR NOTIFICATION SETTINGS
+          </div>
+        )}
       </div>
     </div>
   );
@@ -532,31 +569,84 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
   );
 };
 
-export const BadgeModal = ({ badge, index, close, toast }) => badge && (
-  <div onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(26,26,26,.5)", zIndex: 40, display: "flex", alignItems: "flex-end" }}>
-    <div onClick={e => e.stopPropagation()} className="sheet-up" style={{ background: C.white, width: "100%", borderRadius: "22px 22px 0 0", padding: "20px 22px 26px", boxSizing: "border-box" }}>
-      <div style={{ width: 38, height: 4, background: "#D8D6D0", borderRadius: 2, margin: "0 auto 16px" }} />
-      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-        <BadgeTile badge={badge} i={index} size={76} />
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{badge.name}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 10.5, color: TIER_COLOR[badge.tier], marginTop: 3 }}>EARNED {badge.earned?.toUpperCase()} · VERIFIED</div>
-          <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4 }}>Unlocked: {badge.unlocks}</div>
+/**
+ * Badge detail.
+ *
+ * Two states, and the unearned one is not a lesser version of the earned one —
+ * it is the goal gradient. A locked badge that says nothing about how to get it
+ * is decoration; one that names the remaining distance is a reason to open the
+ * app tomorrow. So an unearned badge shows the condition and the progress, and
+ * withholds only the things that would be lies: the verification code, the date,
+ * and the share buttons.
+ */
+export const BadgeModal = ({ badge, index, close, toast }) => {
+  if (!badge) return null;
+  const earned = !!badge.earned;
+  const verifyUrl = `https://ryzn.one/v/${(badge.code || "00000").slice(-5)}`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(verifyUrl);
+      toast?.("Verification link copied");
+    } catch {
+      toast?.("Couldn't copy that link");
+    }
+  };
+
+  return (
+    <div onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(26,26,26,.5)", zIndex: 40, display: "flex", alignItems: "flex-end" }}>
+      <div onClick={e => e.stopPropagation()} className="sheet-up" style={{ background: C.white, width: "100%", borderRadius: "22px 22px 0 0", padding: "20px 22px 26px", boxSizing: "border-box" }}>
+        <div style={{ width: 38, height: 4, background: "#D8D6D0", borderRadius: 2, margin: "0 auto 16px" }} />
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <BadgeTile badge={badge} i={index} size={76} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{badge.name}</div>
+            <div style={{ fontFamily: F.mono, fontSize: 10.5, color: earned ? TIER_COLOR[badge.tier] : C.mute, marginTop: 3 }}>
+              {earned ? `EARNED ${badge.earned?.toUpperCase()} · VERIFIED` : "NOT EARNED YET"}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4 }}>
+              {earned ? `Unlocked: ${badge.unlocks}` : badge.unlocks}
+            </div>
+          </div>
         </div>
-      </div>
-      <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 18, background: C.surface, padding: 14, borderRadius: 14 }}>
-        <QR seed={badge.code || badge.id} size={96} />
-        <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, lineHeight: 1.8 }}>
-          VERIFICATION<br /><span style={{ color: C.ink, fontWeight: 700 }}>{badge.code || "RYZ-2026-00000"}</span><br />ryzn.one/v/{(badge.code || "00000").slice(-5)}
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <Btn style={{ flex: 1 }} onClick={() => shareToLinkedIn(`I earned the ${badge.name} badge on Ryzn. ${badge.unlocks}`)}><Linkedin size={15} /> Share to LinkedIn</Btn>
-        <Btn kind="ghost" onClick={close} style={{ flex: 0.6 }}>Done</Btn>
+
+        {earned ? (
+          <>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 18, background: C.surface, padding: 14, borderRadius: 14 }}>
+              <QR seed={badge.code || badge.id} size={96} />
+              <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, lineHeight: 1.8 }}>
+                VERIFICATION<br /><span style={{ color: C.ink, fontWeight: 700 }}>{badge.code || "RYZ-2026-00000"}</span><br />ryzn.one/v/{(badge.code || "00000").slice(-5)}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <Btn style={{ flex: 1 }} onClick={() => shareToLinkedIn(`I earned the ${badge.name} badge on Ryzn. ${badge.unlocks}`)}><Linkedin size={15} /> Share to LinkedIn</Btn>
+              <Btn kind="ghost" small onClick={copyLink} style={{ flex: 0.5 }}>Copy link</Btn>
+            </div>
+            <Btn kind="ghost" small onClick={close} style={{ width: "100%", marginTop: 8 }}>Done</Btn>
+          </>
+        ) : (
+          <>
+            {/* How to earn it, and how far off it is. This is the whole reason
+                the locked state is worth rendering at all. */}
+            <div style={{ marginTop: 18, background: C.surface, padding: 14, borderRadius: 14 }}>
+              <Label color={C.purple}>How you earn it</Label>
+              <div style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 6 }}>{badge.how || badge.unlocks}</div>
+              {badge.progress && (
+                <div style={{ marginTop: 11 }}>
+                  <Bar pct={badge.progress[1] ? badge.progress[0] / badge.progress[1] : 0} />
+                  <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 6, letterSpacing: 0.6 }}>
+                    {(badge.progressLabel || `${badge.progress[0]} of ${badge.progress[1]}`).toUpperCase()}
+                  </div>
+                </div>
+              )}
+            </div>
+            <Btn kind="ghost" onClick={close} style={{ width: "100%", marginTop: 16 }}>Close</Btn>
+          </>
+        )}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const MidwayUnlock = ({ onClose, toast }) => (
   <div style={{ position: "absolute", inset: 0, background: C.purple, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30, textAlign: "center", color: C.white }}>

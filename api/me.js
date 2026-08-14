@@ -1,11 +1,12 @@
 import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { json, withUser, ageFrom } from "../lib/http.js";
-import { acceptedFor, sideOf } from "../lib/matches.js";
+import { acceptedFor, sideOf, orbitOfMatch } from "../lib/matches.js";
 import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 import { isMentorRole } from "../lib/roles.js";
 import { asLabel } from "../lib/scalars.js";
 import { orgContext, publicOrg } from "../lib/orgs.js";
+import { prefsOf } from "../lib/prefs.js";
 import { ensureHandle } from "../lib/handles.js";
 
 const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
@@ -145,6 +146,11 @@ async function handler(request, user) {
         avatarUrl: p.avatarUrl ?? u?.image ?? null,
         tier: p.tier ?? "Scout",
         since: m.respondedAt ?? m.createdAt ?? null,
+        /* Which orbit this pairing was formed in — the client counts seats
+           against the *active* orbit's cap, so a mentor held in a circle must
+           not occupy a seat at work. Pairings older than orbits belong to the
+           public orbit, which is where Ryzn was. */
+        orbitId: orbitOfMatch(m),
       };
     };
     mentors = accepted
@@ -174,6 +180,9 @@ async function handler(request, user) {
         // Stage 1 flips when /api/exercises records their first submission.
         stage1: !!p.stage1Complete,
         status: "active",
+        // Which orbit this mentee sits in for this mentor — a cohort spans
+        // orbits, and a console may only see the people in its own.
+        orbitId: orbitOfMatch(m),
       };
     });
   }
@@ -202,6 +211,41 @@ async function handler(request, user) {
     };
   }
 
+  /* ————— at risk —————
+   *
+   * Days since the last exercise, computed rather than stored. It has two
+   * consumers and they must read the same number: the HR console's at-risk
+   * count, and the mentee's own Home, where it becomes a nudge **attributed to
+   * their mentor** — "Jordan noticed…", never "your programme administrator
+   * noticed". Social accountability outperforms administrative email, and a
+   * person who feels monitored by HR closes the app rather than opening the
+   * exercise.
+   *
+   * Three days is the threshold: two is a weekend, four is a habit already lost.
+   * A mentee with no mentor yet is not at risk — there is nobody for the nudge
+   * to come from, and the unlock track is already the thing asking them to move.
+   */
+  /* How many people follow this mentor. Portable, like everything else on the
+     identity: a follower earned in a circle still counts in a company orbit,
+     because they followed the person and not the space. One indexed count. */
+  let followers = 0;
+  if (side === "mentor") {
+    followers = await db.collection(collections.follows).countDocuments({ followingId: user.id });
+  }
+
+  let atRisk = null;
+  if (side === "mentee" && mentors.length) {
+    const last = profile?.lastExerciseDay || null;
+    const days = last
+      ? Math.floor((Date.parse(`${utcDayKey()}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86_400_000)
+      : null;
+    // Never written one at all is a different state from having stopped: the
+    // track is still asking for the first, so Home doesn't also nudge for it.
+    if (days !== null && days >= 3) {
+      atRisk = { daysSince: days, lastDay: last, mentorId: mentors[0].id, mentorName: mentors[0].name };
+    }
+  }
+
   return json({
     user: {
       id: user.id,
@@ -227,11 +271,20 @@ async function handler(request, user) {
       track: asLabel(profile?.track) ?? profile?.track ?? null,
       industry: asLabel(profile?.industry) ?? profile?.industry ?? null,
       onboardingComplete,
+      /* Resolved with defaults filled in. A preference added after someone
+         signed up must read as its default here, not as `undefined` — a Settings
+         toggle bound to `undefined` renders off and then silently turns a live
+         notification stream off the first time it's touched. */
+      prefs: prefsOf(profile),
       _id: undefined,
     },
     mentors,
     cohort,
     exercise,
+    followers,
+    // Non-null only when a mentee has stopped. Home turns it into a nudge from
+    // their mentor; the console counts it. One number, two consumers.
+    atRisk,
     /* Their organisation, if they're in one — two indexed reads, and it's what
        lets the app show a way into the org console instead of the Teams pitch.
        The console itself still reads /api/orgs for the roster and codes. */

@@ -75,8 +75,21 @@ function PeerRow({ p, busy, onOpen, onToggleFollow }) {
   );
 }
 
-export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange }) => {
+/**
+ * The Roster — the mentor guild.
+ *
+ * It **lives above orbits**, and that is the design rather than an accident of
+ * where it was built: a mentor belongs to the guild, not to whichever space they
+ * happen to be standing in, so the worldwide and chapter counts are identical
+ * wherever they open it. Only the third stat adapts.
+ *
+ * This is the mentor-retention moat. A mentee's product is their cohort; a
+ * mentor whose cohort is quiet needs a reason to open the app anyway, and two
+ * hundred people doing the same difficult work is that reason.
+ */
+export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, orbitId }) => {
   const [view, setView] = useState("feed");
+  const [guild, setGuild] = useState(null);
 
   const [peers, setPeers] = useState([]);
   const [peersLoading, setPeersLoading] = useState(true);
@@ -97,8 +110,8 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange }) 
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
-        const { people } = await fetchMentorPeers({ q: q.trim() || undefined });
-        if (!cancelled) { setPeers(Array.isArray(people) ? people : []); setPeersError(null); }
+        const { people, guild: g } = await fetchMentorPeers({ q: q.trim() || undefined, orbitId });
+        if (!cancelled) { setPeers(Array.isArray(people) ? people : []); setGuild(g || null); setPeersError(null); }
       } catch (e) {
         if (!cancelled) setPeersError(e?.message || "Couldn’t load the mentor roster.");
       } finally {
@@ -106,7 +119,7 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange }) 
       }
     }, q ? 280 : 0);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [q]);
+  }, [q, orbitId]);
 
   const loadFeed = useCallback(async () => {
     try {
@@ -179,6 +192,21 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange }) 
         right={followingCount > 0 ? <Label color={C.purple}>FOLLOWING {followingCount}</Label> : null} />
 
       <div style={{ padding: "0 20px 10px" }}>
+        {/* Two numbers that are the same everywhere, and one that isn't. */}
+        {guild && (
+          <div style={{ display: "grid", gridTemplateColumns: guild.here != null ? "1fr 1fr 1fr" : "1fr 1fr", gap: 8, marginBottom: 10 }}>
+            {[
+              [Number(guild.worldwide).toLocaleString(), "mentors worldwide", C.purple],
+              [String(guild.chapters), "chapters", C.teal],
+              ...(guild.here != null ? [[String(guild.here), `in ${guild.hereLabel || "this orbit"}`, C.coral]] : []),
+            ].map(([n, l, c]) => (
+              <div key={l} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: c }}>{n}</div>
+                <div style={{ fontFamily: F.mono, fontSize: 7.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
           {[["feed", "Their posts"], ["mentors", "Mentors"]].map(([id, l]) => (
             <button key={id} onClick={() => setView(id)} style={{

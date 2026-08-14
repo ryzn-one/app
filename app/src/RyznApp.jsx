@@ -17,7 +17,10 @@ import { stashPendingInvite, readPendingInvite, claimPendingInvite } from "./lib
 import { Splash, RoleSelect, Welcome, Register, Login, Forgot } from "./auth.jsx";
 import { ChatScreen, UnlockScreen, MatchesScreen, RequestsScreen, MentorDetailSheet } from "./chatmatch.jsx";
 import { AddMentorScreen, AddMenteeScreen } from "./adddecks.jsx";
-import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile } from "./app-mentee.jsx";
+import { MenteeHome, MenteeExercises, MenteeBadges, CohortScreen, DMScreen, MenteeProfile, MenteeChatList } from "./app-mentee.jsx";
+import { ChatLocked, ChatUnlocked } from "./unlock.jsx";
+import { SettingsSheet, DEFAULT_PREFS } from "./settings.jsx";
+import { updatePrefs, exportMyData, deleteMyAccount, leaveOrbit } from "./lib/auth-client.js";
 import { MentorDash, MenteeDetailScreen, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
 import { SessionsScreen } from "./sessions.jsx";
 import { ExploreScreen } from "./explore.jsx";
@@ -25,6 +28,9 @@ import { NetworkScreen } from "./network.jsx";
 import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
 import { TEAMS_NAV, TEAMS_TABS, TeamsHome, TeamsMentors, TeamsCohort, TeamsRoster, TeamsChat } from "./teams/TeamsApp.jsx";
+import { useOrbits } from "./lib/orbits.js";
+import { OrbitSwitcher, JoinCircle } from "./orbits.jsx";
+import { fetchCircle, joinCircle } from "./lib/auth-client.js";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
 import { fmtDate } from "./lib/calendar.js";
@@ -66,6 +72,17 @@ function postIdFromHash() {
   const hash = window.location.hash || "";
   const m = hash.match(/^#\/post\/([^/?#]+)/);
   return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** A circle invitation: /app/#/circle/{slug}.
+ *
+ *  The community answer to an org's invite code. A circle is open, so the link
+ *  is the whole credential — there is nothing to verify and nothing to claim
+ *  atomically, which is exactly what separates it from an org invite. */
+function circleSlugFromHash() {
+  if (typeof window === "undefined") return null;
+  const m = (window.location.hash || "").match(/^#\/circle\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]).toLowerCase() : null;
 }
 
 export const JOURNEY_STAGES = ["splash", "role", "welcome", "auth", "chat", "unlock", "matches", "app"];
@@ -203,6 +220,20 @@ export default function RyznComplete() {
      above stays what its name says — the signed-in mentor's own posts. */
   const [feeds, setFeeds] = useState({});
   const [highlightPostId, setHighlightPostId] = useState(null);
+  /* A circle link waiting to be accepted: `{ slug, circle, joined, error }`.
+     Held in state rather than routed to, because it opens over whatever the
+     person was already doing and leaves them there if they decline. */
+  const [circleInvite, setCircleInvite] = useState(null);
+  const [circleBusy, setCircleBusy] = useState(false);
+  /* The unlock ceremony, and the orbit it fired for. Keyed by orbit because the
+     track is per orbit — finishing it at work is a separate moment from
+     finishing it in a circle, and each one is worth marking. */
+  const [chatCeremony, setChatCeremony] = useState(null);
+  const chatOpenRef = useRef({});
+  /* Notification, visibility and availability preferences. Identity-level, so
+     they are read once from /api/me and not per orbit. */
+  const [prefs, setPrefs] = useState(DEFAULT_PREFS);
+  const [prefsBusy, setPrefsBusy] = useState(false);
   const [menteeAdds, setMenteeAdds] = useState(0);
   const [program, setProgram] = useState({ phases: [], completedPhaseIds: [] });
   /* The mentee side: one program per mentor, keyed the same way as `feeds`. */
@@ -229,8 +260,32 @@ export default function RyznComplete() {
      being invited or removed flips the app on the next /api/me with nothing
      stored locally to go stale. Declared here because `navTo` and the tab
      guard both need it long before the screens do. */
-  const mode = session?.org ? "teams" : "solo";
-  const org = session?.org ?? null;
+  /* — orbits —
+     Since v2 the switch above is the *active orbit*, not the account. A person
+     can hold a company seat, a circle membership and the public orbit at once,
+     and which surface they see is decided by where they are standing right now
+     — not by a field on their user row. `session.org` still says which company
+     they belong to; it no longer says which product they are using.
+
+     Every screen below branches on `policy` values, never on `orbit.kind`. The
+     policy arrives resolved from /api/orbits and is passed down as a prop; the
+     only writers are the two consoles. */
+  /* Loaded as soon as there is a session, not once the app opens: onboarding
+     happens *inside* an orbit and its opening line needs to know which one. */
+  const orbits = useOrbits(!!session?.user);
+  const orbit = orbits.orbit;
+  const policy = orbits.policy;
+  /* Pulled out as a plain string so every loader below can depend on *it*
+     rather than on the hook's object, which is a new reference each render. */
+  const activeOrbitId = orbits.orbitId;
+  /* Until /api/orbits answers, the account's org is the best guess at where this
+     person stands — and it is the answer the app gave before orbits existed. Not
+     guessing would flash the public surface at an employee on every cold start. */
+  const mode = (orbits.loading ? !!session?.org : orbit?.kind === "private") ? "teams" : "solo";
+  /* Teams screens read the org payload from /api/me for names, invites and
+     counts. It is the right one whenever the active orbit is the company one —
+     which is exactly when `mode` is "teams". */
+  const org = mode === "teams" ? (session?.org ?? null) : null;
 
   /* Teams has four tabs where solo has five, so a tab that exists in one mode
      may not exist in the other. Without this, someone sitting on Badges when
@@ -240,10 +295,28 @@ export default function RyznComplete() {
     const allowed = mode === "teams"
       ? TEAMS_TABS[role]
       : (role === "mentee"
-        ? ["home", "exercises", "badges", "meets", "profile"]
+        // "meets" stays allowed though it left the tab bar — notification deep
+        // links still land there, and a destination with no tab is fine.
+        ? ["home", "exercises", "chat", "badges", "meets", "profile"]
         : ["home", "feed", "sessions", "meets", "profile"]);
     if (!allowed.includes(tab)) setTab("home");
   }, [mode, role, tab, phase]);
+
+  /* Moving between orbits. Not a reload and not a re-auth: the identity below is
+     the same one, so XP, badges, follows and the session all stay put. What
+     changes is the resolved policy — and, because the surfaces differ, the tab
+     and any open overlay, which would otherwise point at a screen the new orbit
+     doesn't have. The toast names the rules rather than the orbit, so the first
+     thing someone learns after switching is what is different here. */
+  const switchOrbit = (id) => {
+    const next = orbits.orbits.find((o) => o.id === id);
+    orbits.switchTo(id);
+    setOverlay(null);
+    setTab("home");
+    if (next) {
+      toast(next.policy?.matchMode === "Apply" ? `${next.name} · mentors approve` : `${next.name} · open matching`);
+    }
+  };
 
   const resetAppState = () => {
     setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false);
@@ -272,6 +345,9 @@ export default function RyznComplete() {
   const applyMe = useCallback((me) => {
     if (!me) return;
     setUser(toAppUser(me));
+    /* Preferences arrive resolved, with defaults already filled in server-side —
+       so a toggle never renders off for a preference that is actually on. */
+    if (me.profile?.prefs) setPrefs(me.profile.prefs);
     if (!isMentorRole(me.user.role || "mentee")) {
       setTodayDone(!!me.exercise?.todayDone);
     }
@@ -314,10 +390,17 @@ export default function RyznComplete() {
   /* — roster —
      Loaded when the match deck is about to show. Empty is a valid result: an
      early cohort has nobody on the other side yet. */
+  /* Both reads are scoped to the orbit the person is standing in: the deck draws
+     from that orbit's pool under that orbit's policy, and the seat counter
+     counts against that orbit's cap. Switching orbits re-runs them, which is
+     what makes a policy change visible without a reload. */
   const loadRoster = useCallback(async () => {
     setRosterLoading(true); setRosterError(null);
     try {
-      const [{ people }, { matches: mine }] = await Promise.all([fetchRoster(), fetchMatches()]);
+      const [{ people }, { matches: mine }] = await Promise.all([
+        fetchRoster({ orbitId: activeOrbitId }),
+        fetchMatches(activeOrbitId),
+      ]);
       setRoster(Array.isArray(people) ? people : []);
       setMatches(Array.isArray(mine) ? mine : []);
     } catch (err) {
@@ -328,11 +411,11 @@ export default function RyznComplete() {
     } finally {
       setRosterLoading(false);
     }
-  }, []);
+  }, [activeOrbitId]);
 
   const loadMatches = useCallback(async () => {
     try {
-      const { matches: mine } = await fetchMatches();
+      const { matches: mine } = await fetchMatches(activeOrbitId);
       const rows = Array.isArray(mine) ? mine : [];
       setMatches(rows);
       return rows;
@@ -340,7 +423,7 @@ export default function RyznComplete() {
       console.error("[ryzn] /api/matches failed:", err);
       return [];
     }
-  }, []);
+  }, [activeOrbitId]);
 
   /** Re-reads /api/me so the app reflects a pairing change immediately. */
   const refreshUser = useCallback(async () => {
@@ -419,6 +502,63 @@ export default function RyznComplete() {
   }, [role, mentorIdKey]);
 
   useEffect(() => { if (phase === "app") loadFeed(); }, [phase, loadFeed]);
+
+  /* The unlock ceremony. Fires on the transition from locked to open, never on
+     the state itself — otherwise it re-fires on every refresh for someone who
+     unlocked chat weeks ago. The first reading of an orbit only seeds the ref,
+     which is why arriving already-unlocked is silent. */
+  useEffect(() => {
+    if (phase !== "app" || role !== "mentee" || !orbit || orbit.chatOpen === undefined) return;
+    const seen = chatOpenRef.current;
+    const before = seen[orbit.id];
+    seen[orbit.id] = orbit.chatOpen;
+    if (before === false && orbit.chatOpen === true) setChatCeremony(orbit.id);
+  }, [phase, role, orbit?.id, orbit?.chatOpen]);
+
+  /* A circle invitation link. Resolved once there is a session to join with —
+     a signed-out visitor lands in the normal journey first and the slug waits in
+     the hash, which is where it came from and where a page load can't lose it. */
+  useEffect(() => {
+    if (phase !== "app" || !user) return;
+    const slug = circleSlugFromHash();
+    if (!slug || circleInvite?.slug === slug) return;
+    let cancelled = false;
+    setCircleInvite({ slug, circle: null, joined: false, error: null });
+    (async () => {
+      try {
+        const { circle, joined } = await fetchCircle(slug);
+        if (!cancelled) setCircleInvite({ slug, circle, joined, error: null });
+      } catch (err) {
+        if (!cancelled) setCircleInvite({ slug, circle: null, joined: false, error: err });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [phase, user, circleInvite?.slug]);
+
+  /** One tap, then straight into the circle — and the follow that comes with it
+      is what puts the creator's next post in this person's feed everywhere. */
+  const acceptCircle = async () => {
+    if (!circleInvite?.circle || circleBusy) return;
+    setCircleBusy(true);
+    try {
+      const { orbits: list, joined } = await joinCircle({ slug: circleInvite.slug });
+      orbits.applyOrbits(list);
+      clearCircleHash();
+      setCircleInvite(null);
+      if (joined) switchOrbit(joined);
+      toast(`Joined ${circleInvite.circle.name}`);
+    } catch (e) {
+      toast(e.message || "Couldn't join that circle.");
+    } finally {
+      setCircleBusy(false);
+    }
+  };
+
+  const clearCircleHash = () => {
+    if (typeof window !== "undefined" && circleSlugFromHash()) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  };
 
   /* Share deep link: open the post the recipient is allowed to see. */
   useEffect(() => {
@@ -723,7 +863,10 @@ export default function RyznComplete() {
     if (todayDone || submittingExercise) return;
     setSubmittingExercise(true);
     try {
-      const res = await submitExercise({ text, exerciseId: "write-your-why" });
+      /* Written in an orbit, and it completes that orbit's track. Someone six
+         weeks in at work is still on step one in a circle they joined
+         yesterday — the paragraph counts where it was written. */
+      const res = await submitExercise({ text, exerciseId: "write-your-why", orbitId: activeOrbitId });
       setTodayDone(true);
       setUser(u => u && ({
         ...u,
@@ -733,14 +876,11 @@ export default function RyznComplete() {
         todayExercise: res.exercise ?? u.todayExercise,
       }));
       toast(`+${res.awarded || todayEx.xp} XP · streak day ${res.streak ?? (user?.streak || 0)}`);
-      /* Direct Connect is earned once and opens every orbit at once, so the
-         message names the count rather than one mentor. */
-      if (user?.mentors?.length) {
-        const n = user.mentors.length;
-        setTimeout(() => toast(n === 1
-          ? `Direct Connect unlocked · message ${user.mentors[0].name.split(" ")[0]}`
-          : `Direct Connect unlocked · message any of your ${n} mentors`), 2300);
-      }
+      /* Re-read the orbits so the track advances and, if that was the last step,
+         the unlock ceremony fires. The ceremony is the announcement now — a
+         toast claiming Direct Connect was open would be wrong in an orbit whose
+         policy still gates it, or whose track has a step left. */
+      await orbits.refresh();
     } catch (err) {
       throw err;
     } finally {
@@ -939,12 +1079,17 @@ export default function RyznComplete() {
     toast("+25 Impact · greeting pinned to your Orbit");
   };
 
-  const addMentor = async (m) => {
+  /* `answer` is what the applicant wrote to qualify. It is required where the
+     orbit's policy is Apply and ignored where it is Open — the deck collects it
+     or doesn't, and this passes on whatever it got rather than deciding again. */
+  const addMentor = async (m, answer) => {
     try {
-      await requestMatch(m.id);
+      await requestMatch(m.id, "request", { orbitId: orbits.orbitId, answer });
       await Promise.all([loadRoster(), refreshUser()]);
       addUserXp(15);
-      toast(`Request sent to ${m.name.split(" ")[0]}`);
+      toast(policy?.matchMode === "Apply"
+        ? `Application sent to ${m.name.split(" ")[0]}`
+        : `Request sent to ${m.name.split(" ")[0]}`);
     } catch (e) { toast(e.message || "Couldn’t send that request."); }
   };
   /* Leaving writes to the shared match record, so the mentor sees the same
@@ -959,12 +1104,64 @@ export default function RyznComplete() {
   };
   const addMentee = async (m) => {
     try {
-      await requestMatch(m.id);
+      await requestMatch(m.id, "request", { orbitId: orbits.orbitId });
       await Promise.all([loadRoster(), refreshUser()]);
       setMenteeAdds(n => n + 1);
       addUserImpact(30);
       toast(`Invitation sent to ${m.name.split(" ")[0]} · +30 Impact`);
     } catch (e) { toast(e.message || "Couldn’t send that invitation."); }
+  };
+
+  /* — preferences, export, deletion —
+     Preferences are identity-level: one set per person, carried into every
+     orbit. Written optimistically because a toggle that waits on a round trip
+     feels broken, and reconciled from the server's merged answer. */
+  const savePrefs = async (patch) => {
+    setPrefs((p) => ({ ...p, ...patch }));
+    setPrefsBusy(true);
+    try {
+      const res = await updatePrefs(patch);
+      if (res?.profile?.prefs) setPrefs(res.profile.prefs);
+    } catch (e) {
+      await refreshUser();               // put the switch back where it really is
+      toast(e.message || "Couldn't save that.");
+    } finally {
+      setPrefsBusy(false);
+    }
+  };
+
+  const downloadMyData = async () => {
+    try {
+      const blob = await exportMyData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ryzn-my-data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast("Your data is downloading");
+    } catch (e) { toast(e.message || "Couldn't build your export."); }
+  };
+
+  const deleteAccountHandler = async () => {
+    try {
+      await deleteMyAccount();
+      /* Nothing to clean up locally — the account is gone, so a full reload
+         lands on the signed-out journey with no stale state to disagree. */
+      window.location.href = "/app/";
+    } catch (e) { toast(e.message || "Couldn't delete that account."); }
+  };
+
+  /* Leaving takes the membership and nothing else: XP, tier, badges, streak and
+     follows are identity-level and survive. The Settings copy promises exactly
+     this, and api/orbits.js is where the promise is kept. */
+  const leaveOrbitHandler = async (id) => {
+    try {
+      const { orbits: list } = await leaveOrbit(id);
+      orbits.applyOrbits(list);
+      if (id === activeOrbitId) switchOrbit("public");
+      toast("Left the orbit · your XP and badges are still yours");
+    } catch (e) { toast(e.message || "Couldn't leave that orbit."); }
   };
 
   const updateUserProfile = async (field, value) => {
@@ -978,8 +1175,15 @@ export default function RyznComplete() {
   /* Seats, in one place — Explore and the add decks must agree on whether
      there’s room, and the answer differs per side. */
   const mentorCapacity = session?.profile?.capacity ?? 4;
-  const mentorsHeld = user?.mentors?.length || 0;
-  const mentorSeatsLeft = 3 - mentorsHeld;
+  /* Seats are per orbit, so only the mentors held *here* count against the cap.
+     Matches formed before orbits existed carry no orbitId and belong to the
+     public orbit — the same rule the server reads them under. */
+  const mentorsHeld = (user?.mentors || []).filter(
+    (m) => (m.orbitId || "public") === orbits.orbitId
+  ).length;
+  /* `policy.cap` is the number. The constant is only what an orbit that hasn't
+     answered yet falls back to. */
+  const mentorSeatsLeft = (policy?.cap ?? 3) - mentorsHeld;
   const cohortSeatsLeft = mentorCapacity - (user?.cohort?.length || 0);
 
   /* — notification deep links — */
@@ -1022,7 +1226,10 @@ export default function RyznComplete() {
         else setStage("chat");
       }} />;
       case "forgot": return <Forgot go={setStage} />;
-      case "chat": return <ChatScreen role={role} xp={xp} addXp={addXp} onComplete={completeOnboarding} firstName={session?.user?.name?.split(" ")[0] || ""} />;
+      /* The same conversation in every orbit. `orbit` seeds one sentence of
+         context into the opening message — where they are and what stays
+         theirs — and changes nothing else about the script. */
+      case "chat": return <ChatScreen role={role} xp={xp} addXp={addXp} onComplete={completeOnboarding} firstName={session?.user?.name?.split(" ")[0] || ""} orbit={orbit} />;
       case "matches": return (
         <SectionBoundary name="matches" resetKey={`matches-${role}`}>
           {role === "mentee"
@@ -1067,18 +1274,36 @@ export default function RyznComplete() {
         navTo={navTo}
         busy={inviteBusy}
         onRespond={respondInvite}
+        /* Rows obey these. A "leaderboard movement" switch that goes on turning
+           up here teaches people their settings are decorative. */
+        prefs={prefs}
+        /* Detected from real inactivity, phrased as coming from the mentor. */
+        nudge={session?.atRisk ? {
+          from: (session.atRisk.mentorName || "Your mentor").split(" ")[0],
+          text: `${session.atRisk.daysSince} days since your last paragraph. One is enough to pick it back up.`,
+          to: "exercises",
+        } : null}
       />
     );
+    /* One sheet for both roles and all three orbit kinds. It branches on
+       `orbit.kind` for SSO-locked fields and copy — presentation only; nothing
+       here changes what the app *does*. */
     if (overlay === "settings") return (
-      <SettingsScreen
+      <SettingsSheet
         role={role}
-        back={() => setOverlay(null)}
-        toast={toast}
+        orbit={orbit}
+        orbits={orbits.orbits}
+        user={{ ...session?.user, avatarUrl: user?.avatarUrl, headline: user?.headline }}
+        prefs={prefs}
+        busy={prefsBusy}
+        onPrefs={savePrefs}
+        onClose={() => setOverlay(null)}
         onLogout={logout}
-        user={session?.user}
-        org={session?.org}
+        onLeaveOrbit={leaveOrbitHandler}
+        onExport={downloadMyData}
+        onDelete={deleteAccountHandler}
         onRedoTour={() => { setOverlay(null); resetTour(role); setComprehensiveTourOpen(true); }}
-        onResetTabHints={() => { resetTabHints(role); toast("Tab tips reset · they'll reappear as you navigate"); }}
+        toast={toast}
       />
     );
     /* Teams has four tabs, so the screens solo reaches from its tab bar are
@@ -1115,7 +1340,7 @@ export default function RyznComplete() {
         back={() => setOverlay(null)}
       />
     );
-    if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={mentorsHeld} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
+    if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={mentorsHeld} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} policy={policy} orbit={orbit} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     if (overlay === "explore") return (
       <ExploreScreen
@@ -1133,7 +1358,7 @@ export default function RyznComplete() {
       />
     );
     if (overlay === "network") return (
-      <NetworkScreen
+      <NetworkScreen orbitId={activeOrbitId}
         back={() => setOverlay(null)}
         toast={toast}
         cohortSize={(user.cohort || []).length}
@@ -1291,8 +1516,12 @@ export default function RyznComplete() {
     if (mode === "teams") return teamsContent();
     if (role === "mentee") {
       switch (tab) {
-        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} todayDone={todayDone} stage1={stage1} mentorSeats={mentorsHeld} toast={toast} feeds={feeds} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} />;
+        case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} todayDone={todayDone} stage1={stage1} mentorSeats={mentorsHeld} toast={toast} feeds={feeds} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} stage={orbit?.stage} policy={policy} orbit={orbit} atRisk={session?.atRisk} />;
         case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
+        /* Locked is a screen, not a missing route. */
+        case "chat": return chatLocked
+          ? <ChatLocked stage={orbit?.stage} mentor={(user.mentors || [])[0]} go={setTab} />
+          : <MenteeChatList mentors={user.mentors || []} onOpenThread={(m) => setOverlay({ dmPeer: m })} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
         case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} />;
@@ -1301,7 +1530,8 @@ export default function RyznComplete() {
     }
     switch (tab) {
       case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
-      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId} />;
+      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId}
+          followers={session?.followers ?? 0} onPin={pinPost} onDelete={removePost} go={setTab} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}
@@ -1315,7 +1545,14 @@ export default function RyznComplete() {
     }
   };
 
-  const menteeNav = [["home", Home, "Home"], ["exercises", Zap, "Exercises"], ["badges", Award, "Badges"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
+  /* Chat is a permanent tab, padlocked rather than hidden. Hiding a gated
+     feature removes the goal gradient — someone cannot want a thing they can't
+     see — so it stays in the bar and lands on a designed locked screen that
+     names the unlock condition. `chatOpen` is resolved server-side from
+     `policy.chatGate` and this orbit's Stage 1, so the padlock and the endpoint
+     that refuses the message are answering the same question. */
+  const chatLocked = role === "mentee" && orbit ? orbit.chatOpen === false : false;
+  const menteeNav = [["home", Home, "Home"], ["exercises", Zap, "Exercises"], ["chat", MessageCircle, "Chat"], ["badges", Award, "Badges"], ["profile", User, "Profile"]];
   const mentorNav = [["home", LayoutGrid, "Cohort"], ["feed", Newspaper, "Feed"], ["sessions", Calendar, "Sessions"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
   const nav = mode === "teams" ? TEAMS_NAV[role] : (role === "mentee" ? menteeNav : mentorNav);
   const isDesktop = useIsDesktop();
@@ -1379,9 +1616,14 @@ export default function RyznComplete() {
               org={session?.org}
               onSelect={(id) => { setOverlay(null); setTab(id); }}
               onSettings={() => setOverlay("settings")} onLogout={logout} />
-            <div style={{ flex: 1, overflow: "hidden" }}>
+            <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
               <div className="app-scroll" style={{ height: "100%", overflowY: "auto" }}>
                 <div style={{ maxWidth: 1120, margin: "0 auto", padding: "32px 40px" }}>
+                  {orbits.orbits.length > 1 && (
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 18 }}>
+                      <OrbitSwitcher orbits={orbits.orbits} orbitId={orbits.orbitId} onSwitch={switchOrbit} />
+                    </div>
+                  )}
                   <AnimatePresence mode="wait" initial={false}>
                     <motion.div key={overlay === "course" ? "course" : tab}
                       variants={fadeSlide} initial="initial" animate="animate" exit="exit" transition={t(reduced, T_BASE)}>
@@ -1403,7 +1645,17 @@ export default function RyznComplete() {
           </div>
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
+            {/* The switcher only earns a permanent line of a phone screen once
+                there is somewhere to switch to. One orbit is not a choice. */}
+            {orbits.orbits.length > 1 && !fullScreenOverlay && (
+              <div style={{
+                flexShrink: 0, display: "flex", justifyContent: "center", padding: "8px 14px 6px",
+                paddingTop: "calc(8px + env(safe-area-inset-top, 0px))", background: C.white, borderBottom: `1px solid ${C.line}`,
+              }}>
+                <OrbitSwitcher orbits={orbits.orbits} orbitId={orbits.orbitId} onSwitch={switchOrbit} />
+              </div>
+            )}
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingTop: orbits.orbits.length > 1 && !fullScreenOverlay ? 0 : "env(safe-area-inset-top, 0px)" }}>
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
                 paddingBottom: fullScreenOverlay ? 0 : 20,
@@ -1427,6 +1679,10 @@ export default function RyznComplete() {
               <div className="mobile-tab-bar" style={{ borderTop: `1px solid ${C.line}` }}>
                 {nav.map(([id, Icon, label]) => {
                   const active = tab === id && !overlay;
+                  /* A locked tab is rendered, not removed, and it still
+                     navigates — the locked screen behind it explains the unlock
+                     condition, which is the whole mechanic. */
+                  const locked = id === "chat" && chatLocked;
                   return (
                     <motion.button key={id} onClick={() => { setOverlay(null); setTab(id); }} whileTap={reduced ? undefined : { scale: 0.9 }} transition={spring(reduced)}
                       style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0", position: "relative" }}>
@@ -1434,7 +1690,14 @@ export default function RyznComplete() {
                         <motion.div layoutId="mobile-nav-active" transition={spring(reduced)}
                           style={{ position: "absolute", top: 0, width: 22, height: 2.5, borderRadius: 2, background: C.purple }} />
                       )}
-                      <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
+                      <span style={{ position: "relative", lineHeight: 0 }}>
+                        <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
+                        {locked && (
+                          <span style={{ position: "absolute", right: -7, top: -5, background: C.ink, borderRadius: 5, padding: 2, display: "flex" }}>
+                            <Lock size={8} color={C.white} />
+                          </span>
+                        )}
+                      </span>
                       <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
                     </motion.button>
                   );
@@ -1444,6 +1707,33 @@ export default function RyznComplete() {
           </div>
         )
       )}
+
+      {/* A circle link, answered over whatever they were already doing. Declining
+          leaves them exactly where they were — an invitation is not a redirect. */}
+      <AnimatePresence>
+        {phase === "app" && circleInvite && (
+          <ModalShell onClose={() => { clearCircleHash(); setCircleInvite(null); }}>
+            <JoinCircle
+              circle={circleInvite.circle}
+              joined={circleInvite.joined}
+              error={circleInvite.error}
+              busy={circleBusy}
+              onJoin={acceptCircle}
+              onCancel={() => { clearCircleHash(); setCircleInvite(null); }}
+            />
+          </ModalShell>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === "app" && chatCeremony && (
+          <ChatUnlocked
+            mentor={(user?.mentors || [])[0]}
+            onOpen={() => { setChatCeremony(null); setOverlay(null); setTab("chat"); }}
+            onClose={() => setChatCeremony(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {phase === "app" && badgeModal && <BadgeModal badge={badgeModal.b} index={badgeModal.i} close={() => setBadgeModal(null)} toast={toast} />}
       {phase === "app" && showMidway && <MidwayUnlock onClose={() => setShowMidway(false)} toast={toast} />}

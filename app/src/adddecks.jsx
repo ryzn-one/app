@@ -7,13 +7,81 @@ import {
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, firstNameOf, initialsOf, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Chip, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, firstNameOf, initialsOf, labelOf } from "./ui.jsx";
 import { SwipeDeck, CardGrid, MentorDetailSheet, MenteeDetailSheet } from "./chatmatch.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 
-/* ————————————————— IN-APP ADD DECKS (MAX 3) ————————————————— */
+/* ————————————————— IN-APP ADD DECKS —————————————————
 
-export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, loading }) => {
+   The deck is the clearest place the architecture is visible: the same screen,
+   in three orbits, behaving differently because three policy values differ.
+
+     matchMode  decides the CTA and whether the qualify sheet appears
+     cap        decides the seat counter and when the deck stops accepting
+     levelGate  decides who is in the pool, and is *named* on the screen
+     crossDiv   same
+
+   The last two are enforced server-side — this only explains them. A narrow deck
+   with no explanation reads as "Ryzn has no mentors"; the same deck with the
+   rule on it reads as "my employer set this", which is true and is not Ryzn's
+   failure to fix.                                                              */
+
+/**
+ * The qualifying question, shown only where `policy.matchMode` is "Apply".
+ *
+ * One question, answered in a sentence. It exists for the mentor's inbox: a name
+ * is not something anyone can approve, a name with "I want to run my first
+ * project end to end" underneath it is. The reward sits on the button before the
+ * action, not in the toast after it.
+ */
+const QualifySheet = ({ mentor, onClose, onSend, busy }) => {
+  const [text, setText] = useState("");
+  const ready = text.trim().length >= 10;
+  return (
+    <ModalShell onClose={onClose}>
+      <Label color={C.purple}>Apply · {firstNameOf(mentor.name)}</Label>
+      <div style={{ fontSize: 19, fontWeight: 700, marginTop: 8, letterSpacing: -0.3 }}>
+        What do you want to work on?
+      </div>
+      <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
+        {firstNameOf(mentor.name)} reads this before deciding. One honest sentence does more than a paragraph.
+      </div>
+      <textarea
+        value={text} onChange={(e) => setText(e.target.value)} rows={4} autoFocus
+        placeholder="I want to lead a project end to end and I don't know where to start."
+        style={{
+          width: "100%", marginTop: 14, padding: 12, borderRadius: 12, border: `1px solid ${C.line}`,
+          fontFamily: F.sans, fontSize: 14, lineHeight: 1.5, resize: "vertical", background: C.white, color: C.ink,
+        }}
+      />
+      <div style={{ fontFamily: F.mono, fontSize: 9, color: ready ? C.teal : C.mute, letterSpacing: 0.6, marginTop: 6 }}>
+        {ready ? "READY TO SEND" : "A SENTENCE IS ENOUGH"}
+      </div>
+      <Btn style={{ marginTop: 14 }} disabled={!ready || busy} onClick={() => onSend(text.trim())}>
+        {busy ? "Sending…" : `Apply to ${firstNameOf(mentor.name)}'s orbit · +15 XP`}
+      </Btn>
+      <Btn kind="ghost" small style={{ marginTop: 8, width: "100%" }} onClick={onClose}>Not now</Btn>
+    </ModalShell>
+  );
+};
+
+/** The rules that narrowed this deck, in the words the console set them with.
+    Rendered from the policy the server applied, never from a local copy. */
+const PoolChips = ({ policy, orbit }) => {
+  if (!policy) return null;
+  const chips = [];
+  if (policy.levelGate) chips.push("Staff+ mentors only");
+  if (!policy.crossDiv && orbit?.division) chips.push(`${orbit.division} only`);
+  if (!chips.length) return null;
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "0 20px 8px" }}>
+      {chips.map((c) => <Chip key={c} c={C.deep} bg={C.purpleTint}>{c}</Chip>)}
+      <Chip c={C.gray} bg={C.surface}>Set by {orbit?.name || "this orbit"}</Chip>
+    </div>
+  );
+};
+
+export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, loading, policy, orbit, busy }) => {
   const isDesktop = useIsDesktop();
   // The deck is only populated when the roster has been fetched; entering this
   // screen straight from the app is the case the journey never covers.
@@ -21,15 +89,32 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, 
   const [decided, setDecided] = useState({});
   const [history, setHistory] = useState([]);
   const [detail, setDetail] = useState(null);
+  const [qualifying, setQualifying] = useState(null);
   const deck = candidates.filter(m => !decided[m.id]);
-  const seatsLeft = 3 - used;
+
+  /* Seats come from the orbit, not from a constant. A company orbit that gives
+     one mentor per employee and the public orbit's three are the same screen. */
+  const cap = policy?.cap ?? 3;
+  const seatsLeft = cap - used;
+  const apply = policy?.matchMode === "Apply";
+
+  const send = (m, answer) => {
+    setDecided(d => ({ ...d, [m.id]: "pending" }));
+    setQualifying(null);
+    toast(apply ? `Application sent to ${firstNameOf(m.name)}…` : `Request sent to ${firstNameOf(m.name)}…`);
+    onAdd(m, answer);
+  };
+
   const decide = (m, dir) => {
-    if (dir === "blocked") { toast("Mentor seats full · 3 of 3"); return; }
+    if (dir === "blocked") { toast(`Mentor seats full · ${used} of ${cap}`); return; }
     setHistory(h => [...h, { id: m.id, dir }]);
     if (dir === "right") {
-      setDecided(d => ({ ...d, [m.id]: "pending" }));
-      toast(`Request sent to ${firstNameOf(m.name)}…`);
-      onAdd(m);
+      /* Apply mode asks the question first. It is the whole behavioural
+         difference between the two modes, and it happens here rather than in a
+         branch inside the send path so the swipe and the detail-sheet button
+         reach the same place. */
+      if (apply) { setQualifying(m); setHistory(h => h.slice(0, -1)); return; }
+      send(m, null);
     } else setDecided(d => ({ ...d, [m.id]: "passed" }));
   };
   const undo = () => { const last = history[history.length - 1]; if (!last || last.dir !== "left") return; setHistory(h => h.slice(0, -1)); setDecided(d => { const n = { ...d }; delete n[last.id]; return n; }); };
@@ -59,20 +144,39 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, 
       <Btn kind="ghost" style={{ marginTop: 16 }} onClick={back}>Back to home</Btn>
     </div>
   );
+  const stamp = apply ? "APPLY" : "ADD";
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <HeaderRow title="Add a support mentor" onBack={back} right={<Label color={seatsLeft > 0 ? C.purple : C.teal}>{used}/3 SEATS</Label>} />
-      <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 20px 8px", letterSpacing: 0.5 }}>ONE ACTIVE ENGAGEMENT AT A TIME · NEW MENTORS JOIN AS SUPPORT · +15 XP</div>
+      <HeaderRow
+        title={apply ? "Apply to a mentor" : "Add a mentor"}
+        onBack={back}
+        right={<Label color={seatsLeft > 0 ? C.purple : C.teal}>{used}/{cap} SEATS</Label>}
+      />
+      <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 20px 8px", letterSpacing: 0.5 }}>
+        {apply
+          ? `MENTORS APPROVE APPLICATIONS · ${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT · +15 XP`
+          : `ADD INSTANTLY · ${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT · +15 XP`}
+      </div>
+      <PoolChips policy={policy} orbit={orbit} />
       {isDesktop
-        ? <CardGrid deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
-        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="REQUEST" stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />}
+        ? <CardGrid deck={deck} renderCard={renderCard} stampRight={stamp} stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
+        : <SwipeDeck deck={deck} renderCard={renderCard} stampRight={stamp} stampLeft="PASS" canRight={seatsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />}
 
       {detail && (
         <MentorDetailSheet m={detail} close={() => setDetail(null)} footer={
           <Btn disabled={seatsLeft <= 0 || !!decided[detail.id]} onClick={() => { const m = detail; setDetail(null); decide(m, "right"); }}>
-            {decided[detail.id] ? "Request sent" : seatsLeft <= 0 ? "Mentor seats full · 3/3" : `Request ${firstNameOf(detail.name)} as support · +15 XP`}
+            {decided[detail.id]
+              ? (apply ? "Application sent" : "Request sent")
+              : seatsLeft <= 0 ? `Mentor seats full · ${used}/${cap}`
+              : apply ? `Apply to ${firstNameOf(detail.name)}'s orbit · +15 XP`
+              : `Add ${firstNameOf(detail.name)} · +15 XP`}
           </Btn>
         } />
+      )}
+
+      {qualifying && (
+        <QualifySheet mentor={qualifying} busy={busy} onClose={() => setQualifying(null)}
+          onSend={(answer) => send(qualifying, answer)} />
       )}
     </div>
   );

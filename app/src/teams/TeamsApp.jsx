@@ -490,9 +490,19 @@ export const TeamsCohort = ({ u, org, name, matches = [], sessions = [], onRespo
             {inbox.map((m) => (
               <div key={m.id} style={{ borderTop: `1px solid ${C.line}`, paddingTop: 11, marginTop: 11 }}>
                 <PersonRow p={{ ...m.person, headline: m.person?.headline || labelOf(m.person?.track) }} />
-                {(m.person?.goals || []).slice(0, 2).map((g) => (
-                  <div key={g} style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5, borderLeft: `2px solid ${C.purple}`, paddingLeft: 10, marginTop: 6 }}>{g}</div>
-                ))}
+                {/* What they wrote to qualify, where the orbit asks for it. It
+                    outranks their standing goals here: the goals say who they
+                    are, the answer says what they are asking this mentor for. */}
+                {m.answer ? (
+                  <div style={{ background: C.surface, borderRadius: 10, padding: "9px 11px", marginTop: 8 }}>
+                    <Label color={C.purple}>What they want to work on</Label>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3 }}>“{m.answer}”</div>
+                  </div>
+                ) : (
+                  (m.person?.goals || []).slice(0, 2).map((g) => (
+                    <div key={g} style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5, borderLeft: `2px solid ${C.purple}`, paddingLeft: 10, marginTop: 6 }}>{g}</div>
+                  ))
+                )}
                 <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
                   <Btn small kind="ghost" style={{ flex: 0.6, borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => onRespond(m.id, "decline")}>Pass</Btn>
                   <Btn small style={{ flex: 1 }} disabled={busy || seatsLeft <= 0} onClick={() => onRespond(m.id, "accept")}>

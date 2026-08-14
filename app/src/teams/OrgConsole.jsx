@@ -8,6 +8,7 @@ import { Card, Label, Btn, Field, FormError, Monogram, firstNameOf } from "../ui
 import { useIsDesktop } from "../useIsDesktop.js";
 import { buildInviteUrl, copyText } from "../lib/invite-url.js";
 import { PostCard } from "../feed.jsx";
+import { OrbitPolicyPanel, OrgSettingsPanel } from "../console-policy.jsx";
 import {
   updateOrg, setOrgOrbit, orgMintInvites, orgRevokeInvite,
   orgSetMemberRole, orgRemoveMember, orgLeave, fetchOrgOrbit, messageFor, postAction,
@@ -370,8 +371,16 @@ function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, invit
   );
 }
 
-/* ————— programme rules ————— */
-function Programme({ org, members, canManage, onRules, busy }) {
+/* ————— programme rules —————
+   The two switches below predate orbits and are still enforced by /api/roster.
+   The six that decide everything else are `orbit.policy`, edited through
+   OrbitPolicyPanel above them — one panel, shared with the creator console, so
+   the same rule cannot come to mean two things under one name.
+
+   `crossDivision` appears in both. It is one rule with one value: api/orgs.js
+   mirrors a write here into `policy.crossDiv`, and `resolvePolicy` treats the
+   policy as the authority. */
+function Programme({ org, members, canManage, onRules, busy, orbit, onOrbitSaved, toast }) {
   const rules = org.rules || {};
   const divisions = divisionsOf(members);
   const unseated = members.filter((m) => !m.division).length;
@@ -379,6 +388,9 @@ function Programme({ org, members, canManage, onRules, busy }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Policy first: it is what a member actually experiences. */}
+      {canManage && orbit && <OrbitPolicyPanel orbit={orbit} onSaved={onOrbitSaved} toast={toast} />}
+      {canManage && orbit && <OrgSettingsPanel orbit={orbit} onSaved={onOrbitSaved} toast={toast} />}
       <Card>
         <Label color={C.purple}>Programme rules</Label>
         <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.55 }}>
@@ -661,7 +673,7 @@ function OrgSettings({ org, canManage, isOwner, onSave, onLeave, busy }) {
 }
 
 /* ————— root ————— */
-export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
+export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrbitsChanged }) {
   const isDesktop = useIsDesktop();
   const [nav, setNav] = useState("overview");
   const [busy, setBusy] = useState(false);
@@ -733,6 +745,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast }) {
       inviterName={me?.user?.name || org.name}
       onRevoke={(code) => run(() => orgRevokeInvite(code), `${code} revoked`)} />,
     programme: <Programme org={org} members={members} canManage={canManage} busy={busy}
+      orbit={orbit} onOrbitSaved={onOrbitsChanged} toast={toast}
       onRules={(patch) => run(() => orgSetRules(patch), "Rule saved")} />,
     orbit: <Orbit org={org} canManage={canManage} busy={busy} toast={toast} meId={me?.user?.id}
       onOrbit={(v) => run(() => setOrgOrbit(v), v ? "Orbit is open" : "Orbit closed")} />,

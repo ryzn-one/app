@@ -4,6 +4,7 @@ import { C, F } from "../theme.js";
 import { Card, Label, Btn, Field, FormError, Glyph } from "../ui.jsx";
 import { registerTeamsInterest, fetchMe, fetchOrg, createOrg, messageFor } from "../lib/auth-client.js";
 import OrgConsole from "./OrgConsole.jsx";
+import { useOrbits } from "../lib/orbits.js";
 
 /* ————————————————— RYZN FOR TEAMS —————————————————
 
@@ -229,6 +230,9 @@ export default function RyznTeams() {
   const [boot, setBoot] = useState("checking");
   const [me, setMe] = useState(null);
   const [ctx, setCtx] = useState(null);
+  /* The console is a second root, so it loads its own orbit list rather than
+     inheriting one. Enabled only once we know there's a session to ask with. */
+  const orbits = useOrbits(boot === "ready");
   const [toastMsg, setToastMsg] = useState(null);
   const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2200); };
 
@@ -259,7 +263,12 @@ export default function RyznTeams() {
   if (ctx?.org) {
     return (
       <>
-        <OrgConsole ctx={ctx} me={me} onCtx={setCtx} onExit={goToApp} toast={toast} />
+        {/* The console writes the policy this orbit is governed by; the orbit
+            payload is what it reads it back from. Same resolved object the
+            phones read, so the two can never describe the rules differently. */}
+        <OrgConsole ctx={ctx} me={me} onCtx={setCtx} onExit={goToApp} toast={toast}
+          orbit={orbits.orbits.find((o) => o.id === ctx.org.id) || null}
+          onOrbitsChanged={orbits.applyOrbits} />
         {toastMsg && (
           <div className="sheet-up" style={{ position: "fixed", bottom: 22, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 90, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
             <Zap size={12} /> {toastMsg}
