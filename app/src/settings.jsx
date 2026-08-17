@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Linkedin, LogOut, Download, Trash2, Sparkles, ChevronRight, Building2, Users, Globe } from "lucide-react";
 import { C, F } from "./theme.js";
 import { Card, Label, Btn, Chip, Avatar, Seg, Toggle, Sheet, SecLabel, SettingRow, Locked, firstNameOf } from "./ui.jsx";
+import { InstallSection } from "./install.jsx";
 import { copyFor } from "./lib/orbits.js";
 import { orbitIcon } from "./orbits.jsx";
 
@@ -221,6 +222,9 @@ export function SettingsSheet({
           );
         })}
       </Card>
+
+      {/* ————— install ————— */}
+      <InstallSection />
 
       {/* ————— account and privacy ————— */}
       <SecLabel>Account and privacy</SecLabel>

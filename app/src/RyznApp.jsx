@@ -32,6 +32,7 @@ import { useOrbits } from "./lib/orbits.js";
 import { OrbitSwitcher, JoinCircle } from "./orbits.jsx";
 import { fetchCircle, joinCircle } from "./lib/auth-client.js";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
+import { InstallBanner } from "./install.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
 import { fmtDate } from "./lib/calendar.js";
 
@@ -1756,6 +1757,19 @@ export default function RyznComplete() {
           />
         )}
       </AnimatePresence>
+
+      {/* The offer to put Ryzn on the home screen. It waits for the app proper —
+          never the signed-out journey — and stands down for anything already
+          asking for an answer, so it is the only thing on screen wanting a tap.
+          On phones it sits above the tab bar rather than over it. */}
+      <InstallBanner
+        enabled={
+          phase === "app" && !!user && !circleInvite && !chatCeremony && !badgeModal &&
+          !showMidway && !spotlightTab && !introTourOpen && !comprehensiveTourOpen &&
+          !matches.some(m => m.awaitingYou)
+        }
+        liftAbove={isDesktop || fullScreenOverlay ? 0 : 60}
+      />
 
       <AnimatePresence>
         {toastMsg && (
