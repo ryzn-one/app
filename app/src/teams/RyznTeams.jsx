@@ -41,9 +41,12 @@ const goToApp = () => {
   window.location.assign(`${origin}${pathname}${search || ""}`);
 };
 
+/* This route replaces the app shell rather than living inside it, so it owns
+   both edges itself — see `.safe-page` in index.css. Without the top inset the
+   "Back to Ryzn" button renders under the status bar clock. */
 const Shell = ({ children }) => (
-  <div className="full-h app-scroll" style={{ fontFamily: F.sans, color: C.ink, overflowY: "auto", background: C.surface }}>
-    <div style={{ maxWidth: 620, margin: "0 auto", padding: "20px 24px 60px" }}>
+  <div className="full-h app-scroll safe-page" style={{ fontFamily: F.sans, color: C.ink, overflowY: "auto", background: C.surface }}>
+    <div style={{ maxWidth: 620, margin: "0 auto", padding: "20px 24px calc(60px + var(--safe-bottom))" }}>
       <button onClick={goToApp}
         style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 0", display: "flex", alignItems: "center", gap: 6, color: C.gray, fontFamily: F.sans, fontWeight: 600, fontSize: 13 }}>
         <ChevronLeft size={16} /> Back to Ryzn
@@ -254,7 +257,7 @@ export default function RyznTeams() {
 
   if (boot === "checking") {
     return (
-      <div style={{ minHeight: "100vh", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 1 }}>
+      <div className="full-h" style={{ background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 1 }}>
         LOADING…
       </div>
     );
@@ -270,7 +273,7 @@ export default function RyznTeams() {
           orbit={orbits.orbits.find((o) => o.id === ctx.org.id) || null}
           onOrbitsChanged={orbits.applyOrbits} />
         {toastMsg && (
-          <div className="sheet-up" style={{ position: "fixed", bottom: 22, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 90, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
+          <div className="sheet-up" style={{ position: "fixed", bottom: "calc(22px + var(--safe-bottom))", left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 90, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
             <Zap size={12} /> {toastMsg}
           </div>
         )}

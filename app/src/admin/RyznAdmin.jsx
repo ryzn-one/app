@@ -93,8 +93,20 @@ function AdminGate({ onIn, error }) {
   };
 
   return (
-    <div style={{ fontFamily: F.sans, color: C.ink, minHeight: "100vh", background: C.ink, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "min(94vw, 400px)" }}>
+    /* `margin: auto` on the card rather than centring on the container: a
+       centred flex item taller than the box overflows past the top edge and
+       cannot be scrolled back to, which is what happens once the keyboard is
+       up on a small phone. */
+    <div className="full-h app-scroll" style={{
+      fontFamily: F.sans, color: C.ink, background: C.ink, overflowY: "auto",
+      display: "flex",
+      padding: 24,
+      paddingTop: "calc(24px + var(--safe-top))",
+      paddingBottom: "calc(24px + var(--safe-bottom))",
+      paddingLeft: "max(24px, var(--safe-left))",
+      paddingRight: "max(24px, var(--safe-right))",
+    }}>
+      <div style={{ width: "min(94vw, 400px)", margin: "auto" }}>
         <button onClick={goToApp}
           style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 0", marginBottom: 12, display: "flex", alignItems: "center", gap: 6, color: "#8B8985", fontFamily: F.sans, fontWeight: 600, fontSize: 13 }}>
           <ChevronLeft size={16} /> Back to Ryzn
@@ -793,7 +805,7 @@ export default function RyznAdmin() {
   };
 
   const splash = (label) => (
-    <div style={{ minHeight: "100vh", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 1 }}>{label}</div>
+    <div className="full-h" style={{ background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.mono, fontSize: 11, color: C.gray, letterSpacing: 1 }}>{label}</div>
   );
 
   if (boot === "checking") return splash("CHECKING ACCESS…");
@@ -909,10 +921,18 @@ export default function RyznAdmin() {
   );
 
   return (
-    <div style={{ fontFamily: F.sans, color: C.ink, background: C.surface, minHeight: "100vh", height: "100vh", display: "flex", overflow: "hidden" }}>
+    <div className="full-h" style={{ fontFamily: F.sans, color: C.ink, background: C.surface, display: "flex", overflow: "hidden" }}>
       {isDesktop && sidebar}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div style={{ background: C.white, borderBottom: `1px solid ${C.line}`, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        {/* Console replaces the shell, so this header sits at viewport y=0 and
+            pads the status bar inset itself. */}
+        <div style={{
+          background: C.white, borderBottom: `1px solid ${C.line}`, padding: "14px 20px",
+          paddingTop: "calc(14px + var(--safe-top))",
+          paddingLeft: "max(20px, var(--safe-left))",
+          paddingRight: "max(20px, var(--safe-right))",
+          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+        }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4 }}>{NAV.find(n => n[0] === nav)[1]}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", letterSpacing: 1, marginTop: 2 }}>RYZN PLATFORM · ALL COHORTS</div>
@@ -937,7 +957,11 @@ export default function RyznAdmin() {
           </div>
         )}
 
-        <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: isDesktop ? "22px 26px 40px" : "16px 16px 40px" }}>
+        <div className="app-scroll" style={{
+          flex: 1, overflowY: "auto",
+          padding: isDesktop ? "22px 26px 40px" : "16px 16px 40px",
+          paddingBottom: "calc(40px + var(--safe-bottom))",
+        }}>
           <div style={{ maxWidth: 1040, margin: "0 auto" }}>{body}</div>
         </div>
       </div>
@@ -953,7 +977,7 @@ export default function RyznAdmin() {
         onConfirm={runConfirm}
       />
       {toastMsg && (
-        <div className="sheet-up" style={{ position: "fixed", bottom: 22, left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 95, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
+        <div className="sheet-up" style={{ position: "fixed", bottom: "calc(22px + var(--safe-bottom))", left: "50%", transform: "translateX(-50%)", background: C.ink, color: "#B7AFF2", fontFamily: F.mono, fontSize: 12, fontWeight: 700, padding: "10px 16px", borderRadius: 12, zIndex: 95, display: "flex", alignItems: "center", gap: 7, maxWidth: "90%" }}>
           <Zap size={12} /> {toastMsg}
         </div>
       )}

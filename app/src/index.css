@@ -21,6 +21,18 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Every inset in one place, each with its own 0px fallback. On desktop and
+   Android these all resolve to 0px, so anything built on them renders
+   identically there — the fallbacks are what make this safe to apply
+   everywhere rather than behind a platform check. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
 /* Lock the root to the visual viewport. 100vh/100dvh leave a gap under the
    tab bar on iOS standalone PWAs; fixed inset fills the real screen. */
 html, body, #root {
@@ -32,6 +44,9 @@ html, body, #root {
   position: fixed;
   inset: 0;
   background: #E9E8E4;
+  /* Rubber-banding a fixed root drags the whole shell off its own painted
+     background and exposes an unpainted strip at whichever edge you pull. */
+  overscroll-behavior: none;
 }
 
 /* Do not reach for `apple-mobile-web-app-status-bar-style: black-translucent`
@@ -45,14 +60,34 @@ html, body, #root {
 * { -webkit-font-smoothing: antialiased; }
 .full-h { height: 100%; }
 
-/* In-flow footer of the mobile shell — white extends into the home-indicator area. */
+/* In-flow footer of the mobile shell — white extends into the home-indicator
+   area. The bar owns that zone rather than sitting above it: the background
+   runs into the inset, the buttons stay above it. Left/right are for landscape,
+   where the notch eats a column off one side. */
 .mobile-tab-bar {
   flex-shrink: 0;
   display: flex;
   background: #FFFFFF;
   padding: 8px 6px;
-  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(8px, var(--safe-bottom));
+  padding-left: max(6px, var(--safe-left));
+  padding-right: max(6px, var(--safe-right));
 }
+
+/* Every screen that draws its own header at the top of the viewport instead of
+   sitting inside the mobile shell — the Teams pitch, the org console, the
+   founder console — pads its own top inset. The shell pads the inset for the
+   screens it owns; a route that replaces the shell inherits that duty and
+   nothing was doing it, which is how "Back to Ryzn" ended up under the clock.
+   Correct under either status-bar-style, which is the point: no layout here
+   should depend on which one the meta happens to say. */
+.safe-page {
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+/* Same duty at the other edge, for a full-height scroller with no tab bar. */
+.safe-page-bottom { padding-bottom: var(--safe-bottom); }
 input::placeholder, textarea::placeholder { color: #A5A39D; }
 /* iOS Safari zooms when focusing inputs under 16px and often leaves zoom stuck. */
 @media (hover: none) and (pointer: coarse) {

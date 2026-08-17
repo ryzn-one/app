@@ -755,8 +755,18 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
   }[nav];
 
   return (
-    <div className="full-h app-scroll" style={{ fontFamily: F.sans, color: C.ink, background: C.surface, minHeight: "100vh", overflowY: "auto" }}>
-      <div style={{ background: C.white, borderBottom: `1px solid ${C.line}`, padding: isDesktop ? "16px 26px" : "14px 16px" }}>
+    <div className="full-h app-scroll" style={{ fontFamily: F.sans, color: C.ink, background: C.surface, overflowY: "auto", paddingBottom: "var(--safe-bottom)" }}>
+      {/* The console replaces the app shell, so its header is the thing sitting
+          at viewport y=0 and it pads the status bar inset itself. The white
+          runs into the inset — the header owns that strip, it is never a bare
+          gap above it. */}
+      <div style={{
+        background: C.white, borderBottom: `1px solid ${C.line}`,
+        padding: isDesktop ? "16px 26px" : "14px 16px",
+        paddingTop: isDesktop ? 16 : "calc(14px + var(--safe-top))",
+        paddingLeft: `max(${isDesktop ? 26 : 16}px, var(--safe-left))`,
+        paddingRight: `max(${isDesktop ? 26 : 16}px, var(--safe-right))`,
+      }}>
         <div style={{ maxWidth: 1040, margin: "0 auto" }}>
           <button onClick={onExit}
             style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 0 10px", display: "flex", alignItems: "center", gap: 6, color: C.gray, fontFamily: F.sans, fontWeight: 600, fontSize: 13 }}>
