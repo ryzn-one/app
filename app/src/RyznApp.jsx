@@ -1591,6 +1591,13 @@ export default function RyznComplete() {
     || (overlay && overlay.dmPeer)
     || (overlay && overlay.mentorProfile)
   );
+  /* Screens that lay themselves out as a full-height flex column — a fixed
+     header over something that takes the rest. Unlike `fullScreenOverlay` they
+     keep the tab bar and the modal chrome; they only need the box they are
+     handed to have a height. Given `height: auto` instead, their `flex: 1`
+     region resolves to zero and the screen renders as its header alone, which
+     is exactly how Discover's map disappeared on both surfaces. */
+  const tallOverlay = ["mentees", "explore"].includes(overlay);
   const chatLike = phase === "journey" && ["chat", "matches"].includes(stage);
   const useAuthCard = isDesktop && phase === "journey" && ["role", "welcome", "register", "login", "forgot"].includes(stage);
 
@@ -1665,7 +1672,7 @@ export default function RyznComplete() {
             </div>
             <AnimatePresence>
               {overlayEl && overlay !== "course" && (
-                <ModalShell onClose={() => setOverlay(null)}>
+                <ModalShell fill={tallOverlay} onClose={() => setOverlay(null)}>
                   <SectionBoundary name="overlay" resetKey={overlay}>{overlayEl}</SectionBoundary>
                 </ModalShell>
               )}
@@ -1694,7 +1701,7 @@ export default function RyznComplete() {
                     variants={overlayEl ? sheet : fadeSlide}
                     initial="initial" animate="animate" exit="exit"
                     transition={t(reduced, T_BASE)}
-                    style={fullScreenOverlay ? { height: "100%" } : undefined}
+                    style={fullScreenOverlay || tallOverlay ? { height: "100%" } : undefined}
                   >
                     <SectionBoundary name={overlay ? "overlay" : tab} resetKey={overlay || tab}>
                       {overlayEl || tabContent()}

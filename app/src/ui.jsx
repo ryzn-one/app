@@ -454,7 +454,18 @@ const CLOSE_SIZE = 32, CLOSE_INSET = 14, CLOSE_CLEARANCE = 10;
 /* Everything the close button needs to itself, from the modal's right edge. */
 const MODAL_CLOSE_GUTTER = CLOSE_INSET + CLOSE_SIZE + CLOSE_CLEARANCE;
 
-export const ModalShell = ({ children, onClose }) => {
+/* The card's height is normally `auto` so a short modal hugs its content. That
+   makes every `height: 100%` inside it resolve to `auto` as well — a percentage
+   height needs a *definite* containing block, and `min-height`/`max-height`
+   alone do not make one. A screen that lays itself out as a full-height flex
+   column (a header, then something with `flex: 1`) therefore collapses to its
+   header: that is how Discover's map ended up invisible inside this modal.
+
+   `fill` opts a screen into a definite card height, which is what those screens
+   are asking for anyway. Content-sized modals leave it off and keep hugging. */
+const MODAL_TALL = "min(78vh, 760px)";
+
+export const ModalShell = ({ children, onClose, fill = false }) => {
   const reduced = useReducedMotion();
   /* Portaled to <body> — this modal is opened from screens nested inside a
      Framer Motion page-transition wrapper (fadeSlide/sheet animate `y`),
@@ -471,7 +482,8 @@ export const ModalShell = ({ children, onClose }) => {
       <motion.div onClick={e => e.stopPropagation()} variants={modalPop} initial="initial" animate="animate" exit="exit"
         transition={t(reduced, T_SLOW)}
         style={{
-          width: "min(94vw, 640px)", maxHeight: "min(78vh, 760px)", minHeight: 420,
+          width: "min(94vw, 640px)", maxHeight: MODAL_TALL, minHeight: 420,
+          ...(fill ? { height: MODAL_TALL } : null),
           background: C.surface, borderRadius: 24, overflow: "hidden", position: "relative",
           display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
         }}>

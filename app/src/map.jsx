@@ -315,7 +315,14 @@ export const MapBrowse = ({
   const list = track === "Any" ? inRegion : inRegion.filter((p) => p._track === track);
 
   return (
-    <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+    /* The map has no intrinsic height — it is an absolutely-positioned child of
+       this box, so this box is the only thing that can give it one. `flex: 1`
+       fills whatever the host screen has left over, which is the intent, but it
+       yields *zero* in any host that isn't a full-height flex column. A map that
+       renders as nothing is indistinguishable from a map that failed to load, so
+       the floor is not optional: below it, `flex: 1` is a preference, not the
+       only source of height. */
+    <div style={{ position: "relative", flex: 1, minHeight: "min(58vh, 400px)" }}>
       <RegionMap buckets={buckets} selectedId={regionId} onSelect={onSelect}
         style={{ position: "absolute", inset: 0 }} />
 
