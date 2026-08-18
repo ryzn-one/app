@@ -24,6 +24,7 @@ import { updatePrefs, exportMyData, deleteMyAccount, leaveOrbit } from "./lib/au
 import { MentorDash, MenteeDetailScreen, MentorBoard, MentorProfile, CourseDesigner } from "./app-mentor.jsx";
 import { SessionsScreen } from "./sessions.jsx";
 import { ExploreScreen } from "./explore.jsx";
+import { MenteesScreen } from "./mentees.jsx";
 import { NetworkScreen } from "./network.jsx";
 import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
 import { MentorFeed, OrbitScreen } from "./feed.jsx";
@@ -1343,6 +1344,27 @@ export default function RyznComplete() {
     );
     if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={mentorsHeld} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} policy={policy} orbit={orbit} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
+    /* The three-tab mentee surface. Wraps the deck, Discover and the inbox that
+       used to be reached three separate ways. "explore" below still resolves —
+       notification deep links point at it — but Cohort now opens this. */
+    if (overlay === "mentees") return (
+      <MenteesScreen
+        role={role} back={() => setOverlay(null)} toast={toast}
+        xp={xp} addXp={addXp}
+        roster={roster} matches={matches} onDecide={decideMatch}
+        loading={rosterLoading} error={rosterError}
+        capacity={mentorCapacity}
+        onRequest={role === "mentee" ? addMentor : addMentee}
+        onRespond={async (id, action) => { await respondToMatch(id, action); await Promise.all([loadRoster(), refreshUser()]); }}
+        canRequest={role === "mentee" ? mentorSeatsLeft > 0 : cohortSeatsLeft > 0}
+        capacityNote={role === "mentee" ? "Mentor seats full · 3 of 3" : `Cohort full · ${mentorCapacity} seats`}
+        openAccepted={(p) => {
+          setOverlay(null);
+          if (role === "mentee") setTimeout(() => setOverlay({ orbit: p.id }), 60);
+          else { const m = user.cohort?.find(c => c.id === p.id); if (m) setTimeout(() => setOverlay({ mentee: m }), 60); }
+        }}
+      />
+    );
     if (overlay === "explore") return (
       <ExploreScreen
         role={role} back={() => setOverlay(null)} toast={toast}
@@ -1433,6 +1455,7 @@ export default function RyznComplete() {
       return (
         <MentorDetailSheet
           m={overlay.mentorProfile}
+          toast={toast}
           close={() => setOverlay(overlay.from || null)}
           footer={canFollow ? (
             <Btn
@@ -1489,7 +1512,7 @@ export default function RyznComplete() {
           <TeamsChat {...common} role={role} matches={matches} stage1={stage1}
             onOpenThread={(p) => setOverlay({ dmPeer: p })} />
         );
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} toast={toast} />;
         default: return null;
       }
     }
@@ -1506,7 +1529,7 @@ export default function RyznComplete() {
         <TeamsChat {...common} role={role} matches={matches} stage1
           onOpenThread={(p) => setOverlay({ dmPeer: p })} />
       );
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
       default: return null;
     }
   };
@@ -1525,7 +1548,7 @@ export default function RyznComplete() {
           : <MenteeChatList mentors={user.mentors || []} onOpenThread={(m) => setOverlay({ dmPeer: m })} />;
         case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
         case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} />;
+        case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} toast={toast} />;
         default: return null;
       }
     }
@@ -1541,7 +1564,7 @@ export default function RyznComplete() {
         />
       );
       case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
       default: return null;
     }
   };

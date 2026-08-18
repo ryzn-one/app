@@ -1,4 +1,4 @@
-﻿import { copyFileSync, cpSync, mkdirSync, existsSync } from "node:fs";
+﻿import { copyFileSync, cpSync, mkdirSync, existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -26,6 +26,20 @@ copyFileSync(join(root, "site", "manifest.webmanifest"), join(dist, "manifest.we
 /* The worker has to sit at the origin root: a worker's scope cannot rise above
    the path it is served from, and this one controls both / and /app/. */
 copyFileSync(join(root, "site", "sw.js"), join(dist, "sw.js"));
+
+/* One manifest URL, not two. Vite's base is "/app/", so it rewrites the
+   root-relative manifest link in app/index.html to /app/manifest.webmanifest —
+   leaving the marketing site and the app pointing at two different URLs for the
+   same app. Chrome keys install identity off the manifest `id` so it still
+   installed as one app, but getInstalledRelatedApps() matches on manifest URL,
+   and with two of them the "already installed?" answer depends on which page
+   you happen to be standing on. Pointed back at the root copy after the build. */
+const appShell = join(dist, "app", "index.html");
+writeFileSync(
+  appShell,
+  readFileSync(appShell, "utf8").replace("/app/manifest.webmanifest", "/manifest.webmanifest")
+);
+rmSync(join(dist, "app", "manifest.webmanifest"), { force: true });
 
 const brandingSrc = join(root, "site", "branding");
 if (existsSync(brandingSrc)) {

@@ -157,6 +157,21 @@ const indexes = [
   ["amplified_posts", { mentorId: 1, createdAt: -1 }, { name: "mentor_recent" }],
   // Read when a mentee opens an amplified post: which mentors relayed it.
   ["amplified_posts", { postId: 1 }, { name: "post" }],
+  /* "Promote to Ryzn" shelves. One row per (mentor, url), enforced by the
+     database: a shelf with the same link on it twice is not a curation, and it
+     is also what stops the +5 Impact on a promote being farmed by tapping the
+     same button. The re-promote path relies on this too — a copy of a peer's
+     row is refused rather than duplicated. */
+  ["resources", { mentorId: 1, url: 1 }, { unique: true, name: "mentor_url_unique" }],
+  // A mentor's shelf, pinned first, newest after — the profile section's sort.
+  ["resources", { mentorId: 1, pinned: -1, createdAt: -1 }, { name: "shelf" }],
+  // The network shelf: public picks from the mentors you follow.
+  ["resources", { visibility: 1, createdAt: -1 }, { name: "public_recent" }],
+  // One open and one save per person per resource — a double tap can't re-award
+  // XP or inflate a mentor's click count.
+  ["resource_events", { resourceId: 1, userId: 1, type: 1 }, { unique: true, name: "viewer_unique" }],
+  // A mentee's reading list, newest save first.
+  ["resource_events", { userId: 1, type: 1, createdAt: -1 }, { name: "user_saves" }],
 ];
 
 for (const [col, spec, opts] of indexes) {

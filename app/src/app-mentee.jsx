@@ -12,6 +12,7 @@ import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { UnlockTrackCard } from "./unlock.jsx";
+import { SavedShelf } from "./resources.jsx";
 import { fetchMessages, sendMessage, fetchImpactHistory } from "./lib/auth-client.js";
 import { countdown, fmtRange } from "./lib/calendar.js";
 
@@ -581,7 +582,7 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
   );
 };
 
-export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOverlay, openOrbit, programs = {}, onLeave, onUpdateProfile }) => (
+export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOverlay, openOrbit, programs = {}, onLeave, onUpdateProfile, toast }) => (
   <div>
     <HeaderRow title="Profile" right={
       <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
@@ -694,6 +695,14 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
           })}
         </Card>
       )}
+      {/* The reading list. Whatever your mentors promoted to Ryzn and you kept —
+          the other end of the Save button on their shelves, without which that
+          button would teach you your taps don't matter. */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 2px 0" }}>
+        <Label color={C.purple}>Saved by you</Label>
+        <Label>FROM YOUR MENTORS’ SHELVES</Label>
+      </div>
+      <SavedShelf toast={toast} />
     </div>
   </div>
 );

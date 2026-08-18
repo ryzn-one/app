@@ -10,13 +10,20 @@ import { useInstallPrompt } from "./lib/install-prompt.js";
 
    The offer to put Ryzn on the home screen. It rides above the tab bar so it
    never covers navigation, it snoozes for two weeks on a "Not now", and it is
-   gone for good once the app is installed.
+   gone for good once Ryzn is installed.
 
-   On Chrome the primary button is the whole interaction. On iOS there is no
-   button we can wire to anything, so the same banner opens the three-step
-   gesture instead of pretending it can install for you. */
+   Every browser gets it. On Chrome the primary button is the whole interaction;
+   everywhere else there is no button we can wire to anything, so the same
+   banner opens that browser's actual gesture rather than pretending it can
+   install for you. See lib/install-prompt.js for the routes. */
 
 const SNOOZE_LABEL = "Not now";
+
+/* The way out for anyone the detection cannot reach — desktop Safari, and iOS,
+   where the installed app gets its own storage container and can never leave a
+   note the browser will read. Without it, "always offer" would mean "nag people
+   who already did it", which is how banners get ignored. */
+const HAVE_LABEL = "I already have it";
 
 const Steps = ({ guide, style }) => (
   <div style={{ marginTop: 12, background: "rgba(255,255,255,.07)", borderRadius: 12, padding: "12px 13px", ...style }}>
@@ -36,6 +43,24 @@ const Steps = ({ guide, style }) => (
   </div>
 );
 
+/* One line of context under the headline, per route. A visitor in the Slack
+   webview and one in desktop Firefox are being asked to do very different
+   things, and "Full screen, no address bar" was written for neither. */
+const subtitleFor = (route, guide) => {
+  switch (route) {
+    case "prompt":
+      return "Full screen, no address bar, one tap from anywhere.";
+    case "in-app":
+      return "Open Ryzn in your browser first — this one can’t install apps.";
+    case "firefox-desktop":
+      return "Firefox can’t install web apps. Chrome, Edge and Safari can.";
+    case "safari-desktop":
+      return "Add Ryzn to your Dock — full screen, no address bar.";
+    default:
+      return `Add Ryzn from ${guide.browser} — full screen, no address bar.`;
+  }
+};
+
 /**
  * @param {{ enabled?: boolean, liftAbove?: number }} props
  *   enabled    false while signed out or mid-onboarding — nothing to install into yet.
@@ -44,9 +69,9 @@ const Steps = ({ guide, style }) => (
 export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
-  const { visible, mode, guide, busy, install, dismiss } = useInstallPrompt({ enabled });
+  const { visible, route, guide, busy, install, dismiss, alreadyHave } = useInstallPrompt({ enabled });
 
-  const manual = mode === "manual";
+  const manual = route !== "prompt";
 
   const onPrimary = async () => {
     if (manual) { setOpen((v) => !v); return; }
@@ -90,7 +115,7 @@ export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
                 Keep Ryzn on your home screen
               </div>
               <div style={{ fontSize: 12.5, color: "#C9C6C0", marginTop: 3, lineHeight: 1.45 }}>
-                Full screen, no address bar, one tap from anywhere.
+                {subtitleFor(route, guide)}
               </div>
             </div>
             <button
@@ -148,6 +173,24 @@ export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
                 : <><Download size={14} /> Install</>}
             </motion.button>
           </div>
+
+          {/* Only where we could not have known. On Chrome and Edge
+              getInstalledRelatedApps already answered, and a live prompt event
+              means the app is definitively not installed — offering this there
+              would just be a way to hide the banner by lying to it. */}
+          {manual && (
+            <button
+              type="button"
+              onClick={alreadyHave}
+              style={{
+                display: "block", width: "100%", marginTop: 9, background: "none", border: "none",
+                color: "#8B8983", fontFamily: F.sans, fontSize: 11.5, fontWeight: 600,
+                cursor: "pointer", padding: 2,
+              }}
+            >
+              {HAVE_LABEL}
+            </button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -156,18 +199,18 @@ export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
 
 /**
  * The same offer, asked for rather than offered. Dismissing the banner snoozes
- * it for a fortnight, so without this a "Not now" would be the last time the
- * app ever mentioned it. Renders nothing where installing is impossible or
- * already done.
+ * it for a fortnight and "I already have it" retires it for good, so without
+ * this there would be no way back to the instructions. Renders nothing once
+ * Ryzn is installed.
  */
 export const InstallSection = () => {
   const [open, setOpen] = useState(false);
-  const { canInstall, mode, guide, busy, install } = useInstallPrompt({ delay: 0 });
-  /* The whole section disappears where there is nothing to offer — already
-     installed, or a browser that cannot do it — rather than leaving a heading
-     over an empty card. */
-  if (!canInstall) return null;
-  const manual = mode === "manual";
+  const { installed, route, guide, busy, install } = useInstallPrompt({ delay: 0 });
+  /* The whole section disappears once there is nothing to offer, rather than
+     leaving a heading over an empty card. Every browser has a route now, so
+     being installed is the only thing that removes it. */
+  if (installed) return null;
+  const manual = route !== "prompt";
   return (
     <>
       <SecLabel>This device</SecLabel>
@@ -175,7 +218,7 @@ export const InstallSection = () => {
         <SettingRow
           label="Install the app"
           sub={manual
-            ? `Add Ryzn to your home screen from ${guide.browser}'s share menu.`
+            ? `Add Ryzn to your home screen from ${guide.browser}.`
             : "Add Ryzn to your home screen — full screen, no address bar."}
           last
         >

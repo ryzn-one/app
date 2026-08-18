@@ -4,6 +4,7 @@ import { C, F } from "./theme.js";
 import { Card, Btn, Label, Avatar, HeaderRow, firstNameOf } from "./ui.jsx";
 import { MentorDetailSheet, AffinityTag, TagRow, EmptyRoster } from "./chatmatch.jsx";
 import { PostCard } from "./feed.jsx";
+import { NetworkShelf } from "./resources.jsx";
 import {
   fetchMentorPeers, followMentor, unfollowMentor, fetchNetworkFeed,
   amplifyPost, unamplifyPost, postAction,
@@ -207,11 +208,14 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
             ))}
           </div>
         )}
+        {/* Three, not two. What a mentor wrote and what a mentor rates are
+            different signals, and folding the second into the first would bury
+            it under whoever posted most this week. */}
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
-          {[["feed", "Their posts"], ["mentors", "Mentors"]].map(([id, l]) => (
+          {[["feed", "Their posts"], ["picks", "Their picks"], ["mentors", "Mentors"]].map(([id, l]) => (
             <button key={id} onClick={() => setView(id)} style={{
               flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0",
-              fontFamily: F.sans, fontWeight: 600, fontSize: 13,
+              fontFamily: F.sans, fontWeight: 600, fontSize: 12.5,
               background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray,
             }}>{l}</button>
           ))}
@@ -233,7 +237,9 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
       </div>
 
       <div className="app-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {view === "mentors" ? (<>
+        {view === "picks" ? (
+          <NetworkShelf toast={toast} />
+        ) : view === "mentors" ? (<>
           {peersError && <Card style={{ background: C.coralTint, border: "none" }}><div style={{ fontSize: 13.5, color: C.coral }}>{peersError}</div></Card>}
           {!peersLoading && !peersError && peers.length === 0 && (
             <div style={{ height: 320 }}>
@@ -276,6 +282,7 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
       {detail && (
         <MentorDetailSheet
           m={detail}
+          toast={toast}
           close={() => setDetail(null)}
           onAmplify={async (post, next) => {
             await (next ? amplifyPost(post.id) : unamplifyPost(post.id));

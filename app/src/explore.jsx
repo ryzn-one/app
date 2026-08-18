@@ -36,7 +36,9 @@ function StateChip({ state }) {
   );
 }
 
-function PersonRow({ p, wanted, onOpen }) {
+/* Exported because Discover renders the same row under its map — one row
+   component, so a person looks identical however you arrived at them. */
+export function PersonRow({ p, wanted, onOpen }) {
   const track = labelOf(p.track);
   const industry = labelOf(p.industry);
   const sub = wanted === "mentor"

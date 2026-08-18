@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { getDb, collections } from "../lib/db.js";
 import { cleanPrefs } from "../lib/prefs.js";
 import { json, fail, withUser, getUser } from "../lib/http.js";
+import { handleResources } from "../lib/resources.js";
 
 /**
  * /api/profile — the fields people write about themselves.
@@ -13,6 +14,10 @@ import { json, fail, withUser, getUser } from "../lib/http.js";
  *   GET    /api/profile?export=1   everything we hold about you, as JSON
  *   DELETE /api/profile            erase the account and everything it owns
  *   POST   /api/profile?upload=1   Vercel Blob token for an avatar / banner
+ *
+ *   …?resources=1                  the "Promote to Ryzn" shelf — see
+ *                                  lib/resources.js, which owns every method
+ *                                  once that flag is present.
  *
  * The upload token lives here rather than in its own function because Vercel
  * counts functions per deployment and this project sits near the ceiling.
@@ -72,7 +77,7 @@ async function forget(url) {
  * someone else's writing under the guise of your own.
  */
 async function exportData(db, user) {
-  const [profile, answers, exercises, xpEvents, posts, memberships, stage, sent] = await Promise.all([
+  const [profile, answers, exercises, xpEvents, posts, memberships, stage, sent, resources] = await Promise.all([
     db.collection(collections.profiles).findOne({ userId: user.id }),
     db.collection(collections.onboardingAnswers).findOne({ userId: user.id }),
     db.collection(collections.exercises).find({ userId: user.id }).sort({ createdAt: 1 }).toArray(),
@@ -81,6 +86,7 @@ async function exportData(db, user) {
     db.collection(collections.orbitMembers).find({ userId: user.id }).toArray(),
     db.collection(collections.stageProgress).find({ userId: user.id }).toArray(),
     db.collection(collections.messages).find({ senderId: user.id }).sort({ createdAt: 1 }).limit(2000).toArray(),
+    db.collection(collections.resources).find({ mentorId: user.id }).sort({ createdAt: 1 }).toArray(),
   ]);
 
   const strip = ({ _id, ...rest }) => rest;
@@ -93,6 +99,9 @@ async function exportData(db, user) {
     stageProgress: stage.map(strip),
     exercises: exercises.map(strip),
     posts: posts.map(strip),
+    // What you put your name behind — links you promoted, and your own note on
+    // each. Yours in the same sense a post is.
+    resources: resources.map(strip),
     xpLedger: xpEvents.map(strip),
     // Only what you wrote. The other half of each thread belongs to them.
     messagesYouSent: sent.map(strip),
@@ -126,6 +135,8 @@ async function deleteAccount(db, user) {
     db.collection(collections.messages).deleteMany({ senderId: id }),
     db.collection(collections.follows).deleteMany({ $or: [{ followerId: id }, { followingId: id }] }),
     db.collection(collections.amplified).deleteMany({ mentorId: id }),
+    db.collection(collections.resources).deleteMany({ mentorId: id }),
+    db.collection(collections.resourceEvents).deleteMany({ userId: id }),
     db.collection(collections.sessions1v1).deleteMany({ $or: [{ menteeId: id }, { mentorId: id }] }),
     db.collection(collections.session).deleteMany({ userId: id }),
     db.collection(collections.account).deleteMany({ userId: id }),
@@ -136,6 +147,15 @@ async function deleteAccount(db, user) {
 
 async function handler(request, user) {
   const db = await getDb();
+
+  /* The shelf takes the request whole, before anything below can see it.
+     Checked first and by exact value because the alternative is a DELETE that
+     meant "take this link down" falling through to the branch that erases the
+     account — the one place in this file where routing by query param has to be
+     unambiguous rather than merely tidy. */
+  if (new URL(request.url).searchParams.get("resources") === "1") {
+    return handleResources(request, user, db);
+  }
 
   /* Export and delete ride on this function rather than their own. Vercel counts
      functions per deployment and this project sits near the ceiling — the same

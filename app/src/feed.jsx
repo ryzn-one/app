@@ -6,6 +6,7 @@ import {
 import { C, F } from "./theme.js";
 import { StudioStats, ProfileStrength, PostOverflow, StudioSeg, StudioEmpty } from "./studio.jsx";
 import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
+import { MentorShelf } from "./resources.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
 import { sharePostLink, isPublicPost } from "./lib/share.js";
@@ -1024,6 +1025,13 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
             </div>
           </Card>
         )}
+
+        {/* What this mentor rates but didn't make. Its own section above the
+            tabs, not folded into Resources: a mentor's uploaded worksheet and a
+            book they swear by are both "resources", but only one of them is a
+            recommendation, and a mentee scanning an Orbit is looking for that
+            one. Renders nothing at all until there's something on the shelf. */}
+        <MentorShelf mentorId={mentor.id} mentorName={mentor.name} toast={toast} />
 
         <ContentTabBar view={view} setView={setView} count={resources.length} />
 

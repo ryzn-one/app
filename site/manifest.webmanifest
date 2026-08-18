@@ -10,6 +10,11 @@
   "background_color": "#F5F5F3",
   "theme_color": "#5B4FCF",
   "categories": ["education", "productivity"],
+  "_comment_related": "Points at itself so navigator.getInstalledRelatedApps() can answer 'is Ryzn already installed?' on Chrome and Edge. Without it, a browser that has the app installed simply never fires beforeinstallprompt, which is indistinguishable from a browser that cannot install at all — and the banner would nag people who already did as asked. prefer_related_applications MUST stay false: true suppresses the install prompt entirely.",
+  "related_applications": [
+    { "platform": "webapp", "url": "https://www.ryzn.one/manifest.webmanifest" }
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/branding/ryzn-brand-kit/icon/png/favicon-48.png",

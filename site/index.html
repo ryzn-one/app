@@ -261,6 +261,9 @@
   .a2hs-no{flex:.75;background:transparent;color:#C9C6C0;border:1.5px solid rgba(255,255,255,.22)!important}
   .a2hs-yes{flex:1.25;background:var(--purple);color:#fff}
   .a2hs-yes:active{transform:scale(.98)}
+  .a2hs-have{display:block;width:100%;margin-top:9px;padding:2px;background:none;border:none;cursor:pointer;
+    font-family:var(--sans);font-size:11.5px;font-weight:600;color:#8B8983}
+  .a2hs-have[hidden]{display:none}
   @media(prefers-reduced-motion:reduce){.a2hs{animation:none}}
 </style>
 </head>
@@ -558,7 +561,7 @@
     <div style="flex:1;min-width:0">
       <div class="kicker">INSTALL RYZN</div>
       <h4>Keep Ryzn on your home screen</h4>
-      <p>Full screen, no address bar, one tap from anywhere.</p>
+      <p id="a2hs-sub">Full screen, no address bar, one tap from anywhere.</p>
     </div>
     <button class="a2hs-x" id="a2hs-x" aria-label="Dismiss">&times;</button>
   </div>
@@ -567,6 +570,10 @@
     <button class="a2hs-no" id="a2hs-no">Not now</button>
     <button class="a2hs-yes" id="a2hs-yes">Install</button>
   </div>
+  <!-- Shown only on the manual routes, where nothing can confirm the install
+       for us. Hidden by default so Chrome never offers a way to dismiss the
+       banner by claiming something the browser has already contradicted. -->
+  <button class="a2hs-have" id="a2hs-have" hidden>I already have it</button>
 </div>
 
 <script>
@@ -617,37 +624,94 @@
   // app's banner (app/src/lib/install-prompt.js) — one origin, so a "Not now"
   // here is honoured there and the other way round.
   (() => {
-    const KEY = 'ryzn:install-snoozed-until', HAVE = 'ryzn:installed';
+    // HAVE is versioned: the previous key was written off the two bogus signals
+    // described below, so it is already set on devices that never installed
+    // anything. Narrowing the test alone would not clear what is on disk.
+    const KEY = 'ryzn:install-snoozed-until', HAVE = 'ryzn:installed:v2', HAVE_OLD = 'ryzn:installed';
     const SNOOZE = 14 * 24 * 60 * 60 * 1000, DELAY = 6000;
     const el = document.getElementById('a2hs');
     const ua = navigator.userAgent || '';
     const mq = q => window.matchMedia && window.matchMedia(q).matches;
+    try { localStorage.removeItem(HAVE_OLD); } catch (e) {}
 
+    // Only signals that actually mean "launched from the home screen". Two that
+    // used to be here did not:
+    //   android-app:// referrer   set on any link opened from any Android app —
+    //                             Slack, Gmail, WhatsApp. It records where the
+    //                             tap came from, not how this page launched.
+    //   display-mode: minimal-ui  what Chrome Custom Tabs and in-app webviews
+    //                             report; a plain visitor gets it unasked.
+    // Both read true for someone following a shared link, and remember() below
+    // made that permanent — one Slack link retired the banner on that device.
     const standalone = mq('(display-mode: standalone)') || mq('(display-mode: fullscreen)')
-      || mq('(display-mode: minimal-ui)') || mq('(display-mode: window-controls-overlay)')
-      || navigator.standalone === true || document.referrer.startsWith('android-app://');
+      || mq('(display-mode: window-controls-overlay)') || navigator.standalone === true;
 
-    // iOS cannot be asked whether the app is already on the home screen, and
-    // standalone only answers for the window you are in — so without a memory,
-    // an installed user opening ryzn.one in Safari gets pitched the app they
-    // already have. A standalone launch anywhere on the origin is the proof;
-    // /app/ records it too, and localStorage is shared between them.
+    // Most browsers cannot be asked whether the app is already on the home
+    // screen, and standalone only answers for the window you are in — so
+    // without a memory, an installed user opening ryzn.one in Safari gets
+    // pitched the app they already have. A standalone launch anywhere on the
+    // origin is proof; /app/ records it too, and localStorage is shared.
     const remember = () => { try { localStorage.setItem(HAVE, '1'); } catch (e) {} };
     const have = () => { try { return localStorage.getItem(HAVE) === '1'; } catch (e) { return false; } };
     if (standalone) remember();
 
+    // Chrome and Edge will name the app back to us if it is installed — the
+    // manifest points at itself so this can answer. It is the only reliable
+    // "already installed" signal that works from a normal browser tab, and
+    // without it every Chrome user who installed Ryzn would keep being asked.
+    if (navigator.getInstalledRelatedApps) {
+      navigator.getInstalledRelatedApps()
+        .then(apps => { if (apps && apps.length) { remember(); hide(); } })
+        .catch(() => {});
+    }
+
     // iPadOS 13+ claims to be a Mac; the touch points are what give it away.
     const ios = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+    const android = /android/i.test(ua);
+    // An in-app webview cannot install anything, and pointing someone at a menu
+    // item their browser does not have is worse than saying nothing.
+    const inApp = /; ?wv\b/i.test(ua)
+      || /FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Line\/|Twitter|Snapchat|Pinterest|Slack|MicroMessenger/i.test(ua);
+    // Every Chromium browser on macOS also carries "Safari", so the exclusions
+    // are the actual test.
+    const safariDesktop = !ios && /macintosh/i.test(ua) && /safari/i.test(ua)
+      && !/chrome|chromium|crios|edg|opr|brave/i.test(ua);
+    const firefox = /firefox\/|fxios/i.test(ua);
 
-    // iOS never fires beforeinstallprompt — Add to Home Screen lives in the
-    // share sheet and no page can trigger it, so the banner teaches the gesture.
-    const guide = !ios ? null
-      : /crios/i.test(ua) ? ['Tap the share icon in the address bar', 'Choose "Add to Home Screen"', 'Tap Add']
-      : /edgios/i.test(ua) ? ['Tap the ••• menu', 'Choose "Add to Home Screen"', 'Tap Add']
+    // The offer is made on every browser — only the gesture changes. This used
+    // to produce null for anything that was neither Chrome nor iOS, which
+    // silently covered desktop Safari, Firefox and every in-app webview: they
+    // got no banner at all. Mirrors app/src/lib/install-prompt.js.
+    const route =
+        inApp ? 'in-app'
+      : ios ? (/crios/i.test(ua) ? 'ios-chrome' : /edgios/i.test(ua) ? 'ios-edge'
+             : /fxios/i.test(ua) ? 'ios-firefox' : 'ios-safari')
+      : safariDesktop ? 'safari-desktop'
+      // Firefox on Android does install web apps, from the menu. Firefox on the
+      // desktop does not, at all — so only the desktop gets sent elsewhere.
+      : (firefox && !android) ? 'firefox-desktop'
+      : 'menu';
+
+    const GUIDES = {
+      'in-app':          ['Open the ••• or share menu', 'Choose "Open in browser"', 'Install from there'],
+      'ios-chrome':      ['Tap the share icon in the address bar', 'Choose "Add to Home Screen"', 'Tap Add'],
+      'ios-edge':        ['Tap the ••• menu', 'Choose "Add to Home Screen"', 'Tap Add'],
       // Firefox on iOS has no Add to Home Screen at all, so the only honest
       // instruction is to switch browsers.
-      : /fxios/i.test(ua) ? ['Open ryzn.one in Safari', 'Tap the share icon in the bottom bar', 'Choose "Add to Home Screen"']
-      : ['Tap the share icon in the bottom bar', 'Scroll to "Add to Home Screen"', 'Tap Add'];
+      'ios-firefox':     ['Open ryzn.one in Safari', 'Tap the share icon in the bottom bar', 'Choose "Add to Home Screen"'],
+      'ios-safari':      ['Tap the share icon in the bottom bar', 'Scroll to "Add to Home Screen"', 'Tap Add'],
+      'safari-desktop':  ['Open the File menu', 'Choose "Add to Dock"', 'Click Add'],
+      'firefox-desktop': ['Firefox can’t install web apps', 'Open ryzn.one in Chrome, Edge or Safari', 'Install from there'],
+      'menu':            android
+                           ? ['Open the browser menu', 'Choose "Install" or "Add to Home screen"', 'Confirm']
+                           : ['Open the browser menu', 'Look for "Install Ryzn"', 'Confirm'],
+    };
+    const SUBTITLES = {
+      'in-app':          'Open Ryzn in your browser first — this one can’t install apps.',
+      'firefox-desktop': 'Firefox can’t install web apps. Chrome, Edge and Safari can.',
+      'safari-desktop':  'Add Ryzn to your Dock — full screen, no address bar.',
+    };
+    const guide = GUIDES[route];
 
     let deferred = null, shown = false, ripe = false;
     const snoozed = () => { try { return +localStorage.getItem(KEY) > Date.now(); } catch (e) { return false; } };
@@ -655,12 +719,13 @@
 
     const show = () => {
       if (shown || !ripe || standalone || snoozed()) return;
-      if (!deferred && !guide) return;
       // A live beforeinstallprompt overrides the memory: Chrome does not offer
       // to install something already installed, so the app must have been
       // removed since — and the offer is worth making again.
       if (!deferred && have()) return;
-      if (guide && !deferred) {
+      // Manual route: the steps are the whole answer, so the primary button
+      // opens them rather than pretending it can install for you.
+      if (!deferred) {
         const list = document.getElementById('a2hs-steps');
         list.textContent = '';
         guide.forEach((step, i) => {
@@ -670,6 +735,13 @@
         });
         el.dataset.steps = '1';
         document.getElementById('a2hs-yes').textContent = 'Got it';
+        if (SUBTITLES[route]) document.getElementById('a2hs-sub').textContent = SUBTITLES[route];
+        // The way out for anyone the detection cannot reach — desktop Safari,
+        // and iOS, where the installed app gets its own storage container and
+        // can never leave a note the browser will read. Offering it where
+        // Chrome has already answered would just be a way to hide the banner
+        // by lying to it.
+        document.getElementById('a2hs-have').hidden = false;
       }
       el.dataset.show = '1';
       shown = true;
@@ -677,21 +749,58 @@
 
     const hide = () => { el.dataset.show = '0'; shown = false; };
 
-    window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; show(); });
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferred = e;
+      // Proof the app is not installed, whatever the memory says — clear it so
+      // a stale flag cannot suppress an offer the browser itself is making.
+      try { localStorage.removeItem(HAVE); } catch (err) {}
+      show();
+    });
     window.addEventListener('appinstalled', () => {
       deferred = null; hide(); remember();
       try { localStorage.removeItem(KEY); } catch (e) {}
     });
 
     document.getElementById('a2hs-yes').addEventListener('click', async () => {
-      if (!deferred) { hide(); snooze(); return; }   // iOS: the steps are the whole answer
+      if (!deferred) { hide(); snooze(); return; }   // manual: the steps are the whole answer
       const e = deferred;
       deferred = null;                                // single-use; reusing it throws
       hide();
       try { e.prompt(); const r = await e.userChoice; if (r.outcome === 'dismissed') snooze(); } catch (err) { snooze(); }
     });
+    // Taken at their word, permanently. A banner that keeps asking after you
+    // have done what it asked is the reason people learn to ignore banners.
+    document.getElementById('a2hs-have').addEventListener('click', () => { remember(); hide(); });
     [ 'a2hs-no', 'a2hs-x' ].forEach(id =>
       document.getElementById(id).addEventListener('click', () => { snooze(); hide(); }));
+
+    // "The install banner never showed up" has half a dozen honest answers —
+    // this browser never fires the event, it is snoozed, it thinks you have it
+    // already, the delay has not elapsed — and none of them are visible from
+    // the outside. __ryznInstall() in the console says which one it is;
+    // __ryznInstall.reset() clears both flags so it can be re-tested.
+    window.__ryznInstall = () => ({
+      route: deferred ? 'prompt' : route,
+      guide: deferred ? null : guide,
+      standalone: standalone,
+      hasBeforeInstallPrompt: deferred !== null,
+      rememberedInstalled: have(),
+      relatedAppsSupported: !!navigator.getInstalledRelatedApps,
+      snoozed: snoozed(),
+      ripe: ripe,
+      shown: shown,
+      userAgent: ua,
+      verdict:
+        standalone ? 'hidden: running as an installed app'
+        : (!deferred && have()) ? 'hidden: recorded as already installed'
+        : snoozed() ? "hidden: snoozed by a 'Not now'"
+        : ripe ? 'should be on screen now' : 'eligible: waiting out the ' + DELAY + 'ms delay',
+    });
+    window.__ryznInstall.reset = () => {
+      try { localStorage.removeItem(KEY); localStorage.removeItem(HAVE); } catch (e) {}
+      return 'cleared — reload to be offered again';
+    };
 
     // A beat before offering, so it never lands on top of the first screenful.
     setTimeout(() => { ripe = true; show(); }, DELAY);

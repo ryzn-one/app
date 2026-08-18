@@ -41,6 +41,40 @@ export function buildPostShareUrl(post) {
 }
 
 /**
+ * Sharing a promoted resource.
+ *
+ * The link that goes out is the *original* one — the TikTok, the book, the
+ * paper — not a Ryzn page wrapped around it. Interposing ourselves between a
+ * creator and their views to farm a click-through would be the exact behaviour
+ * that makes people stop pasting links, and a mentor forwarding a recommendation
+ * wants their friend to land on the thing, not on a signup wall.
+ *
+ * What Ryzn gets is the attribution line that travels with it. That is the whole
+ * growth mechanic here: the endorsement is ours, the content never was.
+ */
+export function resourceShareText(resource, by) {
+  const who = by ? `${by} on Ryzn` : "Ryzn";
+  const lines = [resource.title, resource.note ? `“${resource.note}”` : null, `Promoted by ${who} · ryzn.one`];
+  return lines.filter(Boolean).join("\n");
+}
+
+export async function shareResourceLink(resource, { by } = {}) {
+  const url = resource?.url;
+  if (!url) return "copied";
+  const text = resourceShareText(resource, by);
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      await navigator.share({ title: resource.title || "Worth your time", text, url });
+      return "shared";
+    } catch (err) {
+      if (err?.name === "AbortError") return "shared";
+    }
+  }
+  await copyText(`${text}\n${url}`);
+  return "copied";
+}
+
+/**
  * Prefer the OS share sheet when it exists; otherwise copy the link.
  * Returns `"shared"` | `"copied"`.
  */

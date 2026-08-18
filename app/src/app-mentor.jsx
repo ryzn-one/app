@@ -12,6 +12,7 @@ import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
 import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
+import { MyShelf, MentorShelf } from "./resources.jsx";
 import { TagRow } from "./chatmatch.jsx";
 import { fetchMenteeExercises, fetchProgram, setPhaseComplete, fetchImpactHistory } from "./lib/auth-client.js";
 
@@ -215,14 +216,15 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         </Card>
       )}
     </div>
-    {/* The directory, as distinct from the add deck: search everyone who's
-        onboarded, including the mentees already in your cohort. */}
-    <Card onClick={() => openOverlay("explore")} style={{ marginTop: 10 }}>
+    {/* One door to all three ways of finding a mentee — the ranked deck, the
+        map and directory, and the applications waiting on you. It used to take
+        three, and the applications one was the hardest to find. */}
+    <Card onClick={() => openOverlay("mentees")} style={{ marginTop: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Search size={16} color={C.purple} /></div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Explore mentees</div>
-          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Search by name, track, or goal</div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Find mentees</div>
+          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Matched to you · by region · applications</div>
         </div>
         <ChevronRight size={16} color={C.gray} />
       </div>
@@ -477,11 +479,14 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile }) => {
+export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile, toast }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
   const [contentTab, setContentTab] = useState("feed");
+  /* Lifted out of MyShelf so the checklist below can count it. The shelf owns
+     the rows; this is only how many there are. */
+  const [shelfCount, setShelfCount] = useState(0);
   const posts = Array.isArray(feed) ? feed : [];
   const cohort = u?.cohort || [];
   const phases = program?.phases || [];
@@ -490,8 +495,12 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
     ["Why-I-mentor statement", !!u?.why, "done in setup", null],
     ["First feed post", posts.length >= 1, "+10 Impact", () => go("feed")],
     ["3+ pieces of content", posts.length >= 3, "3× more requests", () => go("feed")],
+    /* Promoting costs a mentor nothing they haven't already done — they have
+       read the thing — which is exactly why it belongs on the list beside items
+       that ask them to record a video. */
+    ["Something promoted to Ryzn", shelfCount >= 1, "+5 Impact", null],
   ];
-  const strength = checklist.reduce((a, [, ok]) => a + (ok ? 25 : 0), 0);
+  const strength = Math.round((checklist.filter(([, ok]) => ok).length / checklist.length) * 100);
   const resourceCount = posts.filter(p => p.kind === "video" || p.kind === "resource").length;
 
   return (
@@ -556,6 +565,13 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
               <div style={{ marginTop: 12 }}><ProgramTimeline phases={phases} /></div>
             </Card>
           )}
+          {/* The shelf, read exactly as a mentee reads it — including the cohort-
+              only picks, because that is who this preview is for. Its own section
+              above the tabs rather than inside Resources: what you made and what
+              you vouch for are different claims, and a mentee scanning a profile
+              is looking for the second one. */}
+          <MentorShelf mentorId={userId} mentorName={name} toast={toast}
+            emptyText="Nothing promoted yet. Anything you promote shows here, above your posts." />
           <ContentTabBar view={contentTab} setView={setContentTab} count={resourceCount} />
           <ContentTabs feed={posts} authorName={name} authorId={u?.id} view={contentTab} readOnly
             emptyText="Nothing on your profile yet. What you post in Feed shows up here." />
@@ -638,6 +654,22 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             </div>
             <Btn style={{ marginTop: 12 }} onClick={() => go("feed")}><Upload size={15} /> {posts.length ? "Post something new" : "Post your first update"}</Btn>
           </Card>
+
+          {/* The other half of a profile: what you didn't make but will vouch
+              for. Sits directly under "Your content" because the two answer the
+              same question a mentee is asking — is this person worth my time —
+              and only one of them requires the mentor to produce anything. */}
+          <Card style={{ border: `1.5px solid ${shelfCount ? C.teal : C.line}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Label color={shelfCount ? C.teal : C.purple}>Your shelf · {shelfCount}</Label>
+              <Label color={C.teal}>+5 IMPACT EACH</Label>
+            </div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
+              The TikToks, shorts, books and papers you’d tell a mentee to go and read. The link stays
+              where it lives — what lands on your profile is your name behind it, and the reason.
+            </div>
+          </Card>
+          <MyShelf toast={toast} onChange={setShelfCount} />
 
           {posts.map(p => {
             const m = KIND_META[p.kind] || KIND_META.status, Icon = m.icon;

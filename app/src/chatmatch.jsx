@@ -4,15 +4,16 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search
+  X, SlidersHorizontal, RotateCcw, Search, Clock
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter, labelOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
 import { fetchPosts, fetchMenteeExercises } from "./lib/auth-client.js";
 import { ContentTabs, ContentTabBar } from "./feed.jsx";
+import { MentorShelf } from "./resources.jsx";
 
 /* ————————————————— JOURNEY: AI CHAT + UNLOCK + MATCHING ————————————————— */
 
@@ -440,7 +441,7 @@ export const EmptyRoster = ({ title, body, action }) => (
  * a peer's profile into somewhere you can pick posts out of, and its absence is
  * what keeps that control off the mentee-facing version of this same sheet.
  */
-export const MentorDetailSheet = ({ m, close, footer, onAmplify }) => {
+export const MentorDetailSheet = ({ m, close, footer, onAmplify, toast }) => {
   const [posts, setPosts] = useState([]);
   const [feedLoading, setFeedLoading] = useState(!!m?.id);
   const [contentTab, setContentTab] = useState("feed");
@@ -520,6 +521,11 @@ export const MentorDetailSheet = ({ m, close, footer, onAmplify }) => {
           <div style={{ fontSize: 13.5, marginTop: 8 }}>Taking up to {m.capacity} mentee{m.capacity === 1 ? "" : "s"} this cohort.</div>
         </Card>
       )}
+      {/* Their shelf. `onAmplify` is only wired by the mentor network, so its
+          presence is the same signal here as it is on a post card — the viewer
+          is a peer, and a peer can pass a pick on to their own cohort. A mentee
+          reading the same sheet gets the shelf without that control. */}
+      <MentorShelf mentorId={m.id} mentorName={m.name} toast={toast} canRepromote={!!onAmplify} />
       <ContentTabBar view={contentTab} setView={setContentTab} count={resourceCount} />
       {feedLoading ? (
         <Card><div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, letterSpacing: 0.6 }}>LOADING FEED…</div></Card>
@@ -830,7 +836,74 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
 
 /* ————————————————— MENTOR: accepting mentees ————————————————— */
 
-export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matches = [], onDecide, loading, error, capacity = 4 }) => {
+/**
+ * The applications inbox — mentees who asked for you.
+ *
+ * Lifted out of RequestsScreen so the Mentees surface can give it a tab of its
+ * own. It used to exist only as a strip above a swipe deck, which meant a
+ * mentor who never opened the deck never saw that someone had applied. Same
+ * markup, two callers, one behaviour.
+ *
+ * In an Apply orbit each row carries what the person wrote to qualify — that
+ * answer is the entire reason this is a decision rather than a name to
+ * rubber-stamp. Where the orbit is Open there is no answer, so the row falls
+ * back to their first goal and reads as a request rather than an application.
+ */
+export const RequestsInbox = ({ inbox = [], outbox = [], busy, canAccept = true, onRespond, style }) => {
+  if (inbox.length === 0 && outbox.length === 0) return null;
+  return (
+    <div style={style}>
+      {inbox.length > 0 && (<>
+        <Label color={C.purple}>
+          {inbox.some(m => m.answer) ? "Applications" : "Asked for you"} · {inbox.length}
+        </Label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+          {inbox.map(m => (
+            <div key={m.id} style={{ background: C.purpleTint, borderRadius: 12, padding: "10px 12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
+                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  {!m.answer && m.person?.goals?.[0] && (
+                    <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>
+                  )}
+                </div>
+                <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => onRespond(m, "decline")}>Pass</Btn>
+                <Btn small disabled={busy || !canAccept} onClick={() => onRespond(m, "accept")}>Accept</Btn>
+              </div>
+              {m.answer && (
+                <div style={{ background: C.white, borderRadius: 10, padding: "9px 11px", marginTop: 9 }}>
+                  <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.purple, letterSpacing: 0.8, fontWeight: 700 }}>WHAT THEY WANT TO WORK ON</span>
+                  <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3, color: C.ink }}>“{m.answer}”</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </>)}
+
+      {/* The other direction. Without it the tab answers "who wants me" but not
+          "who am I waiting on", and the second question is the one a mentor
+          with an empty inbox actually has. */}
+      {outbox.length > 0 && (
+        <div style={{ marginTop: inbox.length > 0 ? 18 : 0 }}>
+          <Label>Waiting on them · {outbox.length}</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {outbox.map(m => (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "10px 12px" }}>
+                <Monogram name={m.person?.name} size={30} />
+                <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person?.name || "—"}</span>
+                <Chip c={C.amber} bg={C.amberTint}><Clock size={10} /> Pending</Chip>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matches = [], onDecide, loading, error, capacity = 4, embedded = false }) => {
   const isDesktop = useIsDesktop();
   const [filters, setFilters] = useState({ track: "Any" });
   const [showFilter, setShowFilter] = useState(false);
@@ -947,13 +1020,18 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "14px 20px 10px", background: C.white, borderBottom: `1px solid ${C.line}` }}>
+      {/* Embedded, the Mentees shell owns the title and the back arrow — but the
+          seat bar stays, because "how many can I still take" is the number this
+          deck is decided against and it belongs next to the deck. */}
+      <div style={{ padding: embedded ? "2px 20px 10px" : "14px 20px 10px", background: C.white, borderBottom: embedded ? "none" : `1px solid ${C.line}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <Label color={C.purple}>Matched to your profile</Label>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>Mentee requests.</div>
-          </div>
-          <XPPill xp={xp} unit="IMP" />
+          {embedded ? <div style={{ flex: 1 }} /> : (<>
+            <div style={{ flex: 1 }}>
+              <Label color={C.purple}>Matched to your profile</Label>
+              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>Mentee requests.</div>
+            </div>
+            <XPPill xp={xp} unit="IMP" />
+          </>)}
           <button onClick={() => setShowFilter(true)} style={{ position: "relative", background: activeF ? C.purpleTint : C.white, border: `1.5px solid ${activeF ? C.purple : C.line}`, borderRadius: 12, padding: 9, cursor: "pointer" }}>
             <SlidersHorizontal size={16} color={activeF ? C.purple : C.ink} />
             {activeF > 0 && <span style={{ position: "absolute", top: -6, right: -6, width: 17, height: 17, borderRadius: 9, background: C.purple, color: C.white, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeF}</span>}
@@ -966,45 +1044,18 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
           <span style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, fontWeight: 700 }}>{taken}/{cap} SEATS · +30 IMPACT EACH</span>
         </div>
       </div>
-      {/* The applications inbox. In an Apply orbit each row carries what the
-          person wrote to qualify — that answer is the entire reason this inbox
-          is a decision rather than a name to rubber-stamp. Where the orbit is
-          Open there is no answer to show, so the row falls back to their first
-          goal and reads as a request rather than an application. */}
-      {inbox.length > 0 && (
-        <div style={{ padding: "10px 20px 0" }}>
-          <Label color={C.purple}>
-            {inbox.some(m => m.answer) ? "Applications" : "Asked for you"} · {inbox.length}
-          </Label>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            {inbox.map(m => (
-              <div key={m.id} style={{ background: C.purpleTint, borderRadius: 12, padding: "10px 12px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
-                  <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
-                    {!m.answer && m.person?.goals?.[0] && (
-                      <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>
-                    )}
-                  </div>
-                  <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
-                  <Btn small disabled={busy || taken >= cap} onClick={() => respond(m, "accept")}>Accept</Btn>
-                </div>
-                {m.answer && (
-                  <div style={{ background: C.white, borderRadius: 10, padding: "9px 11px", marginTop: 9 }}>
-                    <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.purple, letterSpacing: 0.8, fontWeight: 700 }}>WHAT THEY WANT TO WORK ON</span>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 3, color: C.ink }}>“{m.answer}”</div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Embedded in the Mentees surface the inbox has a tab of its own, so
+          showing it here too would put the same decision on screen twice. */}
+      {!embedded && (
+        <RequestsInbox inbox={inbox} busy={busy} canAccept={taken < cap}
+          onRespond={respond} style={{ padding: "10px 20px 0" }} />
       )}
       {isDesktop
         ? <CardGrid deck={deck} renderCard={renderCard} stampRight="INVITE" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />
         : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="INVITE" stampLeft="PASS" canRight={taken < cap} onDecide={decide} canUndo={false} emptyView={emptyView} onTap={setDetail} />}
-      {(taken >= 1 || outbox.length > 0) && (
+      {/* Onboarding's exit into the app. Inside the Mentees surface you are
+          already in the app, so there is nowhere for it to go. */}
+      {!embedded && (taken >= 1 || outbox.length > 0) && (
         <div className="sheet-up" style={{ padding: "10px 20px 16px", background: C.white, borderTop: `1px solid ${C.line}` }}>
           <Btn onClick={() => onEnterApp(accepted)}>Open mentor dashboard · cohort {taken}/{cap}</Btn>
         </div>

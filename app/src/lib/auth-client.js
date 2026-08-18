@@ -200,6 +200,51 @@ export const reactToComment = (postId, commentId) =>
 export const updatePost = (id, patch) => api("/posts", { method: "PATCH", body: { id, ...patch } });
 export const deletePost = (id) => api(`/posts?id=${encodeURIComponent(id)}`, { method: "DELETE" });
 
+/* ————— Promote to Ryzn —————
+   A mentor's shelf: things they found elsewhere — a TikTok, a short, a book, a
+   paper — and put their name behind. Every one of these rides on /api/profile
+   under `?resources=1`; the shelf belongs to a profile in the same sense a
+   headline does, and Vercel counts functions per deployment.
+
+   Nothing here is rehosted. The row holds a URL and the mentor's own reason for
+   vouching, and opening one leaves for the original platform — which is what
+   keeps a creator's views the creator's. */
+
+const RESOURCES = "/profile?resources=1";
+
+/** Own shelf when called bare; a mentor's shelf when given their id. A cohort
+    resource needs an accepted pairing, exactly like a cohort post — the server
+    checks, not us. `scope: "saved"` is the caller's own reading list;
+    `scope: "network"` is public picks from the mentors they follow, each tagged
+    with `onMyShelf`. */
+export const fetchResources = ({ mentorId, scope } = {}) => {
+  const qs = new URLSearchParams();
+  if (mentorId) qs.set("mentorId", mentorId);
+  if (scope) qs.set("scope", scope);
+  const extra = qs.toString();
+  return api(`${RESOURCES}${extra ? `&${extra}` : ""}`);
+};
+
+/** Put something on your shelf. Mentors only. The server reads the platform,
+    the kind and the thumbnail off the URL, so `{ url, title }` is enough. */
+export const promoteResource = (body) => api(RESOURCES, { method: "POST", body });
+
+/** Take a peer's public pick onto your own shelf, credited to them. A copy, not
+    a pointer — the canonical thing is the link, so your shelf survives them
+    taking their endorsement down. */
+export const repromoteResource = (id, { note } = {}) =>
+  api(RESOURCES, { method: "POST", body: { repromote: id, note } });
+
+/** Record the tap that opens the link. Idempotent: XP is collected once, and
+    the mentor's click count moves once. Answers `{ xp, url }`. */
+export const openResource = (id) => api(RESOURCES, { method: "PATCH", body: { id, action: "open" } });
+/** Keep it, or stop keeping it. The mentee half of a curated shelf. */
+export const saveResource = (id) => api(RESOURCES, { method: "PATCH", body: { id, action: "save" } });
+export const unsaveResource = (id) => api(RESOURCES, { method: "PATCH", body: { id, action: "unsave" } });
+/** Pin, retitle, re-note, or flip who it's for. Owner only. */
+export const updateResource = (id, patch) => api(RESOURCES, { method: "PATCH", body: { id, ...patch } });
+export const deleteResource = (id) => api(`${RESOURCES}&id=${encodeURIComponent(id)}`, { method: "DELETE" });
+
 /* ————— Program —————
    A mentor's authored phases, and a mentee's progress against them. Progress
    lives on the shared match record server-side, not here — this is just the
