@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Search, SlidersHorizontal, Crown, School, Check, Clock, X } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Btn, Monogram, Avatar, HeaderRow, firstNameOf, labelOf } from "./ui.jsx";
+import { Card, Btn, Seg, Monogram, Avatar, HeaderRow, firstNameOf, labelOf } from "./ui.jsx";
 import {
   FilterSheet, MentorDetailSheet, MenteeDetailSheet, AffinityTag, TagRow, EmptyRoster,
 } from "./chatmatch.jsx";
 import { exploreRoster } from "./lib/auth-client.js";
+import { MapBrowse } from "./map.jsx";
+import { rollUp, mockBucketFor, MOCK_CITIES } from "./lib/regions.js";
 
 /* ————————————————— EXPLORE —————————————————
    The browsable directory. The swipe decks decide one person at a time and drop
@@ -81,6 +83,12 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
   const [showFilter, setShowFilter] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState(wanted === "mentor" ? { tier: "Any", industry: "Any" } : { track: "Any" });
+  /* The same map the mentor side browses its mentees on. A mentee looking for a
+     mentor is asking a geographic question at least as often — "who does this
+     near me" — so the two screens get the same control rather than one of them
+     getting a search box and the other a map. */
+  const [view, setView] = useState("Map");
+  const [regionId, setRegionId] = useState(null);
 
   /* Debounced so typing doesn't fire a query per keystroke. Search is
      server-side because the roster can outgrow what's loaded. */
@@ -113,6 +121,12 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
   const passes = (p) => Object.entries(filters).every(([k, v]) => v === "Any" || labelOf(p[k]) === v);
   const list = people.filter(passes);
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
+
+  /* Region comes from mockBucketFor because profiles carry no location yet —
+     same stand-in Discover uses, and it disappears from both the day the field
+     lands. The rows themselves are real. */
+  const { buckets } = useMemo(() => rollUp(MOCK_CITIES), []);
+  const placed = useMemo(() => list.map(p => ({ ...p, _region: mockBucketFor(p.id, buckets) })), [list, buckets]);
 
   const act = async (p, fn) => {
     if (busy) return;
@@ -159,33 +173,46 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
           </button>
         }
       />
-      <div style={{ padding: "0 20px 10px" }}>
+      <div style={{ padding: view === "Map" ? "0 20px 8px" : "0 20px 10px" }}>
+        <Seg options={["Map", "List"]} value={view} onChange={setView} small style={{ marginBottom: 10 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 9, background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: "0 12px" }}>
           <Search size={15} color={C.gray} />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder={wanted === "mentor" ? "Search name, role, or expertise" : "Search name, track, or goal"}
             style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "12px 0", fontFamily: F.sans, fontSize: 14.5, color: C.ink, minWidth: 0 }} />
           {q && <button onClick={() => setQ("")} style={{ border: "none", background: "none", cursor: "pointer", padding: 4, display: "flex" }}><X size={14} color={C.gray} /></button>}
         </div>
-        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 8, letterSpacing: 0.5 }}>
-          {loading ? "LOADING THE ROSTER…" : `${list.length} ${wanted.toUpperCase()}${list.length === 1 ? "" : "S"}${q ? ` MATCHING “${q.toUpperCase()}”` : " ON THE ROSTER"}`}
-        </div>
-      </div>
-
-      <div className="app-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {error && <Card style={{ background: C.coralTint, border: "none" }}><div style={{ fontSize: 13.5, color: C.coral }}>{error}</div></Card>}
-        {!loading && !error && list.length === 0 && (
-          <div style={{ height: 320 }}>
-            <EmptyRoster
-              title={q || activeF ? "Nobody matches that." : wanted === "mentor" ? "No mentors yet." : "No mentees yet."}
-              body={q || activeF
-                ? "Try a different name, skill, or filter."
-                : `New ${wanted}s appear here as they finish onboarding.`}
-              action={(q || activeF) ? <Btn kind="ghost" style={{ marginTop: 16 }} onClick={() => { setQ(""); setFilters(f => Object.fromEntries(Object.keys(f).map(k => [k, "Any"]))); }}>Clear search</Btn> : null}
-            />
+        {/* The map carries its own counts inside the region sheet, so this line
+            would be a second, quieter answer to a question already answered. */}
+        {view === "List" && (
+          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 8, letterSpacing: 0.5 }}>
+            {loading ? "LOADING THE ROSTER…" : `${list.length} ${wanted.toUpperCase()}${list.length === 1 ? "" : "S"}${q ? ` MATCHING “${q.toUpperCase()}”` : " ON THE ROSTER"}`}
           </div>
         )}
-        {list.map(p => <PersonRow key={p.id} p={p} wanted={wanted} onOpen={setDetail} />)}
       </div>
+
+      {view === "Map" ? (
+        <MapBrowse
+          buckets={buckets} regionId={regionId} onSelect={setRegionId}
+          people={placed} wanted={wanted} loading={loading} error={error}
+          renderRow={p => <PersonRow key={p.id} p={p} wanted={wanted} onOpen={setDetail} />}
+        />
+      ) : (
+        <div className="app-scroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {error && <Card style={{ background: C.coralTint, border: "none" }}><div style={{ fontSize: 13.5, color: C.coral }}>{error}</div></Card>}
+          {!loading && !error && list.length === 0 && (
+            <div style={{ height: 320 }}>
+              <EmptyRoster
+                title={q || activeF ? "Nobody matches that." : wanted === "mentor" ? "No mentors yet." : "No mentees yet."}
+                body={q || activeF
+                  ? "Try a different name, skill, or filter."
+                  : `New ${wanted}s appear here as they finish onboarding.`}
+                action={(q || activeF) ? <Btn kind="ghost" style={{ marginTop: 16 }} onClick={() => { setQ(""); setFilters(f => Object.fromEntries(Object.keys(f).map(k => [k, "Any"]))); }}>Clear search</Btn> : null}
+              />
+            </div>
+          )}
+          {list.map(p => <PersonRow key={p.id} p={p} wanted={wanted} onOpen={setDetail} />)}
+        </div>
+      )}
 
       {detail && <Sheet m={detail} close={() => setDetail(null)} footer={footerFor(detail)} />}
       <FilterSheet open={showFilter} close={() => setShowFilter(false)} values={filters} setValues={setFilters}

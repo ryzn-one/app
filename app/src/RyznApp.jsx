@@ -1279,6 +1279,10 @@ export default function RyznComplete() {
         /* Rows obey these. A "leaderboard movement" switch that goes on turning
            up here teaches people their settings are decorative. */
         prefs={prefs}
+        /* The muted list names the switch that hid each row; this is the trip
+           to it, so nobody has to hunt through Settings for a label they were
+           just shown. */
+        onSettings={() => setOverlay("settings")}
         /* Detected from real inactivity, phrased as coming from the mentor. */
         nudge={session?.atRisk ? {
           from: (session.atRisk.mentorName || "Your mentor").split(" ")[0],

@@ -60,7 +60,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
             Kickoff to graduation, in phases.
           </div>
           <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 8, lineHeight: 1.55 }}>
-            Build the roadmap mentees follow. Each phase can unlock a certificate or reward when they finish it.
+            Each phase can unlock a certificate or reward.
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 16 }}>
             <div>
@@ -79,7 +79,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
             <Label color={C.purple}>Start here</Label>
             <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>Add your first phase</div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
-              Or drop in a 4-phase starter (kickoff → skills → network → graduation) and edit from there.
+              Or use a 4-phase starter and edit from there.
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
               <Btn small style={{ width: "auto" }} onClick={seedStarter}><Sparkles size={14} /> Use starter course</Btn>
@@ -92,14 +92,16 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
             <Label>Phases</Label>
             {list.length > 0 && <Label color={C.teal}>{list.length} STEP{list.length === 1 ? "" : "S"}</Label>}
           </div>
-          <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
-            Order matters — mentees see this as their roadmap. Drag isn’t here yet; use the arrows to reorder.
-          </div>
+          {list.length > 0 && (
+            <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
+              Order matters — use the arrows to reorder.
+            </div>
+          )}
           <ProgramTimeline
             phases={list}
             editable
             autoOpenNew={list.length === 0}
-            emptyText="No phases yet. Tap Add phase below, or use the starter course above."
+            emptyText=""
             onSave={savePhase}
             onDelete={deletePhase}
             onMove={movePhase}
@@ -144,21 +146,22 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
       <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
     </div>
     {/* Same door as the desktop sidebar — mobile has no sidebar, so Teams has
-        to live on Cohort or it stays buried in Settings. */}
-    <Card onClick={() => { window.location.hash = "#/teams"; }} style={{ marginTop: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Building2 size={16} color={C.purple} />
+        to live on Cohort or it stays buried in Settings. One line: an org the
+        mentor already belongs to needs naming, not describing. Only the
+        no-org case earns a second line, because "Ryzn for Teams" alone doesn't
+        say what tapping it would do. */}
+    <Card onClick={() => { window.location.hash = "#/teams"; }} style={{ marginTop: 14, padding: "12px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        <div style={{ width: 30, height: 30, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Building2 size={14} color={C.purple} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {org?.name || "Ryzn for Teams"}
           </div>
-          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>
-            {org ? "Roster, invites, and Orbit" : "Create an organisation for your company"}
-          </div>
+          {!org && <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Create an organisation</div>}
         </div>
-        <ExternalLink size={15} color={C.gray} />
+        <ExternalLink size={14} color={C.mute} />
       </div>
     </Card>
     <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
@@ -168,31 +171,31 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <Sparkline points={impactPoints} color="#B7AFF2" />
       </div>
       <Label color="#9C93E8">Your cohort impact</Label>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 6 }}>
         <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1.6, color: C.white, lineHeight: 1 }}>{cohortCount}</div>
         <div style={{ fontSize: 13.5, fontWeight: 600, color: "#B5B3AE" }}>mentee{cohortCount === 1 ? "" : "s"} impacted</div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16 }}>
-        <div style={{ width: 26, height: 26, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Crown size={13} color={C.white} /></div>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#B7AFF2", lineHeight: 1.2 }}>
-            {u.impact} <span style={{ fontFamily: F.mono, fontSize: 9.5, fontWeight: 600, color: "#8B8985", letterSpacing: 0.5 }}>IMPACT · {(u.tier || "Scout").toUpperCase()}</span>
-          </div>
-          {/* Was "RANK #12 OF 214" against a 214-mentor platform that does not
-              exist. Rank renders only once the server has one. */}
-          <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#8B8985", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
-            {u.mentorRank ? `RANK #${u.mentorRank}` : "RANKING OPENS THIS QUARTER"}
-            <ChevronRight size={11} color="#8B8985" />
-          </div>
-        </div>
+      {/* One meta line, not three stacked ones. Impact, tier and rank are the
+          same fact at three resolutions, so they read as a single run — and
+          rank still only renders once the server has one, rather than printing
+          "RANKING OPENS THIS QUARTER" as though it were a stat. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.5, color: "#8B8985", marginTop: 14 }}>
+        <span style={{ color: "#B7AFF2", fontWeight: 700 }}>{u.impact} IMPACT</span>
+        <span>· {(u.tier || "Scout").toUpperCase()}</span>
+        {u.mentorRank ? <span>· #{u.mentorRank}</span> : null}
+        <ChevronRight size={11} color="#8B8985" style={{ marginLeft: -1 }} />
       </div>
-      {u.fresh && <div style={{ marginTop: 14 }}><Bar pct={u.impact / 400} color={C.purple} h={5} /><div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 5 }}>{u.impact}/400 → PATHFINDER</div></div>}
     </Card>
+    {/* The status legend only means something once there are dots on screen to
+        decode. With an empty cohort it was three lines of colour theory above
+        nothing. */}
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "18px 2px 10px" }}>
       <Label>Your cohort · {(u.cohort || []).length} mentee{(u.cohort || []).length === 1 ? "" : "s"}</Label>
-      <div style={{ display: "flex", gap: 10 }}>
-        {Object.values(STATUS).map(s => <span key={s.label} style={{ fontFamily: F.mono, fontSize: 8.5, color: s.c, display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, background: s.c, display: "inline-block" }} />{s.label.toUpperCase()}</span>)}
-      </div>
+      {(u.cohort || []).length > 0 && (
+        <div style={{ display: "flex", gap: 10 }}>
+          {Object.values(STATUS).map(s => <span key={s.label} style={{ fontFamily: F.mono, fontSize: 8.5, color: s.c, display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, background: s.c, display: "inline-block" }} />{s.label.toUpperCase()}</span>)}
+        </div>
+      )}
     </div>
     <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr 1fr", gap: 10 }}>
       {(u.cohort || []).map(m => {
@@ -212,40 +215,32 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <Card onClick={() => openOverlay("addmentee")} style={{ padding: 13, border: "1.5px dashed #CFCDC7", background: "#EFEEEA", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 110 }}>
           <div style={{ width: 32, height: 32, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={16} color={C.purple} /></div>
           <div style={{ fontSize: 12.5, color: C.ink, marginTop: 8, textAlign: "center", fontWeight: 700 }}>Add mentees</div>
-          <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, marginTop: 3, letterSpacing: 0.5 }}>{addsLeft}/3 ADDS LEFT · +30 IMPACT EACH</div>
+          <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, marginTop: 3, letterSpacing: 0.5 }}>{addsLeft} LEFT · +30 IMPACT</div>
         </Card>
       )}
     </div>
-    {/* One door to all three ways of finding a mentee — the ranked deck, the
-        map and directory, and the applications waiting on you. It used to take
-        three, and the applications one was the hardest to find. */}
-    <Card onClick={() => openOverlay("mentees")} style={{ marginTop: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Search size={16} color={C.purple} /></div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Find mentees</div>
-          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Matched to you · by region · applications</div>
+    {/* The two directories, in one card. Find mentees is still the single door
+        to the ranked deck, the map and the applications waiting on you — the
+        overlay's own tabs say so, so the card doesn't have to. Mentor network
+        is the other side of that line: follow mentors, reshare into your Orbit.
+        Two rows of one line each, where this was two cards of three. */}
+    <Card style={{ marginTop: 10, padding: "4px 14px" }}>
+      {[
+        { key: "mentees", icon: Search, bg: C.purpleTint, color: C.purple, title: "Find mentees" },
+        { key: "network", icon: Repeat2, bg: C.tealTint, color: C.teal, title: "Mentor network" },
+      ].map(({ key, icon: Icon, bg, color, title }, i) => (
+        <div key={key} onClick={() => openOverlay(key)}
+          style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 0", cursor: "pointer", borderTop: i ? `1px solid ${C.line}` : "none" }}>
+          <div style={{ width: 30, height: 30, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={14} color={color} /></div>
+          <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{title}</div>
+          <ChevronRight size={15} color={C.mute} />
         </div>
-        <ChevronRight size={16} color={C.gray} />
-      </div>
-    </Card>
-    {/* The other side of the directory. Everything above this line runs across
-        the mentor/mentee line; this is where a mentor finds the other mentors,
-        follows them, and picks up posts worth passing to their own cohort. */}
-    <Card onClick={() => openOverlay("network")} style={{ marginTop: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 36, height: 36, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Repeat2 size={16} color={C.teal} /></div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Mentor network</div>
-          <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Follow mentors · add their posts to your Orbit</div>
-        </div>
-        <ChevronRight size={16} color={C.gray} />
-      </div>
+      ))}
     </Card>
     {!(u.cohort || []).length && (
       <Card style={{ marginTop: 10 }}>
         <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55 }}>
-          Your cohort is empty. Mentee applications are still open — you’ll be notified when someone matches your profile. Building out your feed in the meantime is what makes mentees pick you.
+          No mentees yet — you’ll be notified when someone matches you. Building out your feed is what makes them pick you.
         </div>
       </Card>
     )}

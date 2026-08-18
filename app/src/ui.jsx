@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useId, createContext, useContext } from "react";
+import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "motion/react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
@@ -10,6 +11,7 @@ import {
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { logoSrc, Brand } from "./branding.js";
 import { spring, t, modalPop, backdrop, T_FAST, T_SLOW } from "./motion.js";
+import { useIsDesktop } from "./useIsDesktop.js";
 
 /* ————— Brand marks (from public/branding/ryzn-brand-kit) ————— */
 export const BrandLogo = ({
@@ -454,14 +456,22 @@ const MODAL_CLOSE_GUTTER = CLOSE_INSET + CLOSE_SIZE + CLOSE_CLEARANCE;
 
 export const ModalShell = ({ children, onClose }) => {
   const reduced = useReducedMotion();
-  return (
+  /* Portaled to <body> — this modal is opened from screens nested inside a
+     Framer Motion page-transition wrapper (fadeSlide/sheet animate `y`),
+     which leaves a CSS transform on that ancestor even at rest. A transform
+     anywhere up the tree makes its box the containing block for our
+     `position: fixed` overlay instead of the real viewport, so the backdrop
+     and modal were sized to the page content's box and got clipped by the
+     nearest `overflow: hidden` — cutting off the Save/Cancel row on mobile.
+     Rendering into `document.body` escapes that ancestor chain entirely. */
+  return createPortal(
     <motion.div onClick={onClose} variants={backdrop} initial="initial" animate="animate" exit="exit"
       transition={t(reduced, T_FAST)}
       style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <motion.div onClick={e => e.stopPropagation()} variants={modalPop} initial="initial" animate="animate" exit="exit"
         transition={t(reduced, T_SLOW)}
         style={{
-          width: "min(94vw, 640px)", height: "min(78vh, 760px)", minHeight: 420,
+          width: "min(94vw, 640px)", maxHeight: "min(78vh, 760px)", minHeight: 420,
           background: C.surface, borderRadius: 24, overflow: "hidden", position: "relative",
           display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
         }}>
@@ -475,7 +485,8 @@ export const ModalShell = ({ children, onClose }) => {
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
@@ -752,7 +763,7 @@ const Textarea = ({ label, ...rest }) => (
   </div>
 );
 
-const PhaseForm = ({ initial, onCancel, onSave }) => {
+const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
   const [title, setTitle] = useState(initial.title || "");
   const [description, setDescription] = useState(initial.description || "");
   const [duration, setDuration] = useState(initial.duration || "");
@@ -773,6 +784,17 @@ const PhaseForm = ({ initial, onCancel, onSave }) => {
         : null,
     });
   };
+
+  /* Reported up so the modal's backdrop click and X button can share the
+     same "discard changes?" gate as the in-form Cancel button — an
+     untouched form (or one restored to its original values) closes silently. */
+  const dirty = title.trim() !== (initial.title || "")
+    || description.trim() !== (initial.description || "")
+    || duration.trim() !== (initial.duration || "")
+    || hasReward !== !!initial.reward
+    || (hasReward && rewardLabel.trim() !== (initial.reward?.label || ""))
+    || (hasReward && rewardDesc.trim() !== (initial.reward?.description || ""));
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty]);
 
   return (
     <div style={{ padding: "20px 24px 24px" }}>
@@ -823,15 +845,34 @@ const PhaseForm = ({ initial, onCancel, onSave }) => {
  * calls the save API itself.
  */
 export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, emptyText, autoOpenNew = false }) => {
-  const [editing, setEditing] = useState(autoOpenNew && phases.length === 0 ? "new" : null); // null | "new" | phase
+  const isDesktop = useIsDesktop();
+  const [editing, setEditing] = useState(null); // null | "new" | phase
+  const dirtyRef = useRef(false);
+
+  /* Auto-opening the form the instant this screen mounts drops a mobile
+     mentor straight into a modal with zero context — they haven't even read
+     what a "phase" is yet. Desktop has the whole page as context already;
+     mobile gets a beat to look around first. */
+  useEffect(() => {
+    if (!autoOpenNew || phases.length > 0) return;
+    if (isDesktop) { setEditing("new"); return; }
+    const id = setTimeout(() => setEditing("new"), 900);
+    return () => clearTimeout(id);
+  }, [autoOpenNew, isDesktop]);
+
+  const openEditing = (target) => { dirtyRef.current = false; setEditing(target); };
+  const closeEditing = () => {
+    if (dirtyRef.current && !window.confirm("Discard this phase? Your changes won’t be saved.")) return;
+    setEditing(null);
+  };
 
   if (!editable && phases.length === 0) return null;
 
   return (
     <>
-      {phases.length === 0 && editable && (
+      {phases.length === 0 && editable && emptyText !== "" && (
         <div className="fade-up" style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, padding: "2px 0 16px" }}>
-          {emptyText || "No phases yet. Add the first step of your program — what a mentee does from kickoff to graduation."}
+          {emptyText || "No phases yet — add the first step of your program."}
         </div>
       )}
       {phases.map((p, i) => {
@@ -864,7 +905,7 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
                   <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
                     {onMove && i > 0 && <button style={iconBtnStyle} onClick={() => onMove(i, -1)}><ChevronUp size={13} color={C.gray} /></button>}
                     {onMove && i < phases.length - 1 && <button style={iconBtnStyle} onClick={() => onMove(i, 1)}><ChevronDown size={13} color={C.gray} /></button>}
-                    <button style={iconBtnStyle} onClick={() => setEditing(p)}><Pencil size={13} color={C.gray} /></button>
+                    <button style={iconBtnStyle} onClick={() => openEditing(p)}><Pencil size={13} color={C.gray} /></button>
                     <button style={iconBtnStyle} onClick={() => { if (window.confirm(`Delete "${p.title}"?`)) onDelete(p.id); }}><Trash2 size={13} color={C.coral} /></button>
                   </div>
                 )}
@@ -884,13 +925,14 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
         );
       })}
       {editable && (
-        <Btn kind="soft" small onClick={() => setEditing("new")}><Plus size={14} /> Add phase</Btn>
+        <Btn kind="soft" small onClick={() => openEditing("new")}><Plus size={14} /> Add phase</Btn>
       )}
       {editing && (
-        <ModalShell onClose={() => setEditing(null)}>
+        <ModalShell onClose={closeEditing}>
           <PhaseForm
             initial={editing === "new" ? {} : editing}
-            onCancel={() => setEditing(null)}
+            onCancel={closeEditing}
+            onDirtyChange={(d) => { dirtyRef.current = d; }}
             onSave={(phase) => { onSave(phase); setEditing(null); }}
           />
         </ModalShell>

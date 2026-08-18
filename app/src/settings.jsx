@@ -43,7 +43,12 @@ export const DEFAULT_PREFS = Object.freeze({
   avail: "Flexible", openDoor: false, paused: false,
 });
 
-const NOTIF_ROWS = (role) => [
+/* Exported because the notification centre names the switch that muted a row.
+   Deriving the name from the same list the switch is drawn from is the only way
+   the two can't drift — "muted by Leaderboard movement" has to match a label
+   that actually exists in Settings, or it sends people looking for a switch
+   that isn't there. */
+export const NOTIF_ROWS = (role) => [
   ["streak", "Daily streak reminder", "One nudge a day, at the time you usually write."],
   ["notes", role === "mentor" ? "Mentee activity" : "Notes from your mentor", role === "mentor"
     ? "When someone in your cohort writes or finishes a step."
@@ -52,6 +57,10 @@ const NOTIF_ROWS = (role) => [
   ["posts", "New posts from people you follow", "Follows travel across orbits, so these do too."],
   ["board", "Leaderboard movement", "When your position changes. Off by default — it's the noisiest one."],
 ];
+
+/** The Settings label for a preference key, or the raw key if it has no switch. */
+export const notifPrefLabel = (role, key) =>
+  NOTIF_ROWS(role).find(([k]) => k === key)?.[1] || key;
 
 export function SettingsSheet({
   role, orbit, orbits = [], user, prefs, onPrefs, onClose, onLogout,

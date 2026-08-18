@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   Sparkles, Send, Eye, EyeOff, Mail, ArrowLeft, Check, Lock, Flame, Crown,
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
-  KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
+  KeyRound, Shield, Home, MapPin, Bell, BellOff, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Building2, Camera
 } from "lucide-react";
@@ -14,6 +14,7 @@ import { shareToLinkedIn } from "./lib/share.js";
 import { isMentorRole } from "./lib/roles.js";
 import { uploadProfileImage, ACCEPT } from "./lib/upload.js";
 import { EventComposer, EventCard } from "./events.jsx";
+import { notifPrefLabel } from "./settings.jsx";
 
 /* ————————————————— APP: SHARED ————————————————— */
 
@@ -289,6 +290,34 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
    Pending invites (`awaitingYou`) are the one thing that used to go missing:
    a mentor could invite a mentee and the mentee had no surface that showed it. */
 /**
+ * One notification row.
+ *
+ * A muted row is the same row, dimmed, with the switch that is holding it back
+ * named where its timestamp would be — "MUTED BY LEADERBOARD MOVEMENT" points
+ * at a label that exists in Settings, so the fix is one screen away. It stays
+ * tappable: the underlying thing is real, only the alerting was turned off.
+ */
+const NotifRow = ({ n, onClick, mutedBy = null }) => (
+  <Card onClick={onClick} style={{ display: "flex", gap: 12, alignItems: "flex-start", opacity: mutedBy ? 0.6 : 1 }}>
+    <div style={{ width: 36, height: 36, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><n.icon size={16} color={n.c} /></div>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontWeight: 700, fontSize: 13.5 }}>{n.t}</span>
+        <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", whiteSpace: "nowrap" }}>{n.when.toUpperCase()}</span>
+      </div>
+      <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>{n.d}</div>
+      {mutedBy && (
+        <div style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 0.5, color: "#A5A39D", marginTop: 7, display: "flex", alignItems: "center", gap: 5 }}>
+          <BellOff size={10} color="#A5A39D" />
+          MUTED BY {mutedBy.toUpperCase()}
+        </div>
+      )}
+    </div>
+    <ChevronRight size={14} color="#C9C6C0" style={{ marginTop: 4 }} />
+  </Card>
+);
+
+/**
  * The notification centre.
  *
  * Every row carries the preference that admits it (`pref`), and a row whose
@@ -300,8 +329,15 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
  * Rows with no `pref` are not preferences — they are things waiting on this
  * person. A pending invitation and a session proposal are somebody else's action
  * blocked on an answer; muting those would lose the answer, not the noise.
+ *
+ * Muted rows are hidden, not destroyed. The count at the foot of the list opens
+ * them, each labelled with the switch that is holding it back, because a screen
+ * that says "1 muted" and offers no way to see what was muted asks someone to
+ * take the app's word for it — and the honest answer might be the one thing
+ * they were looking for.
  */
-export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo, onRespond, busy, prefs = {}, nudge = null }) => {
+export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo, onRespond, busy, prefs = {}, nudge = null, onSettings }) => {
+  const [showMuted, setShowMuted] = useState(false);
   const inbox = (Array.isArray(matches) ? matches : []).filter(m => m.awaitingYou);
   const items = [];
   /* A proposed session is a real thing waiting on this person — it belongs at
@@ -341,7 +377,9 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
      an unknown key to *shown* rather than hidden is deliberate — a preference
      that hasn't loaded yet must not silently swallow a notification. */
   const visible = items.filter((n) => !n.pref || prefs[n.pref] !== false);
-  const muted = items.length - visible.length;
+  const mutedItems = items.filter((n) => n.pref && prefs[n.pref] === false);
+  const muted = mutedItems.length;
+  const empty = inbox.length === 0 && visible.length === 0;
 
   return (
     <div>
@@ -368,24 +406,58 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
             </Card>
           );
         })}
-        {visible.map((n, i) => (
-          <Card key={i} onClick={() => navTo(n.to)} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ width: 36, height: 36, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><n.icon size={16} color={n.c} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 13.5 }}>{n.t}</span>
-                <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", whiteSpace: "nowrap" }}>{n.when.toUpperCase()}</span>
-              </div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>{n.d}</div>
+        {visible.map((n, i) => <NotifRow key={i} n={n} onClick={() => navTo(n.to)} />)}
+
+        {/* Nothing waiting and nothing derived. Said plainly, because a blank
+            screen reads as a failed load. */}
+        {empty && (
+          <Card style={{ textAlign: "center", padding: 22 }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>You’re all caught up</div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.45 }}>
+              {muted > 0
+                ? "Everything else is muted by your notification settings."
+                : "Invitations, session proposals and progress land here."}
             </div>
-            <ChevronRight size={14} color="#C9C6C0" style={{ marginTop: 4 }} />
           </Card>
-        ))}
+        )}
+
         {/* Says the switches are working rather than leaving someone to wonder
-            whether the app is quiet or broken. */}
+            whether the app is quiet or broken — and opens what they hid. */}
         {muted > 0 && (
-          <div style={{ fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.6, color: "#A5A39D", textAlign: "center", padding: "6px 0" }}>
-            {muted} MUTED BY YOUR NOTIFICATION SETTINGS
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowMuted(v => !v)}
+              style={{
+                width: "100%", background: "none", border: "none", cursor: "pointer",
+                fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.6, color: "#A5A39D",
+                padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}
+            >
+              {muted} MUTED BY YOUR NOTIFICATION SETTINGS
+              <ChevronRight
+                size={12}
+                color="#A5A39D"
+                style={{ transform: `rotate(${showMuted ? -90 : 90}deg)`, transition: "transform .15s" }}
+              />
+            </button>
+            {showMuted && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {mutedItems.map((n, i) => (
+                  <NotifRow key={i} n={n} onClick={() => navTo(n.to)} mutedBy={notifPrefLabel(role, n.pref)} />
+                ))}
+                {onSettings && (
+                  <Btn
+                    small
+                    kind="ghost"
+                    style={{ borderColor: C.line, color: C.gray }}
+                    onClick={onSettings}
+                  >
+                    Change notification settings
+                  </Btn>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
