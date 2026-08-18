@@ -39,7 +39,7 @@ const Chip = ({ children, c = C.purple, bg = C.purpleTint }) => (
 const Tile = ({ label, value, color = C.ink, sub }) => (
   <Card style={{ padding: 14 }}>
     <Label>{label}</Label>
-    <div style={{ fontSize: 26, fontWeight: 700, color, marginTop: 6, letterSpacing: -0.6 }}>{value}</div>
+    <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color, marginTop: 6, letterSpacing: -0.6 }}>{value}</div>
     {sub && <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{sub}</div>}
   </Card>
 );
@@ -73,7 +73,7 @@ const Switch = ({ on, onChange, disabled }) => (
 const Rule = ({ title, body, on, onChange, disabled }) => (
   <div style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${C.line}` }}>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontWeight: 700, fontSize: 14 }}>{title}</div>
+      <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{title}</div>
       <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.55, marginTop: 5 }}>{body}</div>
     </div>
     <Switch on={on} onChange={onChange} disabled={disabled} />
@@ -541,7 +541,7 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
           <div style={{ width: 52, height: 52, background: C.purpleTint, borderRadius: 15, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <Radio size={24} color={C.purple} />
           </div>
-          <div style={{ fontSize: 19, fontWeight: 700, marginTop: 14 }}>The {org.name} Orbit is closed.</div>
+          <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, marginTop: 14 }}>The {org.name} Orbit is closed.</div>
           <div style={{ fontSize: 13.5, color: C.gray, marginTop: 8, lineHeight: 1.55, maxWidth: 420, margin: "8px auto 0" }}>
             Open it and everyone in the org reads one feed: every post your people have marked
             profile-visible, newest first. Posts written for a mentor’s own cohort stay private to
@@ -564,7 +564,7 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
           <Radio size={17} color={C.teal} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14.5 }}>Orbit is open</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14.5 }}>Orbit is open</div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>
             {state.members} PEOPLE · PROFILE POSTS ONLY
           </div>
@@ -777,7 +777,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
               <Building2 size={21} color={C.white} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: -0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 21, fontWeight: 700, letterSpacing: -0.6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{org.name}</div>
               <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 1, marginTop: 2 }}>
                 RYZN FOR TEAMS · {(ROLE_CHIP[org.orgRole] || ROLE_CHIP.member).label}
               </div>

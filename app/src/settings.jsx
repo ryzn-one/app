@@ -82,7 +82,7 @@ export function SettingsSheet({
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Avatar src={user?.avatarUrl} name={user?.name} size={54} radius={16} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{user?.name || "—"}</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{user?.name || "—"}</div>
             {isPrivate && (
               <div style={{ fontSize: 11.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
                 Your picture is yours to change — it isn't taken from your employer's directory.
@@ -202,7 +202,7 @@ export function SettingsSheet({
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <Icon size={16} color={o.accent || C.purple} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13.5 }}>{o.name}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>{o.name}</div>
                   <div style={{ fontSize: 11.5, color: C.gray }}>
                     {o.tag}{isCurrent ? " · you're here" : ""}
                   </div>
@@ -259,7 +259,7 @@ export function SettingsSheet({
 
       {confirmDelete && (
         <Card style={{ marginTop: 10, border: `1.5px solid ${C.coral}`, background: C.coralTint }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Delete your account?</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Delete your account?</div>
           <p style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.55, marginTop: 6 }}>
             Your profile, writing, posts, pairings and XP are erased and cannot be restored.
             Anyone you mentor loses access to your Orbit. Export your data first if you want to keep it.

@@ -27,7 +27,7 @@ export function StudioStats({ inOrbit, followers, views, reactions }) {
       {stats.map(([n, l, c, Icon]) => (
         <Card key={l} style={{ padding: "11px 6px", textAlign: "center" }}>
           <Icon size={13} color={c} />
-          <div style={{ fontSize: 17, fontWeight: 700, color: c, marginTop: 3 }}>{n}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700, color: c, marginTop: 3 }}>{n}</div>
           <div style={{ fontFamily: F.mono, fontSize: 7.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>{l}</div>
         </Card>
       ))}
@@ -117,7 +117,7 @@ export function PostOverflow({ post, onPin, onDelete }) {
   if (confirming) {
     return (
       <div style={{ background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 13 }}>Delete this post?</div>
+        <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>Delete this post?</div>
         <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginTop: 4 }}>
           Mentees lose access to it, and the views and reactions go with it. This can't be undone.
         </div>
@@ -176,7 +176,7 @@ export function StudioSeg({ value, onChange }) {
 export function StudioEmpty() {
   return (
     <Card style={{ textAlign: "center", padding: "28px 22px" }}>
-      <div style={{ fontSize: 17, fontWeight: 700 }}>Nothing here yet.</div>
+      <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700 }}>Nothing here yet.</div>
       <p style={{ fontSize: 13, color: C.gray, lineHeight: 1.55, marginTop: 7 }}>
         Your first post lands in every mentee's Orbit — no message required, no meeting needed.
         A paragraph about the thing you learned this week is enough.

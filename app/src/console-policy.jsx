@@ -176,7 +176,7 @@ export function CreatorConsole({ orbit, orbits, onSaved, toast, onOpenPosts }) {
             <Users size={19} color={C.teal} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.3 }}>{orbit.name}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, letterSpacing: -0.3 }}>{orbit.name}</div>
             <div style={{ fontSize: 12.5, color: C.gray }}>
               {orbit.memberCount ?? 0} {orbit.memberCount === 1 ? "member" : "members"}
             </div>

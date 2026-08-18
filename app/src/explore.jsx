@@ -53,7 +53,7 @@ export function PersonRow({ p, wanted, onOpen }) {
         <Avatar src={p.avatarUrl} name={p.name} size={42} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
             {wanted === "mentor"
               ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, color: C.deep, letterSpacing: 0.8, flexShrink: 0 }}><Crown size={10} />{(p.tier || "Scout").toUpperCase()}</span>
               : track && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, color: C.deep, letterSpacing: 0.8, flexShrink: 0 }}><School size={10} />{track.toUpperCase()}</span>}

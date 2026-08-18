@@ -52,7 +52,7 @@ const goToApp = () => {
 const Tile = ({ label, value, color = C.ink, sub }) => (
   <Card style={{ padding: 14 }}>
     <Label>{label}</Label>
-    <div style={{ fontSize: 26, fontWeight: 700, color, marginTop: 6, letterSpacing: -0.6 }}>{value}</div>
+    <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color, marginTop: 6, letterSpacing: -0.6 }}>{value}</div>
     {sub && <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{sub}</div>}
   </Card>
 );
@@ -119,7 +119,7 @@ function AdminGate({ onIn, error }) {
           </div>
         </div>
         <div style={{ background: C.surface, borderRadius: 20, padding: 22, marginTop: 20 }}>
-          <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>Sign in</div>
+          <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>Sign in</div>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
             Founding team only. Your account must be on the admin list.
           </div>
@@ -522,7 +522,7 @@ function ConfirmDelete({ open, title, lines = [], confirmWord, busy, onCancel, o
           <div style={{ width: 34, height: 34, borderRadius: 10, background: C.coralTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <AlertTriangle size={17} color={C.coral} />
           </div>
-          <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: -0.3 }}>{title}</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 16, letterSpacing: -0.3 }}>{title}</div>
         </div>
         {lines.map((l, i) => (
           <div key={i} style={{ fontSize: 13.5, color: i === 0 ? C.ink : C.gray, lineHeight: 1.55, marginTop: i === 0 ? 14 : 8 }}>{l}</div>
@@ -934,7 +934,7 @@ export default function RyznAdmin() {
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4 }}>{NAV.find(n => n[0] === nav)[1]}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, letterSpacing: -0.4 }}>{NAV.find(n => n[0] === nav)[1]}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", letterSpacing: 1, marginTop: 2 }}>RYZN PLATFORM · ALL COHORTS</div>
           </div>
           {!isDesktop && (

@@ -100,7 +100,7 @@ export const MonthCalendar = ({ sessions = [], selected, onSelect }) => {
           style={{ background: "none", border: "none", cursor: "pointer", padding: 6, margin: -6, color: C.ink }}>
           <ChevronLeft size={18} />
         </button>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>
+        <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>
           {cursor.toLocaleDateString([], { month: "long", year: "numeric" })}
         </div>
         <button onClick={() => step(1)} aria-label="Next month"
@@ -372,7 +372,7 @@ export const SessionCard = ({ session, busy, onAction, toast }) => {
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Monogram name={session.person?.name || "—"} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{session.person?.name}</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{session.person?.name}</div>
           <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{session.title}</div>
         </div>
         <Pill status={session.status} />
@@ -383,7 +383,7 @@ export const SessionCard = ({ session, busy, onAction, toast }) => {
         <div style={{ marginTop: 12, background: meta.bg, borderRadius: 12, padding: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <CalendarCheck size={16} color={meta.c} />
-            <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{fmtRange(session.confirmedSlot)}</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.ink }}>{fmtRange(session.confirmedSlot)}</div>
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 9.5, color: meta.c, marginTop: 6, letterSpacing: 0.6 }}>
             {session.status === "completed" ? "LOGGED BY THE MENTOR" : countdown(session.confirmedSlot.start).toUpperCase()}
@@ -574,7 +574,7 @@ export const SessionsScreen = ({
                 <Calendar size={18} color={C.gray} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>No one to book with yet</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No one to book with yet</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
                   {role === "mentor"
                     ? "An accepted mentee unlocks session booking with them."
@@ -630,7 +630,7 @@ export const SessionsScreen = ({
                 <CalendarClock size={18} color={C.gray} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>No sessions yet</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No sessions yet</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
                   Propose a couple of times above. {role === "mentor" ? "Your mentee" : "Your mentor"} picks one, and it lands on both calendars.
                 </div>

@@ -17,7 +17,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.err) return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', system-ui, sans-serif", background: "#E9E8E4", padding: 24 }}>
         <div style={{ textAlign: "center", maxWidth: 340 }}>
-          <div style={{ fontSize: 34, fontWeight: 700, color: "#5B4FCF" }}>RYZN</div>
+          <div style={{ fontFamily: F.sans, fontSize: 34, fontWeight: 700, color: "#5B4FCF" }}>RYZN</div>
           <div style={{ marginTop: 10, color: "#5F5E5A", lineHeight: 1.5 }}>Something broke on our side. Your account and your work are safe.</div>
           <button onClick={() => window.location.reload()} style={{
             marginTop: 18, fontFamily: "inherit", fontWeight: 600, fontSize: 15, border: "none",

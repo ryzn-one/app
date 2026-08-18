@@ -135,7 +135,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 36, height: 36, background: C.purple, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center" }}><Sparkles size={17} color={C.white} /></div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Ryzn AI</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Ryzn AI</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.teal, letterSpacing: 0.8 }}>SETUP · STEP {Math.min(stepIdx + 1, script.length)} OF {script.length} · ONE-TIME ONLY</div>
           </div>
           <XPPill xp={xp} unit={role === "mentee" ? "XP" : "IMP"} />
@@ -256,7 +256,7 @@ export const UnlockScreen = ({ role, onNext, toast }) => (
     <div className="badge-pop" style={{ width: 118, height: 118, background: C.white, margin: "26px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {role === "mentee" ? <Glyph color={C.purple} size={54} /> : <Crown size={50} color={C.purple} />}
     </div>
-    <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>{role === "mentee" ? "Goal Setter." : "Scout."}</div>
+    <div style={{ fontFamily: F.sans, fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>{role === "mentee" ? "Goal Setter." : "Scout."}</div>
     <div style={{ fontSize: 14.5, marginTop: 8, lineHeight: 1.55, maxWidth: 260, color: "#DDD9F6" }}>
       {role === "mentee"
         ? "Three real goals, on the record. Your streak starts today — and your first badge is already verifiable."
@@ -288,7 +288,7 @@ export const FilterSheet = ({ open, close, sections, values, setValues, count, c
       <div onClick={e => e.stopPropagation()} className="sheet-up" style={{ background: C.white, width: "100%", borderRadius: "22px 22px 0 0", padding: "16px 22px 24px", boxSizing: "border-box" }}>
         <div style={{ width: 38, height: 4, background: "#D8D6D0", borderRadius: 2, margin: "0 auto 14px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>Filters</div>
+          <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700 }}>Filters</div>
           <button onClick={() => setValues(v => Object.fromEntries(Object.keys(v).map(k => [k, "Any"])))} style={{ background: "none", border: "none", color: C.purple, fontFamily: F.sans, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Reset all</button>
         </div>
         {sections.map(s => (
@@ -430,7 +430,7 @@ export const TagRow = ({ items = [], bg = C.surface, color = C.gray, border = tr
 export const EmptyRoster = ({ title, body, action }) => (
   <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
     <Glyph color={C.purple} size={40} />
-    <div style={{ fontSize: 21, fontWeight: 700, marginTop: 14 }}>{title}</div>
+    <div style={{ fontFamily: F.sans, fontSize: 21, fontWeight: 700, marginTop: 14 }}>{title}</div>
     <div style={{ fontSize: 13, color: C.gray, marginTop: 8, lineHeight: 1.55, maxWidth: 280 }}>{body}</div>
     {action}
   </div>
@@ -474,14 +474,14 @@ export const MentorDetailSheet = ({ m, close, footer, onAmplify, toast }) => {
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
           <Avatar src={m.avatarUrl} name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700 }}>{m.name}</div>
             {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{m.headline}</div>}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
           {[[m.impact ?? 0, "IMPACT"], [m.industry || "—", "INDUSTRY"]].map(([n, l]) => (
-            <div key={l}><div style={{ fontSize: 18, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
+            <div key={l}><div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
           ))}
         </div>
       </Card>
@@ -573,7 +573,7 @@ export const MenteeDetailSheet = ({ m, close, footer }) => {
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
           <Avatar src={m.avatarUrl} name={m.name} size={58} bg={C.purple} color={C.white} radius={0} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 19, fontWeight: 700 }}>{m.name}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700 }}>{m.name}</div>
             {m.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE", marginTop: 2, lineHeight: 1.4 }}>{m.headline}</div>}
             {labelOf(m.track) && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
           </div>
@@ -719,13 +719,13 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "44%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
+          <div style={{ fontFamily: F.sans, fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
           <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: bg === C.teal ? C.teal : C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><Crown size={11} /> {(m.tier || "Scout").toUpperCase()}</div>
           {m.industry && <div style={{ position: "absolute", bottom: 12, right: 12, fontFamily: F.mono, fontSize: 9, color: "rgba(255,255,255,.8)", letterSpacing: 1 }}>{String(m.industry).toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
           {m.headline && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{m.headline}</div>}
           {m.why && <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 8, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", flexShrink: 0 }}>{m.why}</div>}
           <div style={{ marginTop: 8, flexShrink: 0 }}><TagRow items={m.expertise} limit={3} /></div>
@@ -739,7 +739,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   const emptyView = requested.length > 0 ? (
     <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
       <Glyph color={C.purple} size={40} />
-      <div style={{ fontSize: 21, fontWeight: 700, marginTop: 14 }}>That’s the deck.</div>
+      <div style={{ fontFamily: F.sans, fontSize: 21, fontWeight: 700, marginTop: 14 }}>That’s the deck.</div>
       <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
         {openReqs > 0
           ? `${openReqs} request${openReqs === 1 ? "" : "s"} out. Mentors reply in their own time — you’ll get a notification.`
@@ -775,7 +775,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1 }}>
             <Label color={C.purple}>Matched from your answers</Label>
-            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>
+            <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>
               {filtered.length === 0 ? "Your mentors." : `Your ${filtered.length} mentor${filtered.length === 1 ? "" : "s"}.`}
             </div>
           </div>
@@ -795,7 +795,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
               <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.purpleTint, borderRadius: 12, padding: "9px 12px" }}>
                 <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
                   <div style={{ fontSize: 11.5, color: C.gray }}>Invited you to their cohort</div>
                 </div>
                 <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
@@ -863,7 +863,7 @@ export const RequestsInbox = ({ inbox = [], outbox = [], busy, canAccept = true,
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
                   {!m.answer && m.person?.goals?.[0] && (
                     <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>
                   )}
@@ -971,12 +971,12 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
     return (
       <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 12px 32px rgba(26,26,26,.12)" }}>
         <div style={{ height: "42%", background: bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <div style={{ fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
+          <div style={{ fontFamily: F.sans, fontSize: 76, fontWeight: 700, color: "rgba(255,255,255,.94)", letterSpacing: -3 }}><Initials name={m.name} /></div>
           {m.affinity?.shared > 0 && <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(26,26,26,.45)", color: C.white, fontFamily: F.mono, fontSize: 11, fontWeight: 700, padding: "6px 10px" }}>{m.affinity.shared} SHARED</div>}
           {labelOf(m.track) && <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(255,255,255,.94)", color: C.deep, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, letterSpacing: 1, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}><School size={11} /> {labelOf(m.track).toUpperCase()}</div>}
         </div>
         <div style={{ flex: 1, padding: "13px 16px 14px", display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, letterSpacing: -0.4 }}>{m.name}</div>
           {m.goals?.[0] && (
             <div style={{ background: C.surface, borderRadius: 10, padding: "8px 11px", marginTop: 8, flexShrink: 0 }}>
               <span style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, letterSpacing: 0.8 }}>GOAL 1 OF {m.goals.length}</span>
@@ -994,7 +994,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
   const emptyView = (taken > 0 || outbox.length > 0) ? (
     <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
       <Crown size={34} color={C.purple} />
-      <div style={{ fontSize: 21, fontWeight: 700, marginTop: 12 }}>{taken > 0 ? "Cohort forming." : "Invitations out."}</div>
+      <div style={{ fontFamily: F.sans, fontSize: 21, fontWeight: 700, marginTop: 12 }}>{taken > 0 ? "Cohort forming." : "Invitations out."}</div>
       <div style={{ fontSize: 13, color: C.gray, marginTop: 6 }}>{taken} of {cap} seats filled{outbox.length > 0 ? ` · ${outbox.length} awaiting a reply` : ""}.</div>
       <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         {[...accepted, ...outbox].map(m => (
@@ -1028,7 +1028,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
           {embedded ? <div style={{ flex: 1 }} /> : (<>
             <div style={{ flex: 1 }}>
               <Label color={C.purple}>Matched to your profile</Label>
-              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>Mentee requests.</div>
+              <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, letterSpacing: -0.4, marginTop: 3 }}>Mentee requests.</div>
             </div>
             <XPPill xp={xp} unit="IMP" />
           </>)}

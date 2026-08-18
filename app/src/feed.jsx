@@ -86,7 +86,7 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
           <FileText size={18} color={C.amber} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 3 }}>
             {(post.fileKind || "FILE").toUpperCase()}{post.media ? " · TAP TO OPEN" : ""}
           </div>
@@ -375,7 +375,7 @@ export const PostCard = ({
                 fontWeight: 700, fontSize: 14, color: C.ink, fontFamily: F.sans, textAlign: "left",
               }}>{author}</button>
             ) : (
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{author}</span>
+              <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{author}</span>
             )}
             {mine && <span style={{ fontSize: 13, color: C.gray, fontWeight: 600 }}>· you</span>}
             {tier && <Crown size={11} color={C.purple} />}
@@ -389,7 +389,7 @@ export const PostCard = ({
         </div>
       </div>
 
-      {post.title && post.kind !== "resource" && <div style={{ fontWeight: 700, fontSize: 15, marginTop: 11 }}>{post.title}</div>}
+      {post.title && post.kind !== "resource" && <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 11 }}>{post.title}</div>}
       {post.text && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: post.title && post.kind !== "resource" ? C.gray : C.ink, marginTop: post.title && post.kind !== "resource" ? 4 : 11 }}>{post.text}</div>}
       {/* Not for the author: a mentor playing back their own video shouldn't
           count as a view of it. */}
@@ -483,7 +483,7 @@ export const PostCard = ({
               <Monogram name={c.authorName} size={28} bg={C.surface} color={C.ink} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{c.authorName}</span>
+                  <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{c.authorName}</span>
                   <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>{relTime(c.createdAt)}</span>
                 </div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 2, color: C.ink }}>{c.text}</div>
@@ -762,7 +762,7 @@ export const MentorFeed = ({
           <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Avatar src={u.avatarUrl} name={name} size={46} radius={14} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>{name}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 16 }}>{name}</div>
               {u.headline && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2 }}>{u.headline}</div>}
               <div style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, marginTop: 4, letterSpacing: 0.6 }}>
                 {Number(followers).toLocaleString()} FOLLOWER{followers === 1 ? "" : "S"}
@@ -813,7 +813,7 @@ export const MentorFeed = ({
                 <Repeat2 size={15} color={C.purple} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 13.5 }}>Mentor network</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>Mentor network</div>
                 <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>
                   {amplified.length
                     ? `${amplified.length} post${amplified.length === 1 ? "" : "s"} from other mentors in your Orbit`
@@ -906,7 +906,7 @@ export const ContentTabs = ({
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ width: 40, height: 40, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={meta.c} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{p.title}</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{p.title}</div>
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>{(p.mins || p.fileKind || "FILE").toUpperCase()} · {p.views} VIEWS</div>
           </div>
           {readOnly ? (
@@ -946,7 +946,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
       <HeaderRow title="Orbit" onBack={back} />
       <div style={{ padding: "0 20px 20px" }}>
         <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>No mentor yet</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No mentor yet</div>
           <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>Once you’re matched, everything your mentor posts lands here.</div>
         </Card>
       </div>
@@ -974,7 +974,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <Avatar src={mentor.avatarUrl} name={mentor.name} size={54} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{mentor.name}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>{mentor.name}</div>
               {mentor.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE" }}>{mentor.headline}</div>}
               {mentor.tier && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.purple, padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}><Crown size={11} /> {mentor.tier.toUpperCase()} MENTOR</div>}
             </div>
@@ -983,7 +983,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
               mentee's real mentor is — the mentor's own numbers attributed
               wrongly. Only the post count is knowable here. */}
           <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
-            <div><div style={{ fontSize: 20, fontWeight: 700, color: "#B7AFF2" }}>{feed.length}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>POSTS</div></div>
+            <div><div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: "#B7AFF2" }}>{feed.length}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>POSTS</div></div>
           </div>
         </Card>
 
@@ -991,7 +991,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
           <Card style={{ background: C.tealTint, border: "none", display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 36, height: 36, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><MessageCircle size={16} color={C.white} /></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: C.teal }}>Direct Connect · earned</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.teal }}>Direct Connect · earned</div>
               <div style={{ fontSize: 12, color: C.teal, opacity: 0.85 }}>{first} replies within a day.</div>
             </div>
             <Btn small style={{ background: C.teal }} onClick={openDm}><MessageCircle size={13} /> Message</Btn>
@@ -1001,7 +1001,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
               <div style={{ width: 40, height: 40, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={16} color={C.gray} /></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Direct Connect is earned, not given</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Direct Connect is earned, not given</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>The Orbit is open to you now — everything {first} posts, plus every resource. Finish Stage 1 and messaging unlocks too.</div>
               </div>
             </div>

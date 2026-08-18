@@ -74,7 +74,7 @@ const Shell = ({ children }) => (
 
 const Pitch = () => (
   <>
-    <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 24, lineHeight: 1.25 }}>
+    <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 24, lineHeight: 1.25 }}>
       The same programme, inside your company.
     </div>
     <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>
@@ -91,7 +91,7 @@ const Pitch = () => (
               <Icon size={17} color={C.purple} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14.5 }}>{title}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14.5 }}>{title}</div>
               <div style={{ fontSize: 13, color: C.gray, marginTop: 3, lineHeight: 1.5 }}>{body}</div>
             </div>
           </Card>
@@ -131,7 +131,7 @@ function Waitlist() {
           <div style={{ width: 48, height: 48, background: C.tealTint, borderRadius: 14, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <Check size={22} color={C.teal} strokeWidth={3} />
           </div>
-          <div style={{ fontSize: 19, fontWeight: 700, marginTop: 14 }}>You’re on the list.</div>
+          <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, marginTop: 14 }}>You’re on the list.</div>
           <div style={{ fontSize: 13.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
             We’ll email <b style={{ color: C.ink }}>{email}</b> and get your org set up.
           </div>
@@ -178,7 +178,7 @@ function CreateOrg({ onCreated }) {
 
   return (
     <>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 24, lineHeight: 1.25 }}>
+      <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 24, lineHeight: 1.25 }}>
         Set up your organisation.
       </div>
       <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>
@@ -214,7 +214,7 @@ function CreateOrg({ onCreated }) {
                 <Icon size={17} color={C.purple} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14.5 }}>{title}</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14.5 }}>{title}</div>
                 <div style={{ fontSize: 13, color: C.gray, marginTop: 3, lineHeight: 1.5 }}>{body}</div>
               </div>
             </Card>

@@ -56,7 +56,7 @@ export const RoleSelect = ({ onPick }) => (
   <div style={{ padding: "44px 24px 0", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 18, lineHeight: 1.2 }}>Who’s rising today?</div>
+      <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 18, lineHeight: 1.2 }}>Who’s rising today?</div>
       <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>Pick a path — mentees and mentors get two different experiences from here on.</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 26 }}>
         {[
@@ -71,7 +71,7 @@ export const RoleSelect = ({ onPick }) => (
               <Icon size={20} color={color} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{title}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, color: C.ink }}>{title}</div>
               <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>{sub}</div>
             </div>
             <ChevronRight size={18} color={C.gray} />
@@ -86,7 +86,7 @@ export const Welcome = ({ role, go }) => (
   <div style={{ padding: "44px 24px 0", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 28 }}>
       <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 28, lineHeight: 1.2 }}>
+      <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 28, lineHeight: 1.2 }}>
         {role === "mentee" ? <>You don’t need to figure this out alone.</> : <>You’re exactly who we built this for.</>}
       </div>
       <div style={{ fontSize: 15, color: C.gray, marginTop: 14, lineHeight: 1.6 }}>
@@ -104,7 +104,7 @@ export const Welcome = ({ role, go }) => (
           : [["20", "founding mentors"], ["12", "week cohort"], ["4", "mentor tiers"]]
         ).map(([n, l]) => (
           <div key={l} style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.purple, letterSpacing: -0.4, lineHeight: 1 }}>{n}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, color: C.purple, letterSpacing: -0.4, lineHeight: 1 }}>{n}</div>
             <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, letterSpacing: 0.4, textTransform: "uppercase", marginTop: 8, lineHeight: 1.35 }}>{l}</div>
           </div>
         ))}
@@ -226,7 +226,7 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
   return (
     <div style={{ padding: "0 24px" }}>
       <button onClick={() => go("welcome")} style={{ background: "none", border: "none", cursor: "pointer", padding: "18px 0 0", margin: 0 }}><ArrowLeft size={20} color={C.ink} /></button>
-      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 12 }}>{role === "mentee" ? "Create your account" : "Claim your invitation"}</div>
+      <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 12 }}>{role === "mentee" ? "Create your account" : "Claim your invitation"}</div>
       <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>{role === "mentee" ? "Two minutes to set up. XP starts counting immediately." : "The Roster is invitation-only. Your code was in the email."}</div>
       {role === "mentor" && (
         <div style={{ marginTop: 14 }}>
@@ -303,7 +303,7 @@ export const Login = ({ go, onDone, role }) => {
     <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <button onClick={() => go("welcome")} style={{ background: "none", border: "none", cursor: "pointer", padding: "22px 0 0", alignSelf: "flex-start" }}><ArrowLeft size={20} color={C.ink} /></button>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 20 }}>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.2 }}>Welcome back.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.2 }}>Welcome back.</div>
         {/* Was "Day 34 of your streak is waiting." — a specific claim about a
             person the sign-in screen has not identified yet. */}
         <div style={{ fontSize: 14.5, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>{role === "mentee" ? "Pick up where you left off." : "Your cohort kept moving. Catch up inside."}</div>
@@ -379,7 +379,7 @@ export const Forgot = ({ go }) => {
       <button onClick={() => step === "email" || step === "done" ? go("login") : setStep(step === "reset" ? "sent" : "email")} style={{ background: "none", border: "none", cursor: "pointer", padding: "18px 0 0" }}><ArrowLeft size={20} color={C.ink} /></button>
       {step === "email" && <>
         <div style={{ width: 48, height: 48, background: C.purpleTint, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 16 }}><KeyRound size={20} color={C.purple} /></div>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Reset your password</div>
+        <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Reset your password</div>
         <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5, lineHeight: 1.5 }}>Enter your email. We’ll send a {OTP_LEN}-digit code — it expires in 10 minutes.</div>
         <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
         <FormError>{err}</FormError>
@@ -387,7 +387,7 @@ export const Forgot = ({ go }) => {
       </>}
       {step === "sent" && <>
         <div style={{ width: 48, height: 48, background: C.tealTint, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 16 }}><Mail size={20} color={C.teal} /></div>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Check your inbox</div>
+        <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Check your inbox</div>
         <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>Code sent to <b style={{ color: C.ink }}>{email}</b>. Enter it below.</div>
         <div style={{ display: "flex", gap: 6, marginTop: 20, maxWidth: "100%" }}>
           {code.map((d, i) => (
@@ -403,7 +403,7 @@ export const Forgot = ({ go }) => {
         </div>
       </>}
       {step === "reset" && <>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 20 }}>New password</div>
+        <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 20 }}>New password</div>
         <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>Ten characters minimum. Make it one you’ll remember at 7 AM.</div>
         <Field label="New password" type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="••••••••••" autoComplete="new-password" />
         <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
@@ -415,7 +415,7 @@ export const Forgot = ({ go }) => {
       </>}
       {step === "done" && <>
         <div style={{ width: 48, height: 48, background: C.tealTint, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 16 }}><Check size={22} color={C.teal} strokeWidth={3} /></div>
-        <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Password reset.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Password reset.</div>
         <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5 }}>You’re back in. Your streak never noticed you were gone.</div>
         <Btn style={{ marginTop: 20 }} onClick={() => go("login")}>Back to sign in</Btn>
       </>}

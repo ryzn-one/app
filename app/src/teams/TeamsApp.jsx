@@ -60,7 +60,7 @@ export const TeamsHeader = ({ org, eyebrow, title, name, avatarUrl, onAvatar, da
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
       <div style={{ minWidth: 0 }}>
         <Mono>{eyebrow || org?.name || "Ryzn for Teams"}</Mono>
-        <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: -0.5, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 21, fontWeight: 700, letterSpacing: -0.5, marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
       </div>
       <button onClick={onAvatar} title="Your profile"
         style={{ border: "2px solid rgba(255,255,255,.45)", background: "transparent", borderRadius: 13, padding: 2, cursor: "pointer", lineHeight: 0, flexShrink: 0 }}>
@@ -98,7 +98,7 @@ const Body = ({ children }) => (
 
 const Empty = ({ title, body, action }) => (
   <Card style={{ textAlign: "center", padding: 26 }}>
-    <div style={{ fontSize: 17, fontWeight: 700 }}>{title}</div>
+    <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700 }}>{title}</div>
     <div style={{ fontSize: 13, color: C.gray, marginTop: 7, lineHeight: 1.55 }}>{body}</div>
     {action}
   </Card>
@@ -210,7 +210,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
               </div>
             </div>
             <div style={{ padding: "16px 16px 18px" }}>
-              <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>{step.title}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, letterSpacing: -0.4 }}>{step.title}</div>
               <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.55, marginTop: 7 }}>{step.why}</div>
               {step.unlocks && (
                 <div style={{ marginTop: 13, background: C.surface, borderRadius: 12, padding: "11px 13px" }}>
@@ -235,7 +235,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
             <div style={{ width: 46, height: 46, borderRadius: 14, background: C.white, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
               <Check size={22} color={C.teal} />
             </div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: C.teal, marginTop: 12 }}>That’s everything for today</div>
+            <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700, color: C.teal, marginTop: 12 }}>That’s everything for today</div>
             <div style={{ fontSize: 13, color: C.teal, marginTop: 6 }}>
               Streak safe at {u.streak || 0} day{(u.streak || 0) === 1 ? "" : "s"}. See you tomorrow.
             </div>
@@ -371,7 +371,7 @@ export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toa
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <Avatar src={m.avatarUrl} name={m.name} size={52} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700 }}>{m.name}</div>
+                    <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700 }}>{m.name}</div>
                     <div style={{ fontFamily: F.mono, fontSize: 9, color: C.mute, marginTop: 3 }}>
                       {(m.headline || "YOUR MENTOR").toUpperCase()}
                     </div>
@@ -676,7 +676,7 @@ const OrgOrbit = ({ org, toast }) => {
       <Card style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
         <Radio size={17} color={C.mute} style={{ marginTop: 2, flexShrink: 0 }} />
         <div>
-          <div style={{ fontWeight: 700, fontSize: 13.5 }}>The {org?.name} Orbit is closed</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>The {org?.name} Orbit is closed</div>
           <div style={{ fontSize: 12.5, color: C.gray, marginTop: 5, lineHeight: 1.5 }}>
             Your org admin opens it. Once it’s open, everything your colleagues publish to their profiles lands here.
           </div>

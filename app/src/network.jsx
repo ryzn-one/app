@@ -55,7 +55,7 @@ function PeerRow({ p, busy, onOpen, onToggleFollow }) {
         <Avatar src={p.avatarUrl} name={p.name} size={42} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+            <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, color: C.deep, letterSpacing: 0.8, flexShrink: 0 }}>
               <Crown size={10} />{(p.tier || "Scout").toUpperCase()}
             </span>
@@ -202,7 +202,7 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
               ...(guild.here != null ? [[String(guild.here), `in ${guild.hereLabel || "this orbit"}`, C.coral]] : []),
             ].map(([n, l, c]) => (
               <div key={l} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: c }}>{n}</div>
+                <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, color: c }}>{n}</div>
                 <div style={{ fontFamily: F.mono, fontSize: 7.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</div>
               </div>
             ))}
@@ -259,7 +259,7 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
           {!feedLoading && !feedError && feed.length === 0 && (
             <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
               <Users size={18} color={C.purple} />
-              <div style={{ fontWeight: 700, fontSize: 14, marginTop: 8 }}>Nothing here yet</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, marginTop: 8 }}>Nothing here yet</div>
               <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
                 Follow a few mentors and their public posts land here. Anything worth passing on, add to your Orbit and your whole cohort reads it.
               </div>

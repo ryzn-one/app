@@ -165,7 +165,7 @@ export function JoinCircle({ circle, joined, busy, error, onJoin, onCancel }) {
     return (
       <div style={{ padding: "40px 20px", textAlign: "center" }}>
         <Users size={30} color={C.mute} />
-        <div style={{ fontSize: 19, fontWeight: 700, marginTop: 12 }}>That link doesn't lead anywhere.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, marginTop: 12 }}>That link doesn't lead anywhere.</div>
         <p style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
           The circle may have been closed, or the link may be mistyped.
         </p>
@@ -180,7 +180,7 @@ export function JoinCircle({ circle, joined, busy, error, onJoin, onCancel }) {
   return (
     <div style={{ padding: "26px 20px 30px" }}>
       <Label color={C.teal}>Community circle</Label>
-      <div style={{ fontSize: 27, fontWeight: 700, letterSpacing: -0.6, marginTop: 8 }}>{circle.name}</div>
+      <div style={{ fontFamily: F.sans, fontSize: 27, fontWeight: 700, letterSpacing: -0.6, marginTop: 8 }}>{circle.name}</div>
       {circle.tag && <div style={{ fontSize: 14, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>{circle.tag}</div>}
 
       <Card style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 12 }}>

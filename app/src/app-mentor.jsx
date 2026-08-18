@@ -56,7 +56,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
       <div style={{ padding: "0 20px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
         <Card className="fade-up" style={{ background: C.ink, border: "none", color: C.white, padding: 22 }}>
           <Label color="#9C93E8">Your mentorship course</Label>
-          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 6, lineHeight: 1.25 }}>
+          <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 6, lineHeight: 1.25 }}>
             Kickoff to graduation, in phases.
           </div>
           <div style={{ fontSize: 13, color: "#B5B3AE", marginTop: 8, lineHeight: 1.55 }}>
@@ -64,11 +64,11 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
           </div>
           <div style={{ display: "flex", gap: 18, marginTop: 16 }}>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "#B7AFF2", lineHeight: 1 }}>{list.length}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 28, fontWeight: 700, color: "#B7AFF2", lineHeight: 1 }}>{list.length}</div>
               <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", letterSpacing: 0.8, marginTop: 4 }}>PHASES</div>
             </div>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "#B7AFF2", lineHeight: 1 }}>{list.filter((p) => p.reward).length}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 28, fontWeight: 700, color: "#B7AFF2", lineHeight: 1 }}>{list.filter((p) => p.reward).length}</div>
               <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", letterSpacing: 0.8, marginTop: 4 }}>REWARDS</div>
             </div>
           </div>
@@ -77,7 +77,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
         {list.length === 0 && (
           <Card className="fade-up" style={{ border: `1.5px dashed ${C.purple}`, background: C.purpleTint }}>
             <Label color={C.purple}>Start here</Label>
-            <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>Add your first phase</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 8 }}>Add your first phase</div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
               Or use a 4-phase starter and edit from there.
             </div>
@@ -141,7 +141,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
         <Label>Founding cohort</Label>
-        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
       </div>
       <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
     </div>
@@ -156,7 +156,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
           <Building2 size={14} color={C.purple} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {org?.name || "Ryzn for Teams"}
           </div>
           {!org && <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Create an organisation</div>}
@@ -172,7 +172,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
       </div>
       <Label color="#9C93E8">Your cohort impact</Label>
       <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: 6 }}>
-        <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1.6, color: C.white, lineHeight: 1 }}>{cohortCount}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 40, fontWeight: 700, letterSpacing: -1.6, color: C.white, lineHeight: 1 }}>{cohortCount}</div>
         <div style={{ fontSize: 13.5, fontWeight: 600, color: "#B5B3AE" }}>mentee{cohortCount === 1 ? "" : "s"} impacted</div>
       </div>
       {/* One meta line, not three stacked ones. Impact, tier and rank are the
@@ -206,7 +206,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
               <Avatar src={m.avatarUrl} name={m.name} size={38} bg={st.bg} color={st.c} />
               <span style={{ width: 9, height: 9, background: st.c }} />
             </div>
-            <div style={{ fontWeight: 700, fontSize: 13.5, marginTop: 9 }}>{m.name}</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5, marginTop: 9 }}>{m.name}</div>
             <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 3 }}>WK {m.week} · <Flame size={9} style={{ display: "inline", verticalAlign: -1 }} color={m.streak ? C.coral : "#B9B7B1"} /> {m.streak}</div>
           </Card>
         );
@@ -313,7 +313,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <Avatar src={mentee.avatarUrl} name={mentee.name} size={58} bg={C.purple} color={C.white} radius={0} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 19, fontWeight: 700 }}>{mentee.name}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700 }}>{mentee.name}</div>
               {mentee.headline && <div style={{ fontSize: 12.5, color: "#B5B3AE", marginTop: 2, lineHeight: 1.4 }}>{mentee.headline}</div>}
               {track && (
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,.14)", padding: "4px 9px", marginTop: 7, fontFamily: F.mono, fontSize: 9, letterSpacing: 1 }}>
@@ -326,7 +326,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
           {[[`Wk ${mentee.week}`, "program"], [`${mentee.streak}`, "streak"], [`${mentee.badges ?? 0}`, "badges"]].map(([n, l]) => (
             <Card key={l} style={{ padding: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 700 }}>{n}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>{n}</div>
               <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>
             </Card>
           ))}
@@ -337,7 +337,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
               {mentee.stage1 ? <MessageCircle size={15} color={C.white} /> : <Lock size={15} color={C.gray} />}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: mentee.stage1 ? C.teal : C.ink }}>{mentee.stage1 ? "Direct line open" : "Chat unlocks at their Stage 1"}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: mentee.stage1 ? C.teal : C.ink }}>{mentee.stage1 ? "Direct line open" : "Chat unlocks at their Stage 1"}</div>
               <div style={{ fontSize: 12, color: mentee.stage1 ? C.teal : C.gray, marginTop: 2, opacity: mentee.stage1 ? 0.85 : 1, lineHeight: 1.4 }}>{mentee.stage1 ? `${mentee.name.split(" ")[0]} earned Direct Connect — message any time.` : "They earn it by finishing their first exercise. You’ll get a nudge the moment it opens."}</div>
             </div>
             {mentee.stage1 && <Btn small style={{ background: C.teal }} onClick={() => openDm(mentee)}><MessageCircle size={13} /> Message</Btn>}
@@ -436,7 +436,7 @@ export const MentorBoard = ({ u, back }) => (
     <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
         <Label color="#9C93E8">Your Impact Score</Label>
-        <div style={{ fontSize: 46, fontWeight: 700, letterSpacing: -1.8, color: "#B7AFF2", marginTop: 6 }}>{u.impact}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 46, fontWeight: 700, letterSpacing: -1.8, color: "#B7AFF2", marginTop: 6 }}>{u.impact}</div>
         <div style={{ fontFamily: F.mono, fontSize: 10, color: "#8B8985", marginTop: 4 }}>{(u.tier || "Scout").toUpperCase()} · {u.mentorRank ? `RANK #${u.mentorRank}` : "UNRANKED"}</div>
         <div style={{ marginTop: 14 }}><Bar pct={Math.min(1, u.impact / 400)} color={C.purple} h={5} /></div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#8B8985", marginTop: 5 }}>{u.impact}/400 → PATHFINDER</div>
@@ -517,7 +517,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u?.tier || "Scout").toUpperCase()} MENTOR</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
               {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
-                <div key={l}><div style={{ fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
+                <div key={l}><div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
               ))}
             </div>
           </ProfileHeader>
@@ -607,7 +607,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Label color={C.teal}>Course design</Label>
-                <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4, letterSpacing: -0.2, color: C.teal }}>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 16, marginTop: 4, letterSpacing: -0.2, color: C.teal }}>
                   {phases.length ? `${phases.length} phase${phases.length === 1 ? "" : "s"} · edit course` : "Design your course"}
                 </div>
               </div>

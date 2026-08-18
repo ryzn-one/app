@@ -67,7 +67,7 @@ export function UnlockTrackCard({ stage, mentor, chatGate, onStart, busy }) {
 
         {/* The current step, alone. */}
         <motion.div key={step.id} initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring(reduced)}>
-          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginTop: 12 }}>{step.title}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginTop: 12 }}>{step.title}</div>
           <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>{step.sub}</div>
         </motion.div>
 
@@ -111,7 +111,7 @@ export function ChatLocked({ stage, mentor, go }) {
       <div style={{ width: 62, height: 62, borderRadius: 20, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Lock size={24} color={C.purple} />
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 16 }}>Chat is earned.</div>
+      <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 16 }}>Chat is earned.</div>
       <p style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.6, marginTop: 8, maxWidth: 320 }}>
         {mentor
           ? `${firstNameOf(mentor.name)} reads what you write before you ever message them. Finish the track and this opens.`
@@ -152,7 +152,7 @@ export function ChatUnlocked({ mentor, onOpen, onClose }) {
         initial={reduced ? false : { scale: 0.9, y: 10 }} animate={{ scale: 1, y: 0 }} transition={spring(reduced)}
         style={{ background: C.white, borderRadius: 20, padding: "26px 22px", maxWidth: 340, width: "100%", textAlign: "center" }}>
         <Glyph color={C.teal} size={40} />
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 12 }}>Chat is open.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 12 }}>Chat is open.</div>
         <p style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.6, marginTop: 7 }}>
           You finished the track{mentor ? ` — ${firstNameOf(mentor.name)} is one message away.` : "."} The Connect badge is yours.
         </p>

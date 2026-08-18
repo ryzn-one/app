@@ -29,11 +29,11 @@ import { countdown, fmtRange } from "./lib/calendar.js";
 export const MenteeChatList = ({ mentors = [], onOpenThread }) => (
   <div style={{ padding: "18px 20px 20px" }}>
     <Label color={C.purple}>Direct Connect</Label>
-    <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>Your threads.</div>
+    <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>Your threads.</div>
     {mentors.length === 0 ? (
       <Card style={{ marginTop: 16, textAlign: "center", padding: "28px 20px" }}>
         <MessageCircle size={24} color={C.mute} />
-        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10 }}>Chat is open — you just need someone to talk to.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700, marginTop: 10 }}>Chat is open — you just need someone to talk to.</div>
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
           Find a mentor here and this fills up.
         </div>
@@ -44,7 +44,7 @@ export const MenteeChatList = ({ mentors = [], onOpenThread }) => (
           <Card key={m.id} onClick={() => onOpenThread(m)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
             <Avatar src={m.avatarUrl} name={m.name} size={38} radius={12} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{m.name}</div>
               {m.headline && <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.headline}</div>}
             </div>
             <ChevronRight size={16} color={C.mute} />
@@ -93,7 +93,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
           <Label>Founding cohort</Label>
-          <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: -0.8, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 30, fontWeight: 700, letterSpacing: -0.8, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
           <div style={{ color: C.gray, fontSize: 14, marginTop: 2 }}>{u.fresh ? "Day 1. It starts now." : `Week ${u.week} of the Program. Keep moving.`}</div>
         </div>
         <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer", position: "relative" }}>
@@ -109,7 +109,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
               <Users size={16} color={C.white} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>
                 {pendingInvites.length === 1
                   ? `${(pendingInvites[0].person?.name || "A mentor").split(" ")[0]} invited you`
                   : `${pendingInvites.length} mentor invites waiting`}
@@ -131,7 +131,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <Avatar src={mentors[0]?.avatarUrl} name={atRisk.mentorName} size={36} radius={11} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>
                 {(atRisk.mentorName || "Your mentor").split(" ")[0]} noticed you've been away
               </div>
               <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 3 }}>
@@ -165,13 +165,13 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
 
       <Card data-tour="mentee-home-progress" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 18 }}>
         <Ring pct={u.fresh ? 0.03 : u.week / 12}>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>{u.fresh ? "3%" : `${Math.round((u.week / 12) * 100)}%`}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700 }}>{u.fresh ? "3%" : `${Math.round((u.week / 12) * 100)}%`}</div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray }}>{u.fresh ? "DAY 1/84" : `WK ${u.week}/12`}</div>
         </Ring>
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Flame size={22} color={C.coral} fill={C.coral} />
-            <span style={{ fontSize: 26, fontWeight: 700 }}>{u.streak}</span>
+            <span style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700 }}>{u.streak}</span>
             <span style={{ color: C.gray, fontSize: 13, fontWeight: 600 }}>day streak</span>
           </div>
           <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, marginTop: 8 }}>{Number(u.xp || 0).toLocaleString()} XP{u.rank ? ` · #${u.rank} in cohort` : ""}</div>
@@ -184,7 +184,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <Label color={todayDone ? C.teal : "#B9B3E8"}>Today’s exercise · {todayEx.mins} min</Label>
-            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{todayDone ? `${todayEx.title} — done.` : todayEx.title}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, marginTop: 6 }}>{todayDone ? `${todayEx.title} — done.` : todayEx.title}</div>
             <div style={{ fontSize: 13, marginTop: 4, opacity: 0.75 }}>{todayDone ? `+${todayEx.xp} XP banked. Back tomorrow.` : u.fresh ? "One honest paragraph. Your mentor reads it." : "3 sentences. Your dream industry. No filler."}</div>
           </div>
           {todayDone ? <Check size={26} /> : <div style={{ background: C.purple, borderRadius: 12, padding: 10 }}><Zap size={18} color={C.white} /></div>}
@@ -197,7 +197,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
             <BadgeTile badge={nextBadge} i={nextIdx} size={56} />
             <div style={{ flex: 1 }}>
               <Label>Next milestone</Label>
-              <div style={{ fontWeight: 700, fontSize: 15, marginTop: 3 }}>{nextBadge.name} — {nextBadge.unlocks.toLowerCase()}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 3 }}>{nextBadge.name} — {nextBadge.unlocks.toLowerCase()}</div>
               {nextBadge.progress ? <>
                 <div style={{ marginTop: 8 }}><Bar pct={nextBadge.progress[0] / nextBadge.progress[1]} /></div>
                 <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 5 }}>{nextBadge.progressLabel}</div>
@@ -222,7 +222,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 48, height: 48, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={20} color={C.gray} /></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>No mentor matched yet</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>No mentor matched yet</div>
               <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Mentors are still being onboarded. Your exercises are open now — the work counts either way.</div>
             </div>
             <ChevronRight size={16} color={C.gray} />
@@ -239,7 +239,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
               <Avatar src={m.avatarUrl} name={m.name} size={48} bg={C.purple} color={C.white} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{m.name}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{m.name}</div>
                   {unread > 0 && <span style={{ fontFamily: F.mono, fontSize: 8.5, background: C.purple, color: C.white, padding: "2px 6px", fontWeight: 700 }}>{unread} NEW</span>}
                 </div>
                 {m.headline && <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.headline}</div>}
@@ -271,7 +271,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Plus size={16} color={C.purple} /></div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Add another mentor</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Add another mentor</div>
               <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>A different strength, its own orbit · {mentorSeats}/3 seats used · +15 XP</div>
             </div>
             <ChevronRight size={16} color={C.gray} />
@@ -295,7 +295,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
               <Calendar size={16} color={needsAnswer.length ? C.amber : C.purple} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>
                 {needsAnswer.length > 0
                   ? `${(needsAnswer[0].person?.name || "Your mentor").split(" ")[0]} proposed a session`
                   : nextSession ? "Your next session" : "No session booked"}
@@ -322,7 +322,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Search size={16} color={C.purple} /></div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Explore mentors</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Explore mentors</div>
             <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Search the whole Roster by name, role, or expertise</div>
           </div>
           <ChevronRight size={16} color={C.gray} />
@@ -333,7 +333,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Users size={20} color={C.deep} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: C.deep }}>Cohort standings</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.deep }}>Cohort standings</div>
             <div style={{ fontSize: 12, color: C.deep, opacity: 0.7 }}>{u.rank ? `You’re #${u.rank}.` : "Rankings open once the cohort is running."}</div>
           </div>
           <ChevronRight size={18} color={C.deep} />
@@ -358,7 +358,7 @@ export const MenteeExercises = ({ u, todayDone, onSubmit, submitting }) => {
                 <Label color={C.purple}>{ex.day} · {ex.mins} min</Label>
                 {ex.milestone && <Label color={C.amber}>Milestone 3/3</Label>}
               </div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>{ex.title}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, marginTop: 6 }}>{ex.title}</div>
               <div style={{ fontSize: 13.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{ex.prompt}</div>
               <textarea value={text} onChange={e => { setText(e.target.value); setErr(null); }} placeholder="I’m here because…" rows={4}
                 style={{ width: "100%", marginTop: 12, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
@@ -417,7 +417,7 @@ export const MenteeBadges = ({ badges, openBadge, justEarnedId }) => (
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <BadgeTile badge={b} i={i} size={54} justEarned={justEarnedId === b.id} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{b.name}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{b.name}</div>
                   {earned ? <>
                     <div style={{ fontFamily: F.mono, fontSize: 10, color, marginTop: 2 }}>EARNED {b.earned.toUpperCase()} · VERIFIED</div>
                     <div style={{ fontSize: 11.5, color: C.gray, marginTop: 3 }}>Tap for QR verification + LinkedIn share</div>
@@ -468,7 +468,7 @@ export const CohortScreen = ({ u, back }) => {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
           <div style={{ width: 26, height: 26, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Crown size={13} color={C.white} /></div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#B7AFF2", lineHeight: 1.2 }}>
+            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, color: "#B7AFF2", lineHeight: 1.2 }}>
               {Number(u.xp || 0).toLocaleString()} <span style={{ fontFamily: F.mono, fontSize: 9.5, fontWeight: 600, color: "#8B8985", letterSpacing: 0.5 }}>XP</span>
             </div>
             <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#8B8985", marginTop: 3 }}>
@@ -481,7 +481,7 @@ export const CohortScreen = ({ u, back }) => {
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={18} color={C.gray} /></div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>The board opens with the cohort</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>The board opens with the cohort</div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Anonymised rankings appear once enough of the founding cohort is active. Until then the only number worth watching is your own.</div>
           </div>
         </div>
@@ -544,7 +544,7 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
         <button onClick={back} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, margin: -4 }}><ChevronLeft size={22} color={C.ink} /></button>
         <Monogram name={name} size={36} bg={C.purple} color={C.white} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>{name}</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{name}</div>
           <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.teal, letterSpacing: 0.8 }}>{sub}</div>
         </div>
       </div>
@@ -607,7 +607,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         {[[Number(u?.xp || 0).toLocaleString(), "total XP", C.purple], [`${u?.streak || 0}`, "day streak", C.coral], [`${u?.week || 1}/12`, "program wk", C.teal]].map(([n, l, c]) => (
           <Card key={l} style={{ padding: 12, textAlign: "center" }}>
-            <div style={{ fontSize: 19, fontWeight: 700, color: c }}>{n}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, color: c }}>{n}</div>
             <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>
           </Card>
         ))}
@@ -653,7 +653,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
             <div onClick={() => openOrbit(m.id)} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
               <Avatar src={m.avatarUrl} name={m.name} size={40} bg={C.purple} color={C.white} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{m.name}</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{m.name}</div>
                 {m.headline && <div style={{ fontSize: 11.5, color: C.gray }}>{m.headline}</div>}
               </div>
               <ChevronRight size={16} color={C.gray} />

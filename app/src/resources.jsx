@@ -159,7 +159,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
           <Plus size={16} color={C.white} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: C.purple }}>Promote to Ryzn</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.purple }}>Promote to Ryzn</div>
           <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>
             A TikTok, a short, a book, a paper — anything you’d tell a mentee to go and read.
           </div>
@@ -327,7 +327,7 @@ export const ResourceCard = ({
         ) : iconTile(resource.kind, 48)}
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{resource.title}</div>
+          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, lineHeight: 1.35 }}>{resource.title}</div>
           <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4, letterSpacing: 0.5 }}>
             {(resource.platform || resource.domain || "LINK").toUpperCase()} · {m.label.toUpperCase()}
             {resource.creator ? ` · ${resource.creator.toUpperCase()}` : ""}
@@ -578,7 +578,7 @@ export const NetworkShelf = ({ toast, onRepromoted }) => {
   if (!shelf.items.length) return (
     <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
       <Bookmark size={18} color={C.purple} />
-      <div style={{ fontWeight: 700, fontSize: 14, marginTop: 8 }}>No picks yet</div>
+      <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, marginTop: 8 }}>No picks yet</div>
       <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
         Follow a few mentors and whatever they promote to Ryzn lands here. Anything worth passing on
         goes onto your own shelf in a tap — and they keep the credit for finding it.

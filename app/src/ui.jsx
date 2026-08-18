@@ -442,7 +442,7 @@ export const HeaderRow = ({ title, onBack, right }) => {
     <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 14, paddingBottom: 10, paddingLeft: 20, paddingRight: Math.max(20, gutter) }}>
       {onBack && <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, margin: -4 }}><ChevronLeft size={22} color={C.ink} /></button>}
       {/* minWidth:0 lets a long title wrap instead of shoving `right` under the X. */}
-      <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.4, flex: 1, minWidth: 0 }}>{title}</div>
+      <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, letterSpacing: -0.4, flex: 1, minWidth: 0 }}>{title}</div>
       {right}
     </div>
   );
@@ -572,7 +572,7 @@ export const VideoCaptureModal = ({ title = "Record your video", hint, onClose, 
   return (
     <ModalShell onClose={onClose}>
       <div style={{ padding: "24px 22px" }}>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>{title}</div>
         {hint && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>{hint}</div>}
 
         <div style={{ marginTop: 16, borderRadius: 16, overflow: "hidden", background: C.ink, aspectRatio: "16/10", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
@@ -692,7 +692,7 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
     <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
       <Monogram name={name || "—"} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
       </div>
       {adminConsole && (
@@ -725,7 +725,7 @@ export class SectionBoundary extends React.Component {
     return (
       <div style={{ padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10 }}>
         <Glyph color={C.coral} size={34} />
-        <div style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>This screen didn’t load.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700, marginTop: 4 }}>This screen didn’t load.</div>
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, maxWidth: 300 }}>
           Nothing you did is lost. Try again, or move to another tab and come back.
         </div>
@@ -798,7 +798,7 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
 
   return (
     <div style={{ padding: "20px 24px 24px" }}>
-      <div style={{ fontSize: 18, fontWeight: 700 }}>{initial.id ? "Edit phase" : "Add phase"}</div>
+      <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>{initial.id ? "Edit phase" : "Add phase"}</div>
       <Field label="Phase title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Kickoff & goal-setting" />
       <Field label="Duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Weeks 1–2" />
       <Textarea label="Description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)}
@@ -900,7 +900,7 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
             </div>
             <div style={{ flex: 1, minWidth: 0, paddingBottom: 18 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: C.ink }}>{p.title}</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.ink }}>{p.title}</div>
                 {editable && (
                   <div style={{ display: "flex", gap: 1, flexShrink: 0 }}>
                     {onMove && i > 0 && <button style={iconBtnStyle} onClick={() => onMove(i, -1)}><ChevronUp size={13} color={C.gray} /></button>}
@@ -915,7 +915,7 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
               {showReward && (
                 <div style={{ marginTop: 9 }}>
                   <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: REWARD_TINT[p.reward.color], color: REWARD_COLOR[p.reward.color], padding: "6px 10px", borderRadius: 10 }}>
-                    <Award size={12} /><span style={{ fontSize: 12, fontWeight: 700 }}>{p.reward.label}</span>
+                    <Award size={12} /><span style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 700 }}>{p.reward.label}</span>
                   </div>
                   {p.reward.description && <div style={{ fontSize: 11.5, color: C.gray, marginTop: 5, lineHeight: 1.4 }}>{p.reward.description}</div>}
                 </div>

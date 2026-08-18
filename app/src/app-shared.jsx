@@ -199,7 +199,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
           <Label color="#F6D3C4">Next event</Label>
           {quarterlyEvent ? (
             <>
-              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>{quarterlyEvent.title}</div>
+              <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>{quarterlyEvent.title}</div>
               {quarterlyEvent.location?.label && (
                 <div style={{ fontSize: 13.5, marginTop: 4, opacity: 0.9 }}>{quarterlyEvent.location.label}</div>
               )}
@@ -211,7 +211,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
             </>
           ) : (
             <>
-              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>Not scheduled yet</div>
+              <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>Not scheduled yet</div>
               <div style={{ fontSize: 13.5, marginTop: 6, opacity: 0.92, lineHeight: 1.5 }}>
                 Meets run quarterly, in person, once the founding cohort is underway. Date and city land here — and in your inbox — as soon as they’re set.
               </div>
@@ -225,7 +225,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
               <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={18} color={C.gray} /></div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>Tickets unlock at Week 8</div>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Tickets unlock at Week 8</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Eligibility comes with the <b>Mentor Approved</b> badge. You’re in Week {u.week} of 12.</div>
               </div>
             </div>
@@ -302,7 +302,7 @@ const NotifRow = ({ n, onClick, mutedBy = null }) => (
     <div style={{ width: 36, height: 36, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><n.icon size={16} color={n.c} /></div>
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <span style={{ fontWeight: 700, fontSize: 13.5 }}>{n.t}</span>
+        <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>{n.t}</span>
         <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", whiteSpace: "nowrap" }}>{n.when.toUpperCase()}</span>
       </div>
       <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>{n.d}</div>
@@ -392,7 +392,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
               <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={16} color={C.purple} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13.5 }}>{role === "mentee" ? `${first} invited you` : `${first} asked to join`}</span>
+                  <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>{role === "mentee" ? `${first} invited you` : `${first} asked to join`}</span>
                   <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", whiteSpace: "nowrap" }}>NEW</span>
                 </div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
@@ -412,7 +412,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
             screen reads as a failed load. */}
         {empty && (
           <Card style={{ textAlign: "center", padding: 22 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>You’re all caught up</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>You’re all caught up</div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.45 }}>
               {muted > 0
                 ? "Everything else is muted by your notification settings."
@@ -502,7 +502,7 @@ export const InviteAlert = ({ role, invites = [], busy, onRespond }) => {
           <div style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: "#B7AFF2" }}>
             {role === "mentee" ? "MENTOR INVITE" : "MENTEE REQUEST"}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.3, marginTop: 4, lineHeight: 1.25 }}>
+          <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700, letterSpacing: -0.3, marginTop: 4, lineHeight: 1.25 }}>
             {role === "mentee" ? `${first} invited you` : `${first} asked to join`}
           </div>
           <div style={{ fontSize: 13, color: "#C9C6C0", marginTop: 4, lineHeight: 1.4 }}>
@@ -630,7 +630,7 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
         )}
         <Card onClick={onLogout} style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.coralTint}`, background: C.coralTint }}>
           <LogOut size={16} color={C.coral} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: C.coral }}>Log out</span>
+          <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: C.coral }}>Log out</span>
         </Card>
         <div style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", marginTop: 6 }}>RYZN · RYZN.ONE · RISE NOW.</div>
         <div style={{ textAlign: "center", fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D", marginTop: 4 }}>
@@ -672,7 +672,7 @@ export const BadgeModal = ({ badge, index, close, toast }) => {
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <BadgeTile badge={badge} i={index} size={76} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{badge.name}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700 }}>{badge.name}</div>
             <div style={{ fontFamily: F.mono, fontSize: 10.5, color: earned ? TIER_COLOR[badge.tier] : C.mute, marginTop: 3 }}>
               {earned ? `EARNED ${badge.earned?.toUpperCase()} · VERIFIED` : "NOT EARNED YET"}
             </div>
@@ -726,7 +726,7 @@ export const MidwayUnlock = ({ onClose, toast }) => (
     <div className="badge-pop" style={{ width: 118, height: 118, background: C.white, margin: "26px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <BadgeGlyph i={3} color={C.purple} size={54} />
     </div>
-    <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>Midway.</div>
+    <div style={{ fontFamily: F.sans, fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>Midway.</div>
     <div style={{ fontSize: 14.5, marginTop: 8, lineHeight: 1.55, maxWidth: 250, color: "#DDD9F6" }}>Halfway through the Program, zero shortcuts. The cohort board can see you now.</div>
     <div style={{ fontFamily: F.mono, fontSize: 10.5, marginTop: 14, color: "#C9C3F2" }}>RYZ-2026-00734 · VERIFIED</div>
     <div style={{ width: "100%", maxWidth: 280, marginTop: 28, display: "flex", flexDirection: "column", gap: 10 }}>

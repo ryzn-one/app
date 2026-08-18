@@ -125,7 +125,7 @@ export const IntroTourModal = ({ role, onDone }) => {
         <div style={{ width: 64, height: 64, borderRadius: 32, background: C.purpleTint, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Icon size={28} color={C.purple} />
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 18 }}>{step.title}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 18 }}>{step.title}</div>
         <div style={{ fontSize: 14, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>{step.body}</div>
 
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
@@ -212,7 +212,7 @@ export const SpotlightHint = ({ role, tab, onDismiss }) => {
         pointerEvents: "auto", background: C.ink, color: C.white, borderRadius: 14,
         padding: "12px 14px", boxSizing: "border-box",
       }}>
-        <div style={{ fontWeight: 700, fontSize: 13.5 }}>{hint.title}</div>
+        <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>{hint.title}</div>
         <div style={{ fontSize: 12.5, color: "#D9D6F2", marginTop: 4, lineHeight: 1.45 }}>{hint.body}</div>
         <button onClick={onDismiss} style={{ marginTop: 10, background: "none", border: "1px solid #55508C", color: C.white, borderRadius: 8, padding: "5px 10px", fontFamily: F.sans, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
           Got it
@@ -287,7 +287,7 @@ export const ComprehensiveTour = ({ role, onDone, onNavTo }) => {
           <div style={{ width: 64, height: 64, borderRadius: 32, background: C.purpleTint, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon size={28} color={C.purple} />
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 18 }}>{step.title}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 18 }}>{step.title}</div>
           <div style={{ fontSize: 14, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>{step.body}</div>
 
           <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
@@ -327,7 +327,7 @@ export const ComprehensiveTour = ({ role, onDone, onNavTo }) => {
           padding: "12px 14px", boxSizing: "border-box",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <div style={{ fontWeight: 700, fontSize: 13.5, flex: 1 }}>{step.title}</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5, flex: 1 }}>{step.title}</div>
             <div style={{ fontFamily: F.mono, fontSize: 10, color: "#A9A6D6" }}>{stepIdx}/{steps.length}</div>
           </div>
           <div style={{ fontSize: 12.5, color: "#D9D6F2", lineHeight: 1.45 }}>{step.body}</div>

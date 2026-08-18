@@ -447,7 +447,7 @@ export const EventCard = ({
     <Card style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>{event.title}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 15, fontWeight: 700, color: C.ink }}>{event.title}</div>
           {event.description && (
             <div style={{ fontSize: 12, color: C.gray, marginTop: 4, lineHeight: 1.4 }}>{event.description}</div>
           )}

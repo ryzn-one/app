@@ -111,7 +111,7 @@ export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
               <div style={{ fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.lilac }}>
                 INSTALL RYZN
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, marginTop: 3, lineHeight: 1.25 }}>
+              <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700, letterSpacing: -0.3, marginTop: 3, lineHeight: 1.25 }}>
                 Keep Ryzn on your home screen
               </div>
               <div style={{ fontSize: 12.5, color: "#C9C6C0", marginTop: 3, lineHeight: 1.45 }}>
