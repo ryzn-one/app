@@ -6,7 +6,6 @@ import { MenteeDetailSheet, MentorDetailSheet, EmptyRoster } from "./chatmatch.j
 import { PersonRow } from "./explore.jsx";
 import { MapBrowse } from "./map.jsx";
 import { exploreRoster } from "./lib/auth-client.js";
-import { rollUp, mockBucketFor, MOCK_CITIES } from "./lib/regions.js";
 
 /* ————————————————— DISCOVER —————————————————
 
@@ -51,7 +50,7 @@ export const DiscoverPane = ({ role, toast, onRequest, onRespond, canRequest, ca
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const { buckets } = useMemo(() => rollUp(MOCK_CITIES), []);
+  const buckets = [];
   const selected = buckets.find((b) => b.id === regionId) || null;
 
   /* Same debounce and same endpoint as Explore — this pane replaces that
@@ -71,12 +70,9 @@ export const DiscoverPane = ({ role, toast, onRequest, onRespond, canRequest, ca
     return () => { cancelled = true; clearTimeout(t); };
   }, [q]);
 
-  /* Region comes from mockBucketFor because profiles carry no location yet.
-     Everything else on this row is real. When the field lands, this map()
-     disappears and the filter moves into the query. */
   const tagged = useMemo(
-    () => people.map((p) => ({ ...p, _region: mockBucketFor(p.id, buckets), _track: labelOf(p.track) })),
-    [people, buckets]
+    () => people.map((p) => ({ ...p, _track: labelOf(p.track) })),
+    [people]
   );
 
   const list = tagged.filter((p) =>

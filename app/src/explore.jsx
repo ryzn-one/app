@@ -7,7 +7,6 @@ import {
 } from "./chatmatch.jsx";
 import { exploreRoster } from "./lib/auth-client.js";
 import { MapBrowse } from "./map.jsx";
-import { rollUp, mockBucketFor, MOCK_CITIES } from "./lib/regions.js";
 
 /* ————————————————— EXPLORE —————————————————
    The browsable directory. The swipe decks decide one person at a time and drop
@@ -122,11 +121,8 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
   const list = people.filter(passes);
   const activeF = Object.values(filters).filter(v => v !== "Any").length;
 
-  /* Region comes from mockBucketFor because profiles carry no location yet —
-     same stand-in Discover uses, and it disappears from both the day the field
-     lands. The rows themselves are real. */
-  const { buckets } = useMemo(() => rollUp(MOCK_CITIES), []);
-  const placed = useMemo(() => list.map(p => ({ ...p, _region: mockBucketFor(p.id, buckets) })), [list, buckets]);
+  const buckets = [];
+  const placed = list;
 
   const act = async (p, fn) => {
     if (busy) return;
