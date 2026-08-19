@@ -143,27 +143,11 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <Label>Founding cohort</Label>
         <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
       </div>
-      <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
-    </div>
-    {/* Same door as the desktop sidebar — mobile has no sidebar, so Teams has
-        to live on Cohort or it stays buried in Settings. One line: an org the
-        mentor already belongs to needs naming, not describing. Only the
-        no-org case earns a second line, because "Ryzn for Teams" alone doesn't
-        say what tapping it would do. */}
-    <Card onClick={() => { window.location.hash = "#/teams"; }} style={{ marginTop: 14, padding: "12px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-        <div style={{ width: 30, height: 30, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Building2 size={14} color={C.purple} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {org?.name || "Ryzn for Teams"}
-          </div>
-          {!org && <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Create an organisation</div>}
-        </div>
-        <ExternalLink size={14} color={C.mute} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={() => { window.location.hash = "#/teams"; }} style={{ background: C.purpleTint, border: `1px solid ${C.purple}`, borderRadius: 12, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: C.purple }}><Building2 size={14} color={C.purple} /> GENIE AI</button>
+        <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
       </div>
-    </Card>
+    </div>
     <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
       {/* Dynamic impact graph, pinned to the corner — real cumulative Impact
           points from the xp_events ledger, not a decorative fake curve. */}
@@ -186,6 +170,12 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <ChevronRight size={11} color="#8B8985" style={{ marginLeft: -1 }} />
       </div>
     </Card>
+    <div onClick={() => openOverlay("mentees")} style={{ marginTop: 14, padding: "12px 14px", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, display: "flex", alignItems: "center", gap: 11, cursor: "pointer" }}>
+      <div style={{ width: 30, height: 30, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Search size={14} color={C.purple} />
+      </div>
+      <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: C.gray }}>Find mentees</div>
+    </div>
     {/* The status legend only means something once there are dots on screen to
         decode. With an empty cohort it was three lines of colour theory above
         nothing. */}
@@ -197,7 +187,14 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         </div>
       )}
     </div>
-    <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr 1fr", gap: 10 }}>
+    {!(u.cohort || []).length && (
+      <Card style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55 }}>
+          No mentees yet. You’ll be notified when someone matches you. Building out your feed is what makes them pick you.
+        </div>
+      </Card>
+    )}
+    <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr 1fr", gap: 10, marginTop: !(u.cohort || []).length ? 10 : 0 }}>
       {(u.cohort || []).map(m => {
         const st = STATUS[m.status] || STATUS.active;
         return (
@@ -214,36 +211,19 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
       {addsLeft > 0 && (
         <Card onClick={() => openOverlay("addmentee")} style={{ padding: 13, border: "1.5px dashed #CFCDC7", background: "#EFEEEA", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 110 }}>
           <div style={{ width: 32, height: 32, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={16} color={C.purple} /></div>
-          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 8, textAlign: "center", fontWeight: 700 }}>Add mentees</div>
+          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 8, textAlign: "center", fontWeight: 700 }}>add Mentee</div>
           <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, marginTop: 3, letterSpacing: 0.5 }}>{addsLeft} LEFT · +30 IMPACT</div>
         </Card>
       )}
     </div>
-    {/* The two directories, in one card. Find mentees is still the single door
-        to the ranked deck, the map and the applications waiting on you — the
-        overlay's own tabs say so, so the card doesn't have to. Mentor network
-        is the other side of that line: follow mentors, reshare into your Orbit.
-        Two rows of one line each, where this was two cards of three. */}
     <Card style={{ marginTop: 10, padding: "4px 14px" }}>
-      {[
-        { key: "mentees", icon: Search, bg: C.purpleTint, color: C.purple, title: "Find mentees" },
-        { key: "network", icon: Repeat2, bg: C.tealTint, color: C.teal, title: "Mentor network" },
-      ].map(({ key, icon: Icon, bg, color, title }, i) => (
-        <div key={key} onClick={() => openOverlay(key)}
-          style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 0", cursor: "pointer", borderTop: i ? `1px solid ${C.line}` : "none" }}>
-          <div style={{ width: 30, height: 30, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={14} color={color} /></div>
-          <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{title}</div>
-          <ChevronRight size={15} color={C.mute} />
-        </div>
-      ))}
+      <div onClick={() => openOverlay("network")}
+        style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 0", cursor: "pointer" }}>
+        <div style={{ width: 30, height: 30, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Repeat2 size={14} color={C.teal} /></div>
+        <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>Mentor network</div>
+        <ChevronRight size={15} color={C.mute} />
+      </div>
     </Card>
-    {!(u.cohort || []).length && (
-      <Card style={{ marginTop: 10 }}>
-        <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55 }}>
-          No mentees yet — you’ll be notified when someone matches you. Building out your feed is what makes them pick you.
-        </div>
-      </Card>
-    )}
   </div>
   );
 };
