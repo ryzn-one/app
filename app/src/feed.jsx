@@ -745,6 +745,9 @@ export const MentorFeed = ({
   toast, onAuthor, onVisibility, onAmplify, openNetwork, highlightPostId,
   followers = 0, onPin, onDelete, go,
 }) => {
+  const FEED_LIMIT = 5;
+  const [shownMentorPosts, setShownMentorPosts] = useState(FEED_LIMIT);
+  const [shownAmplifiedPosts, setShownAmplifiedPosts] = useState(FEED_LIMIT);
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
   const reach = u.cohort ? u.cohort.length : 0;
@@ -827,27 +830,47 @@ export const MentorFeed = ({
         {amplified.length > 0 && (
           <>
             <Label color={C.purple}>From mentors you follow · {amplified.length}</Label>
-            {amplified.map(p => (
+            {amplified.slice(0, shownAmplifiedPosts).map(p => (
               <PostCard key={p.id} post={{ ...p, amplifiedBy: null }} author={p.authorName} authorId={p.authorId}
                 tier toast={toast} onAuthor={onAuthor} onAmplify={onAmplify} amplified />
             ))}
+            {amplified.length > shownAmplifiedPosts && (
+              <button onClick={() => setShownAmplifiedPosts(s => s + FEED_LIMIT)} style={{
+                width: "100%", padding: "12px 0", border: "none", background: "transparent",
+                cursor: "pointer", fontFamily: F.sans, fontWeight: 600, fontSize: 13.5,
+                color: C.purple, textDecoration: "none",
+              }}>
+                Load more · {shownAmplifiedPosts} of {amplified.length}
+              </button>
+            )}
             <Label>Your own posts · {feed.length}</Label>
           </>
         )}
 
         {feed.length === 0 ? <StudioEmpty /> : (
-          feed.map(p => (
-            <div key={p.id} style={{ position: "relative" }}>
-              {/* Pin and Delete behind the overflow, never beside Publish. */}
-              {(onPin || onDelete) && (
-                <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5 }}>
-                  <PostOverflow post={p} onPin={onPin} onDelete={onDelete} />
-                </div>
-              )}
-              <PostCard post={p} author={name} authorId={userId} tier mine
-                toast={toast} onAuthor={onAuthor} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
-            </div>
-          ))
+          <>
+            {feed.slice(0, shownMentorPosts).map(p => (
+              <div key={p.id} style={{ position: "relative" }}>
+                {/* Pin and Delete behind the overflow, never beside Publish. */}
+                {(onPin || onDelete) && (
+                  <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5 }}>
+                    <PostOverflow post={p} onPin={onPin} onDelete={onDelete} />
+                  </div>
+                )}
+                <PostCard post={p} author={name} authorId={userId} tier mine
+                  toast={toast} onAuthor={onAuthor} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
+              </div>
+            ))}
+            {feed.length > shownMentorPosts && (
+              <button onClick={() => setShownMentorPosts(s => s + FEED_LIMIT)} style={{
+                width: "100%", padding: "12px 0", border: "none", background: "transparent",
+                cursor: "pointer", fontFamily: F.sans, fontWeight: 600, fontSize: 13.5,
+                color: C.purple, textDecoration: "none",
+              }}>
+                Load more · {shownMentorPosts} of {feed.length}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -877,8 +900,12 @@ export const ContentTabs = ({
   feed = [], authorName, authorId, view, watched = {}, onWatch, reacted = {}, onReact,
   emptyText, readOnly, toast, onAuthor, onAmplify, highlightPostId,
 }) => {
+  const FEED_LIMIT = 5;
+  const [shown, setShown] = useState(FEED_LIMIT);
   const resources = feed.filter(p => p.kind === "video" || p.kind === "resource");
   const list = view === "feed" ? feed : resources;
+  const visibleList = list.slice(0, shown);
+  const hasMore = list.length > shown;
 
   if (list.length === 0) return (
     <Card style={{ textAlign: "center", padding: 26 }}>
@@ -888,36 +915,47 @@ export const ContentTabs = ({
     </Card>
   );
 
-  if (view === "feed") return list.map(p => (
-    <PostCard key={p.id} post={p} author={p.authorName || authorName} authorId={p.authorId || authorId}
-      tier mine={readOnly && !p.authorName}
-      reacted={!!reacted[p.id]} onReact={onReact}
-      onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]}
-      toast={toast} onAuthor={onAuthor}
-      onAmplify={onAmplify} amplified={p.amplified}
-      highlight={highlightPostId === p.id} />
-  ));
-
-  return list.map(p => {
-    const meta = KIND_META[p.kind], Icon = meta.icon, done = watched[p.id];
-    const open = () => (p.media?.url ? window.open(p.media.url, "_blank", "noopener") : onWatch?.(p.id, p.xp));
-    return (
-      <Card key={p.id}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ width: 40, height: 40, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={meta.c} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{p.title}</div>
-            <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>{(p.mins || p.fileKind || "FILE").toUpperCase()} · {p.views} VIEWS</div>
-          </div>
-          {readOnly ? (
-            <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>+{p.xp} XP</span>
-          ) : (
-            <button onClick={() => { onWatch?.(p.id, p.xp); open(); }} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", padding: "7px 10px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap" }}>{done ? "✓ DONE" : `+${p.xp} XP`}</button>
-          )}
-        </div>
-      </Card>
-    );
-  });
+  return (
+    <>
+      {view === "feed" ? visibleList.map(p => (
+        <PostCard key={p.id} post={p} author={p.authorName || authorName} authorId={p.authorId || authorId}
+          tier mine={readOnly && !p.authorName}
+          reacted={!!reacted[p.id]} onReact={onReact}
+          onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]}
+          toast={toast} onAuthor={onAuthor}
+          onAmplify={onAmplify} amplified={p.amplified}
+          highlight={highlightPostId === p.id} />
+      )) : visibleList.map(p => {
+        const meta = KIND_META[p.kind], Icon = meta.icon, done = watched[p.id];
+        const open = () => (p.media?.url ? window.open(p.media.url, "_blank", "noopener") : onWatch?.(p.id, p.xp));
+        return (
+          <Card key={p.id}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ width: 40, height: 40, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={meta.c} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{p.title}</div>
+                <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>{(p.mins || p.fileKind || "FILE").toUpperCase()} · {p.views} VIEWS</div>
+              </div>
+              {readOnly ? (
+                <span style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D" }}>+{p.xp} XP</span>
+              ) : (
+                <button onClick={() => { onWatch?.(p.id, p.xp); open(); }} style={{ fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", padding: "7px 10px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap" }}>{done ? "✓ DONE" : `+${p.xp} XP`}</button>
+              )}
+            </div>
+          </Card>
+        );
+      })}
+      {hasMore && (
+        <button onClick={() => setShown(s => s + FEED_LIMIT)} style={{
+          width: "100%", padding: "12px 0", border: "none", background: "transparent",
+          cursor: "pointer", fontFamily: F.sans, fontWeight: 600, fontSize: 13.5,
+          color: C.purple, textDecoration: "none",
+        }}>
+          Load more · {shown} of {list.length}
+        </button>
+      )}
+    </>
+  );
 };
 
 /** Segmented Feed | Resources control, so both screens label them identically. */
