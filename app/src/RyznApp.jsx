@@ -1558,7 +1558,7 @@ export default function RyznComplete() {
     switch (tab) {
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId}
           followers={session?.followers ?? 0} onPin={pinPost} onDelete={removePost} go={setTab} />;
-      case "cohort": return <MentorBoard u={user} back={() => setOverlay(null)} />;
+      case "cohort": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}
