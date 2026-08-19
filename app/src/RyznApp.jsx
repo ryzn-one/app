@@ -68,6 +68,23 @@ function inviteFromHash() {
   };
 }
 
+/* Tab ids each mode and role actually renders, in bar order. The solo lists are
+   the counterpart to TEAMS_TABS, and the first entry of a list is where that
+   surface opens — a hardcoded landing tab is how the solo mentor spent v2
+   opening on "home", a tab their bar does not contain and `tabContent` answers
+   with `default: return null`: a working tab bar over an empty body. */
+const SOLO_TABS = {
+  mentee: ["home", "grow", "discover", "chat", "profile"],
+  mentor: ["feed", "cohort", "sessions", "chat", "impact"],
+};
+const tabsFor = (mode, role) =>
+  (mode === "teams" ? TEAMS_TABS[role] : SOLO_TABS[role]) || SOLO_TABS.mentee;
+/** Where a surface opens: the first tab in its own bar. */
+const defaultTabFor = (mode, role) => tabsFor(mode, role)[0];
+/** "Profile" is called Impact on the solo mentor side and sits under its own id. */
+const profileTabFor = (mode, role) =>
+  mode !== "teams" && role === "mentor" ? "impact" : "profile";
+
 /** Share deep link: /app/#/post/{id}, cleared once handled. */
 function postIdFromHash() {
   if (typeof window === "undefined") return null;
@@ -201,7 +218,10 @@ export default function RyznComplete() {
   const [inviteBusy, setInviteBusy] = useState(false);
 
   // app state
-  const [tab, setTab] = useState("home");
+  /* Opened on the invited role's own first tab. `mode` is not known until
+     /api/orbits answers, so this is the solo answer and the effect below
+     re-lands it if the session turns out to be a teams one. */
+  const [tab, setTab] = useState(() => defaultTabFor("solo", role));
   const [overlay, setOverlay] = useState(null);
   const [profileFollowBusy, setProfileFollowBusy] = useState(false);
   const [badgeModal, setBadgeModal] = useState(null);
@@ -292,20 +312,18 @@ export default function RyznComplete() {
      which is exactly when `mode` is "teams". */
   const org = mode === "teams" ? (session?.org ?? null) : null;
 
+  /* Where this surface opens and what it will accept. Both sides read the same
+     lists, so a tab that exists in one mode and not the other can never leave
+     the body rendering nothing. */
+  const defaultTab = defaultTabFor(mode, role);
+
   /* Teams has four tabs where solo has five, so a tab that exists in one mode
      may not exist in the other. Without this, someone sitting on Badges when
      their org invite lands renders an empty body until they tap something. */
   useEffect(() => {
     if (phase !== "app") return;
-    const allowed = mode === "teams"
-      ? TEAMS_TABS[role]
-      : (role === "mentee"
-        // "grow" and "discover" are the new tab names for mentees
-        // "chat" and "impact" are the new tab names for mentors (formerly "meets" and "profile")
-        ? ["home", "grow", "chat", "discover", "profile"]
-        : ["feed", "cohort", "sessions", "chat", "impact"]);
-    if (!allowed.includes(tab)) setTab("home");
-  }, [mode, role, tab, phase]);
+    if (!tabsFor(mode, role).includes(tab)) setTab(defaultTab);
+  }, [mode, role, tab, phase, defaultTab]);
 
   /* Moving between orbits. Not a reload and not a re-auth: the identity below is
      the same one, so XP, badges, follows and the session all stay put. What
@@ -317,14 +335,16 @@ export default function RyznComplete() {
     const next = orbits.orbits.find((o) => o.id === id);
     orbits.switchTo(id);
     setOverlay(null);
-    setTab("home");
+    /* The orbit being switched *to* decides the surface, and with it the tab
+       bar — reading `defaultTab` here would land on the old orbit's answer. */
+    setTab(defaultTabFor(next?.kind === "private" ? "teams" : "solo", role));
     if (next) {
       toast(next.policy?.matchMode === "Apply" ? `${next.name} · mentors approve` : `${next.name} · open matching`);
     }
   };
 
   const resetAppState = () => {
-    setTab("home"); setOverlay(null); setBadgeModal(null); setTodayDone(false);
+    setTab(defaultTab); setOverlay(null); setBadgeModal(null); setTodayDone(false);
     setMidwayEarned(false); setShowMidway(false); setJustEarnedId(null);
     setWatched({}); setReacted({}); setMenteeAdds(0); setRelayed([]);
     setIntroTourOpen(false); setSpotlightTab(null); introCheckedRef.current = false;
@@ -947,10 +967,10 @@ export default function RyznComplete() {
 
   const openAuthorProfile = (person) => {
     if (!person?.id && !person?.name) return;
-    // Own name on your feed → Profile tab.
+    // Own name on your feed → Profile tab, which the solo mentor calls Impact.
     if (session?.user?.id && person.id && String(person.id) === String(session.user.id)) {
       setOverlay(null);
-      setTab("profile");
+      setTab(profileTabFor(mode, role));
       return;
     }
     /* Returning to the Orbit the profile was opened from means remembering
@@ -1202,14 +1222,18 @@ export default function RyznComplete() {
     if (mode === "teams") {
       const asOverlay = ["grow", "discover", "chat", "sessions", "cohort", "dm", "orbit", "board", "explore", "network"];
       if (asOverlay.includes(to)) { setTimeout(() => setOverlay(to), 60); return; }
-      setTab({ feed: "roster", mentors: "mentors", chat: "chat", profile: "profile" }[to] || "home");
+      setTab({ feed: "roster", mentors: "mentors", chat: "chat", profile: "profile" }[to] || defaultTab);
       return;
     }
     // Sessions is a tab on the mentor side and an overlay on the mentee side.
     const asOverlay = ["cohort", "dm", "orbit", "board", "explore", "network"].includes(to)
       || (to === "sessions" && role === "mentee");
-    if (asOverlay) setTimeout(() => setOverlay(to), 60);
-    else setTab(to);
+    if (asOverlay) { setTimeout(() => setOverlay(to), 60); return; }
+    /* "profile" is the destination every notification names; the solo mentor's
+       is filed under "impact". Anything still not in this bar goes to the tab
+       this surface opens on rather than to a blank body. */
+    const dest = to === "profile" ? profileTabFor(mode, role) : to;
+    setTab(tabsFor(mode, role).includes(dest) ? dest : defaultTab);
   };
 
   /*, journey content, */
