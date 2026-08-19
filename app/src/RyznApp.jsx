@@ -5,7 +5,7 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Newspaper, UserPlus, UserCheck
+  X, SlidersHorizontal, RotateCcw, Search, Newspaper, UserPlus, UserCheck, Compass
 } from "lucide-react";
 import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary, firstNameOf } from "./ui.jsx";
@@ -297,10 +297,10 @@ export default function RyznComplete() {
     const allowed = mode === "teams"
       ? TEAMS_TABS[role]
       : (role === "mentee"
-        // "meets" stays allowed though it left the tab bar, notification deep
-        // links still land there, and a destination with no tab is fine.
-        ? ["home", "exercises", "chat", "badges", "meets", "profile"]
-        : ["home", "feed", "sessions", "meets", "profile"]);
+        // "grow" and "discover" are the new tab names for mentees
+        // "chat" and "impact" are the new tab names for mentors (formerly "meets" and "profile")
+        ? ["home", "grow", "chat", "discover", "profile"]
+        : ["feed", "cohort", "sessions", "chat", "impact"]);
     if (!allowed.includes(tab)) setTab("home");
   }, [mode, role, tab, phase]);
 
@@ -663,7 +663,7 @@ export default function RyznComplete() {
   /* Meets is a tab in solo and an overlay in teams, load on either, or the
      teams side opens a screen that never fetches. */
   useEffect(() => {
-    if (phase === "app" && (tab === "meets" || overlay === "meets")) loadEvents();
+    if (phase === "app" && (tab === "chat" || tab === "meets" || overlay === "chat" || overlay === "meets")) loadEvents();
   }, [phase, tab, overlay, loadEvents]);
 
   const createEventHandler = async (body) => {
@@ -1195,7 +1195,7 @@ export default function RyznComplete() {
        the remaining tabs are named differently. Mapped rather than ignored, a
        notification deep link has to land on a real screen in both modes. */
     if (mode === "teams") {
-      const asOverlay = ["exercises", "badges", "meets", "sessions", "cohort", "dm", "orbit", "board", "explore", "network"];
+      const asOverlay = ["grow", "discover", "chat", "sessions", "cohort", "dm", "orbit", "board", "explore", "network"];
       if (asOverlay.includes(to)) { setTimeout(() => setOverlay(to), 60); return; }
       setTab({ feed: "roster", mentors: "mentors", chat: "chat", profile: "profile" }[to] || "home");
       return;
@@ -1287,7 +1287,7 @@ export default function RyznComplete() {
         nudge={session?.atRisk ? {
           from: (session.atRisk.mentorName || "Your mentor").split(" ")[0],
           text: `${session.atRisk.daysSince} days since your last paragraph. One is enough to pick it back up.`,
-          to: "exercises",
+          to: "grow",
         } : null}
       />
     );
@@ -1316,19 +1316,19 @@ export default function RyznComplete() {
        reached from the Home card and the profile instead. Same components -
        only the way in changes, and each gets the back affordance a tab body
        never needed. */
-    if (overlay === "exercises") return (
+    if (overlay === "grow") return (
       <div>
         <HeaderRow title="Your exercises" onBack={() => setOverlay(null)} />
         <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />
       </div>
     );
-    if (overlay === "badges") return (
+    if (overlay === "discover") return (
       <div>
-        <HeaderRow title="Your progress" onBack={() => setOverlay(null)} />
-        <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />
+        <HeaderRow title="Discover mentors" onBack={() => setOverlay(null)} />
+        <ExploreScreen role={role} wanted="mentor" onOpen={(p) => setOverlay({ mentorProfile: p })} />
       </div>
     );
-    if (overlay === "meets") return (
+    if (overlay === "chat") return (
       <div>
         <HeaderRow title="Mentor Meets" onBack={() => setOverlay(null)} />
         <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events}
@@ -1414,7 +1414,7 @@ export default function RyznComplete() {
           watched={watched} onWatch={watchContent}
           reacted={reacted} onReact={reactToPost}
           openDm={() => setOverlay({ dmPeer: m, from: { orbit: m.id } })}
-          go={() => { setOverlay(null); setTab("exercises"); }}
+          go={() => { setOverlay(null); setTab("grow"); }}
           toast={toast} onAuthor={openAuthorProfile} highlightPostId={highlightPostId}
         />
       );
@@ -1545,21 +1545,20 @@ export default function RyznComplete() {
     if (role === "mentee") {
       switch (tab) {
         case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} todayDone={todayDone} stage1={stage1} mentorSeats={mentorsHeld} toast={toast} feeds={feeds} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} stage={orbit?.stage} policy={policy} orbit={orbit} atRisk={session?.atRisk} />;
-        case "exercises": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
+        case "grow": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
+        case "discover": return <ExploreScreen role={role} wanted="mentor" onOpen={(p) => setOverlay({ mentorProfile: p })} />;
         /* Locked is a screen, not a missing route. */
         case "chat": return chatLocked
           ? <ChatLocked stage={orbit?.stage} mentor={(user.mentors || [])[0]} go={setTab} />
           : <MenteeChatList mentors={user.mentors || []} onOpenThread={(m) => setOverlay({ dmPeer: m })} />;
-        case "badges": return <MenteeBadges badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
-        case "meets": return <MeetsScreen role={role} u={user} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
         case "profile": return <MenteeProfile u={user} name={session?.user?.name} userId={session?.user?.id} badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} programs={programs} onLeave={leaveMentor} onUpdateProfile={updateUserProfile} toast={toast} />;
         default: return null;
       }
     }
     switch (tab) {
-      case "home": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId}
           followers={session?.followers ?? 0} onPin={pinPost} onDelete={removePost} go={setTab} />;
+      case "cohort": return <MentorBoard u={user} back={() => setOverlay(null)} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}
@@ -1567,8 +1566,8 @@ export default function RyznComplete() {
           onCreate={createSessionHandler} onAction={sessionActionHandler} toast={toast}
         />
       );
-      case "meets": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
+      case "chat": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
+      case "impact": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
       default: return null;
     }
   };
@@ -1580,8 +1579,8 @@ export default function RyznComplete() {
      `policy.chatGate` and this orbit's Stage 1, so the padlock and the endpoint
      that refuses the message are answering the same question. */
   const chatLocked = role === "mentee" && orbit ? orbit.chatOpen === false : false;
-  const menteeNav = [["home", Home, "Home"], ["exercises", Zap, "Exercises"], ["chat", MessageCircle, "Chat"], ["badges", Award, "Badges"], ["profile", User, "Profile"]];
-  const mentorNav = [["home", LayoutGrid, "Cohort"], ["feed", Newspaper, "Feed"], ["sessions", Calendar, "Sessions"], ["meets", MapPin, "Meets"], ["profile", User, "Profile"]];
+  const menteeNav = [["home", Home, "Home"], ["grow", Zap, "Grow"], ["discover", Compass, "Discover"], ["chat", MessageCircle, "Chat"], ["profile", User, "Profile"]];
+  const mentorNav = [["feed", FileText, "Feed"], ["cohort", Users, "Cohort"], ["sessions", Calendar, "Sessions"], ["chat", MessageCircle, "Chat"], ["impact", User, "Profile"]];
   const nav = mode === "teams" ? TEAMS_NAV[role] : (role === "mentee" ? menteeNav : mentorNav);
   const isDesktop = useIsDesktop();
   const reduced = useReducedMotion();
