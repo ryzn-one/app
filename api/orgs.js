@@ -14,7 +14,7 @@ import {
 import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel } from "../lib/orbits.js";
 
 /**
- * /api/orgs — a mentor's own organisation.
+ * /api/orgs, a mentor's own organisation.
  *
  *   GET                                       my org, my standing in it, its people
  *   POST  { name, size, website, mission }    create one (mentors only) and own it
@@ -30,7 +30,7 @@ import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel } from "../lib/orbits
  *   PATCH { action: "leave" }                 anyone but the owner walks out
  *
  * Creating an org requires the mentor role, which still only comes from claiming
- * an invite — so this endpoint hands out org-level admin, never platform admin.
+ * an invite, so this endpoint hands out org-level admin, never platform admin.
  * The two stay separate on purpose: an org owner runs their own roster, not Ryzn.
  *
  * One function, several verbs. Vercel's function budget is tight enough that
@@ -40,7 +40,7 @@ import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel } from "../lib/orbits
 
 const MAX_MINT = 25;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** Platform roles an org can seat — never platform admin. */
+/** Platform roles an org can seat, never platform admin. */
 const GRANTABLE_ROLES = new Set(["mentor", "mentee"]);
 const roleLabel = (role) => (role === "mentee" ? "Mentee" : "Mentor");
 
@@ -80,13 +80,13 @@ async function peopleOf(db, orgId, { withEmail }) {
     const p = profileById.get(m.userId) || {};
     return {
       id: m.userId,
-      name: u?.name || "—",
+      name: u?.name || "-",
       // Addresses are manager-only: a member roster is not a mailing list.
       email: withEmail ? u?.email ?? null : null,
       role: u?.role || "mentee",
       orgRole: m.orgRole,
       division: m.division ?? null,
-      // Seniority inside this orbit — what `policy.levelGate` filters the deck on.
+      // Seniority inside this orbit, what `policy.levelGate` filters the deck on.
       level: m.level ?? null,
       headline: p.headline ?? null,
       impact: p.impact ?? null,
@@ -96,7 +96,7 @@ async function peopleOf(db, orgId, { withEmail }) {
   });
 }
 
-/** Codes minted for this org, newest first. Managers only — see callers. */
+/** Codes minted for this org, newest first. Managers only, see callers. */
 async function invitesOf(db, orgId) {
   const rows = await db
     .collection(collections.invites)
@@ -124,7 +124,7 @@ async function invitesOf(db, orgId) {
 }
 
 /**
- * Mail one org code. Never throws: a delivery failure must not undo a mint —
+ * Mail one org code. Never throws: a delivery failure must not undo a mint -
  * the code is live either way and the manager can still copy the link by hand.
  */
 async function deliver({ invites, code, to, name, inviter, org, role }) {
@@ -140,7 +140,7 @@ async function deliver({ invites, code, to, name, inviter, org, role }) {
     );
     return res.delivered
       ? { sent: true, url }
-      : { sent: false, url, sendError: "No email provider configured — the invitation was logged, not sent." };
+      : { sent: false, url, sendError: "No email provider configured, the invitation was logged, not sent." };
   } catch (err) {
     const sendError = String(err?.message || err).slice(0, 300);
     await invites.updateOne({ code }, { $set: { lastSendError: sendError } });
@@ -182,12 +182,12 @@ async function handler(request, user) {
 
   const ctx = await orgContext(db, user.id);
 
-  /* ————— read ————— */
+  /* ----- read ----- */
   if (request.method === "GET") {
     return json(await contextPayload(db, user, ctx));
   }
 
-  /* ————— create ————— */
+  /* ----- create ----- */
   if (request.method === "POST") {
     if (!isMentorRole(user.role)) {
       return fail(403, "mentors_only", "Organisations are created by mentors. Claim a mentor invitation first.");
@@ -222,7 +222,7 @@ async function handler(request, user) {
       // orbit are told apart by a field rather than by which console made them.
       kind: "private",
       policy: { ...DEFAULT_PRIVATE_POLICY },
-      /* §6.5 — may posts by mentors a member follows outside this orbit appear
+      /* §6.5, may posts by mentors a member follows outside this orbit appear
          inside it? Default on: the follow graph is the product. Enterprises with
          strict content policies switch it off in Org settings. */
       allowExternal: true,
@@ -237,7 +237,7 @@ async function handler(request, user) {
         const res = await orgs.insertOne({ ...base, slug });
         inserted = { _id: res.insertedId, ...base, slug };
       } catch (err) {
-        // 11000 on ownerId means a double-submit already made this org — return
+        // 11000 on ownerId means a double-submit already made this org, return
         // that one rather than a second. On slug it means someone took the name
         // between the check and the insert; the retry picks a fresh one.
         if (err?.code !== 11000) throw err;
@@ -257,7 +257,7 @@ async function handler(request, user) {
     return json(await contextPayload(db, user, fresh), 201);
   }
 
-  /* ————— manage ————— */
+  /* ----- manage ----- */
   if (request.method !== "PATCH") return fail(405, "method_not_allowed", "Use GET, POST or PATCH.");
   if (!ctx) return fail(404, "no_org", "You're not in an organisation yet.");
 
@@ -286,7 +286,7 @@ async function handler(request, user) {
     if (body.size !== undefined) $set.size = cleanShort(body.size) || null;
     if (body.website !== undefined) $set.website = cleanWebsite(body.website);
     if (body.mission !== undefined) $set.mission = cleanMission(body.mission) || null;
-    // The slug is the org's handle and may already be in circulation — renaming
+    // The slug is the org's handle and may already be in circulation, renaming
     // the org does not silently move it.
     await orgs.updateOne({ _id: org._id }, { $set });
     return json(await contextPayload(db, user, await orgContext(db, user.id)));
@@ -301,7 +301,7 @@ async function handler(request, user) {
     /* Cross-division is one rule with two consoles editing it: this one calls it
        `rules.crossDivision`, the orbit console calls it `policy.crossDiv`. The
        write goes to both so whichever console is opened next reads what the
-       other just set — `resolvePolicy` treats `policy` as the authority. */
+       other just set, `resolvePolicy` treats `policy` as the authority. */
     const policy = { ...resolvePolicy(org), crossDiv: rules.crossDivision };
     await orgs.updateOne({ _id: org._id }, { $set: { rules, policy, updatedAt: new Date() } });
     return json(await contextPayload(db, user, await orgContext(db, user.id)));
@@ -311,7 +311,7 @@ async function handler(request, user) {
     const denied = managerOnly();
     if (denied) return denied;
     const userId = String(body.userId || "");
-    // null is a real value here — it un-seats someone from a team, which the
+    // null is a real value here, it un-seats someone from a team, which the
     // cross-division rule then reads as "shows them everyone".
     const division = cleanDivision(body.division);
     const res = await orgMembers.updateOne({ orgId, userId }, { $set: { division } });
@@ -348,7 +348,7 @@ async function handler(request, user) {
     if (denied) return denied;
 
     const role = GRANTABLE_ROLES.has(body.role) ? body.role : "mentor";
-    // Org admin is a mentor-side privilege — mentee invites are always members.
+    // Org admin is a mentor-side privilege, mentee invites are always members.
     const orgRole = role === "mentee"
       ? "member"
       : (GRANTABLE_ORG_ROLES.has(body.orgRole) ? body.orgRole : "member");
@@ -365,14 +365,14 @@ async function handler(request, user) {
     const note = cleanShort(body.note) || org.name;
     /* Which team they're joining, decided at invite time. Carried on the code
        and copied onto the membership at redeem, so an employee lands already
-       seated — otherwise every new hire starts division-less and the
+       seated, otherwise every new hire starts division-less and the
        cross-division rule has nothing to match them on. */
     const division = cleanDivision(body.division);
 
     const docs = Array.from({ length: count }, () => ({
       code: newInviteCode(),
       // Platform role, read back by api/invites/redeem.js. An org can seat
-      // mentors and mentees — it can never mint platform admins.
+      // mentors and mentees, it can never mint platform admins.
       role,
       orgId,
       orgRole,
@@ -382,7 +382,7 @@ async function handler(request, user) {
       createdBy: user.email,
       createdByUserId: user.id,
       expiresAt,
-      redeemedBy: null,   // explicit null, not absent — the atomic claim filter
+      redeemedBy: null,   // explicit null, not absent, the atomic claim filter
       redeemedAt: null,   // in api/invites/redeem.js matches on null
       revokedAt: null,
       note,
@@ -420,7 +420,7 @@ async function handler(request, user) {
     if (denied) return denied;
     const code = String(body.code || "").trim().toUpperCase();
     if (!code) return fail(400, "bad_request", "Which code?");
-    // Scoped to this org's own codes, and guarded on redeemedBy: null — a
+    // Scoped to this org's own codes, and guarded on redeemedBy: null, a
     // claimed code can't be withdrawn, the mentor already holds the role.
     const res = await invites.updateOne(
       { code, orgId, redeemedBy: null },

@@ -6,7 +6,7 @@ import { fetchOrbits } from "./auth-client.js";
  *
  * One app, one identity, one follow graph. XP, tier, badges, streak and follows
  * belong to a person and travel everywhere; an orbit is a space that identity
- * moves through. There are three kinds — public, community, private — and every
+ * moves through. There are three kinds, public, community, private, and every
  * behavioural difference between them is a value in the policy object the server
  * resolves and ships on each orbit.
  *
@@ -17,14 +17,14 @@ import { fetchOrbits } from "./auth-client.js";
  * disagreeing about what the rules are.
  *
  * Screens branch on **policy values**, never on `orbit.kind`. Copy and labelling
- * may branch on kind — that is presentation, and that is what `COPY` below is.
+ * may branch on kind, that is presentation, and that is what `COPY` below is.
  */
 
 export const PUBLIC_ORBIT_ID = "public";
 
 /**
  * Everything that legitimately differs by kind: what the space is called, what
- * its events are called, what joining it means. No behaviour here — if a screen
+ * its events are called, what joining it means. No behaviour here, if a screen
  * needs a *decision* rather than a word, it belongs in the policy object.
  */
 export const COPY = {
@@ -35,7 +35,7 @@ export const COPY = {
     board: "Global leaderboard",
     joinVerb: "Join Ryzn",
     runBy: "Run by Ryzn",
-    leaveWarning: "You can't leave the public orbit — it's where everyone starts.",
+    leaveWarning: "You can't leave the public orbit, it's where everyone starts.",
   },
   community: {
     noun: "circle",
@@ -53,7 +53,7 @@ export const COPY = {
     board: "Org leaderboard",
     joinVerb: "Join with your invite",
     runBy: "Run by your organisation",
-    leaveWarning: "Leaving keeps your XP, badges and follows — they're yours, not your employer's. Only your progress in this orbit ends.",
+    leaveWarning: "Leaving keeps your XP, badges and follows, they're yours, not your employer's. Only your progress in this orbit ends.",
   },
 };
 
@@ -70,7 +70,7 @@ export const POLICY_COPY = {
   matchMode: {
     label: "How people match",
     sub: "Open adds a mentor instantly. Apply asks a question first, and the mentor approves.",
-    valueLabel: (v) => (v === "Apply" ? "Apply to join" : "Open — add instantly"),
+    valueLabel: (v) => (v === "Apply" ? "Apply to join" : "Open, add instantly"),
   },
   cap: {
     label: "Mentor seats",
@@ -99,7 +99,7 @@ export const POLICY_COPY = {
   },
 };
 
-/* ————— identity —————
+/* ----- identity -----
    Tier is derived from XP wherever it is shown and never stored; the server
    derives it the same way from the same thresholds. XP is portable, so a stored
    tier would be a number that can disagree with the ledger it came from. */
@@ -117,7 +117,7 @@ export const nextTier = (xp) => {
   return next ? { name: next[0], at: next[1], remaining: next[1] - n } : null;
 };
 
-/* Which orbit the person was last in. A preference, not state — losing it drops
+/* Which orbit the person was last in. A preference, not state, losing it drops
    someone into the public orbit, which is a place they are definitely a member
    of, rather than into an error. */
 const LAST_ORBIT_KEY = "ryzn.orbit";
@@ -125,14 +125,14 @@ const readLast = () => {
   try { return window.localStorage.getItem(LAST_ORBIT_KEY); } catch { return null; }
 };
 const writeLast = (id) => {
-  try { window.localStorage.setItem(LAST_ORBIT_KEY, id); } catch { /* private mode — the default is fine */ }
+  try { window.localStorage.setItem(LAST_ORBIT_KEY, id); } catch { /* private mode, the default is fine */ }
 };
 
 /**
  * The orbit switcher's state, and the single place `policy` enters the app.
  *
  * Resolved once here and passed down as a prop. No screen reads policy from a
- * global and no screen mutates it — the only writers are the two consoles, and
+ * global and no screen mutates it, the only writers are the two consoles, and
  * they write it through /api/orbits and refresh from the answer.
  *
  * The highest-value assertion in the whole product is that changing a policy in
@@ -153,7 +153,7 @@ export function useOrbits(enabled = true) {
       setOrbits(list);
       /* Where someone lands the first time, before they have ever switched:
          their company orbit if they have one, otherwise the public orbit. An
-         employee opening the app is at work — dropping them into the public
+         employee opening the app is at work, dropping them into the public
          orbit and making them find their employer would be a worse first screen
          than the one they had before orbits existed. */
       setOrbitId((current) => {
@@ -175,8 +175,8 @@ export function useOrbits(enabled = true) {
     load();
   }, [enabled, load]);
 
-  /* An id that is no longer one of ours — a circle left in another tab, an orbit
-     archived by its owner — lands on the public orbit rather than on nothing.
+  /* An id that is no longer one of ours, a circle left in another tab, an orbit
+     archived by its owner, lands on the public orbit rather than on nothing.
      Falling back rather than erroring is the same rule the server applies. */
   const orbit = useMemo(
     () => orbits.find((o) => o.id === orbitId) || orbits.find((o) => o.id === PUBLIC_ORBIT_ID) || null,

@@ -6,7 +6,7 @@ import { rateLimit, clientIp } from "../../lib/ratelimit.js";
  * POST /api/invites/validate  { code }
  *
  * Read-only check that powers the live "VALID ✓" indicator on the mentor
- * register screen. Deliberately returns nothing but a boolean and a reason —
+ * register screen. Deliberately returns nothing but a boolean and a reason -
  * no inviter name, no cohort, nothing worth harvesting.
  */
 async function handler(request) {

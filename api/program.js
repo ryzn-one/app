@@ -4,7 +4,7 @@ import { json, fail, withUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair, matchesCollection } from "../lib/matches.js";
 
 /**
- * /api/program — a mentor's authored program (phases a mentee moves through,
+ * /api/program, a mentor's authored program (phases a mentee moves through,
  * each with an optional reward/certificate), and a mentee's progress against it.
  *
  *   GET   /api/program                own phases (mentor)
@@ -13,7 +13,7 @@ import { sideOf, hasAcceptedPair, matchesCollection } from "../lib/matches.js";
  *   PUT   /api/program {phases}       replace the whole phase list (mentor only)
  *   PATCH /api/program {menteeId, phaseId, completed}   mark a phase done/undone for a mentee (mentor only)
  *
- * Phases live in their own collection, one doc per mentor — the same shape
+ * Phases live in their own collection, one doc per mentor, the same shape
  * every mentee reads. Progress rides on the `matches` doc instead of a new
  * collection, following the rule /api/me already documents for cohort state:
  * one shared record, so neither side can drift from the other.
@@ -150,7 +150,7 @@ async function handler(request, user) {
         : { $pull: { "programProgress.completedPhaseIds": phaseId } }
     );
 
-    // XP is awarded once, the first time a phase is completed — never clawed
+    // XP is awarded once, the first time a phase is completed, never clawed
     // back on un-mark, same posture the post view/react counters already take.
     if (completed && !already) {
       await Promise.all([

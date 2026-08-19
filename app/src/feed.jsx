@@ -20,9 +20,9 @@ const captureToFile = (captured) => {
   });
 };
 
-/* ————————————————— ORBIT FEED —————————————————
+/* ----------------- ORBIT FEED -----------------
    One post model, two screens: the mentor writes it (MentorFeed), the cohort
-   reads it (OrbitScreen). Kept to four post kinds on purpose — a mentor who has
+   reads it (OrbitScreen). Kept to four post kinds on purpose, a mentor who has
    to think about formatting stops posting.
 */
 
@@ -33,7 +33,7 @@ export const KIND_META = {
   resource: { icon: FileText,      c: C.amber,  bg: C.amberTint,  label: "Resource" },
 };
 
-/** "3h" / "2d" / "Mar 4". The server returns an ISO timestamp — computing this
+/** "3h" / "2d" / "Mar 4". The server returns an ISO timestamp, computing this
     there would be wrong for anyone in another timezone and uncacheable. */
 export const relTime = (iso) => {
   if (!iso) return "now";
@@ -73,7 +73,7 @@ const art = (seed, kind) => {
 
 /**
  * `onEngage` records the view. It fires on the first play of a video or on
- * opening a file — before real media existed the only way to register a view
+ * opening a file, before real media existed the only way to register a view
  * was the "WATCH · +5 XP" button, and now that the video plays inline most
  * people will never press it.
  */
@@ -94,7 +94,7 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
       </>
     );
     const style = { display: "flex", alignItems: "center", gap: 12, marginTop: 10, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, textDecoration: "none", color: C.ink };
-    // A real file gets a real link. Without media this is still the right tile —
+    // A real file gets a real link. Without media this is still the right tile -
     // posts published before uploads existed have none.
     return post.media?.url
       ? <a href={post.media.url} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); onEngage?.(); }} style={style}>{inner}</a>
@@ -104,7 +104,7 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
   const fallback = { backgroundImage: art(post.id, post.kind), backgroundSize: "cover", backgroundPosition: "center" };
 
   if (post.kind === "video" && post.media?.url) return (
-    // The poster is the frame grabbed at upload time — the same image a shared
+    // The poster is the frame grabbed at upload time, the same image a shared
     // link unfurls with, so the card and the preview show the same thing.
     <video src={post.media.url} poster={post.media.posterUrl || undefined} controls preload="metadata" playsInline
       onClick={e => e.stopPropagation()} onPlay={() => onEngage?.()}
@@ -138,7 +138,7 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
  * mentor opens their feed after posting.
  *
  * Rendered only where `onVisibility` is wired, which is the same thing as "this
- * is the author looking at their own post" — `mine` also carries "don't award
+ * is the author looking at their own post", `mine` also carries "don't award
  * XP for this", which is true on other people's profiles too.
  */
 const VisibilityRow = ({ isPublic, onChange, busy }) => (
@@ -204,7 +204,7 @@ export const PostCard = ({
   const [busy, setBusy] = useState(false);
   const [commentCount, setCommentCount] = useState(post.comments ?? 0);
   const [sharing, setSharing] = useState(false);
-  // Local reaction count so an optimistic like bumps the number once — without
+  // Local reaction count so an optimistic like bumps the number once, without
   // the old `reactions + (reacted ? 1 : 0)` double-count after a refresh.
   const [reactionCount, setReactionCount] = useState(post.reactions ?? 0);
   const [liked, setLiked] = useState(!!reacted);
@@ -325,9 +325,9 @@ export const PostCard = ({
         if (how !== "copied") toast?.("Shared");
         // A cohort link still needs a sign-in at the other end. Saying so here
         // is the difference between a link that works and one that dead-ends.
-        else if (isPublic) toast?.("Public link copied — anyone can open it");
-        else if (mine) toast?.("Link copied — set this post to Public for a link anyone can open");
-        else toast?.("Link copied — your Orbit can open it in Ryzn");
+        else if (isPublic) toast?.("Public link copied, anyone can open it");
+        else if (mine) toast?.("Link copied, set this post to Public for a link anyone can open");
+        else toast?.("Link copied, your Orbit can open it in Ryzn");
       }
     } catch (e) {
       toast?.(e.message || "Couldn’t share that.");
@@ -338,7 +338,7 @@ export const PostCard = ({
 
   const openAuthor = () => onAuthor?.({ id: authorId || post.authorId, name: author });
 
-  /* Optimistic, then corrected by the server's answer — the write is
+  /* Optimistic, then corrected by the server's answer, the write is
      idempotent, so a double tap costs nothing and a failure just puts the
      button back. */
   const toggleRelay = async () => {
@@ -455,7 +455,7 @@ export const PostCard = ({
             <div style={{ fontSize: 11.5, color: C.gray, marginTop: 1, lineHeight: 1.35 }}>
               {relayed
                 ? `Your mentees see this alongside your own posts, credited to ${firstNameOf(author)}.`
-                : "Add it and every mentee in your cohort reads it — the post stays theirs."}
+                : "Add it and every mentee in your cohort reads it, the post stays theirs."}
             </div>
           </div>
           <button type="button" disabled={relaying} onClick={toggleRelay}
@@ -476,7 +476,7 @@ export const PostCard = ({
             <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, letterSpacing: 0.6 }}>LOADING…</div>
           )}
           {!loadingComments && thread && thread.length === 0 && (
-            <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 10 }}>No comments yet — start the thread.</div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 10 }}>No comments yet, start the thread.</div>
           )}
           {!loadingComments && thread?.map((c) => (
             <div key={c.id} style={{ display: "flex", gap: 10, marginBottom: 12 }}>
@@ -594,7 +594,7 @@ export const Composer = ({ onPublish, name, userId }) => {
 
       {needsTitle && (
         <input value={title} onChange={e => setTitle(e.target.value)}
-          placeholder={kind === "video" ? "Video title — e.g. “How to ask for an intro”" : "Resource title — e.g. “Cover letter template”"}
+          placeholder={kind === "video" ? "Video title, e.g. “How to ask for an intro”" : "Resource title, e.g. “Cover letter template”"}
           style={{ width: "100%", marginTop: 8, border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 12px", fontFamily: F.sans, fontSize: 13.5, background: C.surface, outline: "none", boxSizing: "border-box" }} />
       )}
 
@@ -661,7 +661,7 @@ export const Composer = ({ onPublish, name, userId }) => {
       </div>
       <div style={{ fontSize: 11.5, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
         {visibility === "public"
-          ? "Anyone with the link can open this — including people outside Ryzn."
+          ? "Anyone with the link can open this, including people outside Ryzn."
           : "Only your cohort can see this inside Ryzn. You can flip it to Public later."}
       </div>
 
@@ -685,7 +685,7 @@ export const Composer = ({ onPublish, name, userId }) => {
 };
 
 /**
- * The greeting video — the first thing a new mentee sees, so it's pinned and
+ * The greeting video, the first thing a new mentee sees, so it's pinned and
  * kept separate from the composer.
  *
  * `onDone(media)` publishes it as a pinned `greeting` post. This used to be a
@@ -738,7 +738,7 @@ function GreetingCard({ onDone, userId }) {
   );
 }
 
-/* ————————————————— MENTOR: your feed ————————————————— */
+/* ----------------- MENTOR: your feed ----------------- */
 
 export const MentorFeed = ({
   u, name, userId, feed, amplified = [], publish, greetingUp, uploadGreeting,
@@ -804,7 +804,7 @@ export const MentorFeed = ({
 
         {/* The other half of the feed: what other mentors wrote and you chose
             to put in front of your cohort. Kept in its own section rather than
-            mixed into your posts — your mentees see one Orbit, but you should
+            mixed into your posts, your mentees see one Orbit, but you should
             always be able to tell what you wrote from what you relayed. */}
         {openNetwork && (
           <Card onClick={openNetwork} style={{ padding: 13, cursor: "pointer" }}>
@@ -854,7 +854,7 @@ export const MentorFeed = ({
   );
 };
 
-/* ————————————————— MENTEE: the Orbit ————————————————— */
+/* ----------------- MENTEE: the Orbit ----------------- */
 
 /**
  * The posts-and-resources body, shared by the mentee's Orbit and the mentor's
@@ -865,11 +865,11 @@ export const MentorFeed = ({
  * no mentee would ever see. Rendering the same component in both places is what
  * makes the preview true.
  *
- * `readOnly` drops the XP buttons and reactions — a mentor looking at their own
+ * `readOnly` drops the XP buttons and reactions, a mentor looking at their own
  * profile can't collect XP for their own content.
  *
  * `authorName` / `authorId` are the whose-feed-is-this fallback. A post that
- * carries its own author — anything a mentor relayed from a peer — keeps it,
+ * carries its own author, anything a mentor relayed from a peer, keeps it,
  * because attributing someone else's post to the mentor showing it would be a
  * lie the amplification feature exists to avoid.
  */
@@ -934,7 +934,7 @@ export const ContentTabBar = ({ view, setView, count }) => (
  *
  * It takes the mentor as a prop rather than reading `u.mentorId` off the
  * signed-in user, which is what makes a second and third Orbit possible at all
- * — the mentee holds up to three and each renders this same screen with a
+ *, the mentee holds up to three and each renders this same screen with a
  * different mentor, feed and program. Nothing here is the mentee's own
  * progress; that lives on Home and does not change when they switch Orbits.
  */
@@ -980,7 +980,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
             </div>
           </div>
           {/* Was a hard-coded "847 IMPACT · 11 GRADUATED" beside whoever the
-              mentee's real mentor is — the mentor's own numbers attributed
+              mentee's real mentor is, the mentor's own numbers attributed
               wrongly. Only the post count is knowable here. */}
           <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
             <div><div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, color: "#B7AFF2" }}>{feed.length}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>POSTS</div></div>
@@ -1002,7 +1002,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
               <div style={{ width: 40, height: 40, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={16} color={C.gray} /></div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Direct Connect is earned, not given</div>
-                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>The Orbit is open to you now — everything {first} posts, plus every resource. Finish Stage 1 and messaging unlocks too.</div>
+                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>The Orbit is open to you now, everything {first} posts, plus every resource. Finish Stage 1 and messaging unlocks too.</div>
               </div>
             </div>
             <div style={{ marginTop: 12 }}><Bar pct={0} /></div>
@@ -1011,7 +1011,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
           </Card>
         )}
 
-        {/* This mentor's program, not "the" program — each mentor writes their
+        {/* This mentor's program, not "the" program, each mentor writes their
             own, so it belongs beside their posts rather than on a Profile that
             has no way to say whose phases these are. */}
         {phases.length > 0 && (

@@ -6,14 +6,14 @@ import { project, MIN_BUCKET } from "./lib/regions.js";
 import { homeView } from "./lib/home.js";
 import { WORLD_PATHS } from "./lib/basemap.js";
 
-/* ————————————————— THE MAP —————————————————
+/* ----------------- THE MAP -----------------
 
    A pannable, zoomable world map that paints how many people are in a place.
 
    Three things make it readable that the first version did not have:
 
    1. Actual coastlines and borders. A grid of purple dots on black is a chart
-      only the person who wrote it can read — you cannot tell Lagos from Nairobi
+      only the person who wrote it can read, you cannot tell Lagos from Nairobi
       without the continent under them. lib/basemap.js carries real country
       outlines, already projected into this file's coordinate space.
 
@@ -27,7 +27,7 @@ import { WORLD_PATHS } from "./lib/basemap.js";
    MIN_BUCKET people. See lib/regions.js for why that rule exists.
 */
 
-const W = 720, H = 360;      // 2:1 — equirectangular wants exactly this ratio
+const W = 720, H = 360;      // 2:1, equirectangular wants exactly this ratio
 const PX_PER_DEG = W / 360;  // 2
 const MIN_W = 46;            // deepest zoom ≈ 23° of longitude across the frame
 const MAX_HOME_LAT = 150;    // backstop on how much latitude the opening frame may cover
@@ -35,7 +35,7 @@ const MAX_HOME_LAT = 150;    // backstop on how much latitude the opening frame 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /** Bubble radius from a headcount, in screen pixels. sqrt so area tracks the
-    number rather than the radius — the difference between "twice as many"
+    number rather than the radius, the difference between "twice as many"
     reading as twice as big and reading as four times as big. */
 const radiusOf = (n) => 6 + Math.sqrt(n) * 2.6;
 
@@ -45,7 +45,7 @@ const radiusOf = (n) => 6 + Math.sqrt(n) * 2.6;
  * Everything inside the SVG lives in the 720×360 equirectangular space, and the
  * viewBox is the camera. Bubbles, labels and strokes are multiplied by `u`
  * (map units per screen pixel) on the way out, so they stay the same size on
- * screen no matter how far in you are zoomed — a bubble is a hit target, and a
+ * screen no matter how far in you are zoomed, a bubble is a hit target, and a
  * hit target that grows with zoom stops being one.
  */
 export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
@@ -56,7 +56,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
 
   /* Zooming out past the frame's height would show blank space above the pole,
      so the widest allowed view is whatever keeps the projection inside H. On a
-     tall phone that means the world is deliberately not fully zoomable out —
+     tall phone that means the world is deliberately not fully zoomable out -
      the alternative is letterboxing a map that was asked to fill the screen. */
   const clampView = useCallback((v, b = box) => {
     if (!b) return v;
@@ -77,7 +77,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
    * 390px width also means showing 200-odd degrees of latitude, and "zoom to
    * North America" turns into a view of both Americas.
    *
-   * Longitude wins that argument, because longitude is where the bubbles are —
+   * Longitude wins that argument, because longitude is where the bubbles are -
    * a frame that fits San Francisco and New York on screen at once is doing its
    * job even if the top of it is Arctic. MAX_HOME_LAT is only a backstop
    * against a very tall, very narrow window; on ordinary phone and desktop
@@ -92,7 +92,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
   }, b), [home, box, clampView]);
 
   /* The container drives the camera's aspect ratio, so the view cannot be set
-     until the container has been measured — and has to be re-clamped when it
+     until the container has been measured, and has to be re-clamped when it
      changes (rotation, desktop resize, the region sheet opening). */
   useEffect(() => {
     const el = boxRef.current;
@@ -111,7 +111,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
   const u = box && view ? view.w / box.w : 1;   // map units per screen pixel
   const viewH = view && box ? view.w * (box.h / box.w) : H;
 
-  /* ————— gestures ————— */
+  /* ----- gestures ----- */
 
   const ptrs = useRef(new Map());
   const pinch = useRef(null);
@@ -188,7 +188,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
    * Selection is a hit test on pointerup, not an onClick on the bubble.
    *
    * The container captures the pointer so a drag survives leaving the map, and
-   * a captured pointer retargets the click that follows it — bubbles with their
+   * a captured pointer retargets the click that follows it, bubbles with their
    * own onClick simply never fire. Hit-testing here also gets the two things
    * the DOM would not: a bubble is grabbable anywhere inside its circle rather
    * than inside the SVG group's bounding box, which includes the empty strip
@@ -212,7 +212,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
     onSelect?.(hit ? (hit.id === selectedId ? null : hit.id) : null);
   };
 
-  /* At world scale the labels collide into a smear — London and Berlin are nine
+  /* At world scale the labels collide into a smear, London and Berlin are nine
      pixels apart. Zoomed in they are the point of the thing. */
   const showLabels = !view || view.w <= 520;
 
@@ -229,7 +229,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
         width="100%" height="100%" style={{ display: "block" }} role="group"
         aria-label="People by region. Select a region to filter the list.">
 
-        {/* Ocean. Tapping it clears the selection — see endPointer. */}
+        {/* Ocean. Tapping it clears the selection, see endPointer. */}
         <rect x={-W} y={-H} width={W * 3} height={H * 3} fill={C.white} pointerEvents="none" />
 
         {/* Land. Every country is its own path, so the borders are real borders
@@ -242,7 +242,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
         {points.map((p) => {
           const on = selectedId === p.id;
           return (
-            /* onKeyDown is the keyboard path only — pointers go through
+            /* onKeyDown is the keyboard path only, pointers go through
                endPointer's hit test. */
             <g key={p.id} role="button" tabIndex={0}
               aria-pressed={on}
@@ -315,7 +315,7 @@ export const MapBrowse = ({
   const list = track === "Any" ? inRegion : inRegion.filter((p) => p._track === track);
 
   return (
-    /* The map has no intrinsic height — it is an absolutely-positioned child of
+    /* The map has no intrinsic height, it is an absolutely-positioned child of
        this box, so this box is the only thing that can give it one. `flex: 1`
        fills whatever the host screen has left over, which is the intent, but it
        yields *zero* in any host that isn't a full-height flex column. A map that

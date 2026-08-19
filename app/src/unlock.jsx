@@ -24,7 +24,7 @@ import { spring } from "./motion.js";
  *   The reward is on the      "Start · +30 XP", never a bare "Start" that pays
  *   button.                   out in a toast nobody reads.
  *
- *   It is for a person.       The header is the mentor's face and name — "FOR
+ *   It is for a person.       The header is the mentor's face and name, "FOR
  *                             YOUR MENTOR · Jordan". The work is for someone,
  *                             not for a progress bar, and social accountability
  *                             outperforms a percentage every time.
@@ -48,7 +48,7 @@ export function UnlockTrackCard({ stage, mentor, chatGate, onStart, busy }) {
 
   return (
     <Card style={{ padding: 0, overflow: "hidden", border: `1.5px solid ${C.purple}` }}>
-      {/* Who this is for. Not "your progress" — a person, with a face. */}
+      {/* Who this is for. Not "your progress", a person, with a face. */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: C.purpleTint }}>
         <Avatar src={mentor?.avatarUrl} name={mentor?.name} size={34} radius={10} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -100,7 +100,7 @@ export function UnlockTrackCard({ stage, mentor, chatGate, onStart, busy }) {
  * The locked Chat screen.
  *
  * A designed destination, not a hidden route. Hiding a gated feature removes the
- * goal gradient — someone cannot want a thing they can't see — so the tab stays
+ * goal gradient, someone cannot want a thing they can't see, so the tab stays
  * present and padlocked, and tapping it lands here: the lock, the reason, the
  * distance left, and one way forward.
  */
@@ -138,7 +138,7 @@ export function ChatLocked({ stage, mentor, go }) {
  * The unlock ceremony.
  *
  * Fires once, when the track completes. Rewards that arrive silently teach
- * people that finishing things changes nothing — so this is a moment, and it
+ * people that finishing things changes nothing, so this is a moment, and it
  * hands over the thing that was earned rather than merely announcing it.
  */
 export function ChatUnlocked({ mentor, onOpen, onClose }) {
@@ -154,7 +154,7 @@ export function ChatUnlocked({ mentor, onOpen, onClose }) {
         <Glyph color={C.teal} size={40} />
         <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 12 }}>Chat is open.</div>
         <p style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.6, marginTop: 7 }}>
-          You finished the track{mentor ? ` — ${firstNameOf(mentor.name)} is one message away.` : "."} The Connect badge is yours.
+          You finished the track{mentor ? `, ${firstNameOf(mentor.name)} is one message away.` : "."} The Connect badge is yours.
         </p>
         <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 13 }}>
           <Chip c={C.teal} bg={C.tealTint}><Check size={10} /> Connect badge</Chip>

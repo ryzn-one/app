@@ -6,18 +6,18 @@ import { POLICY_COPY } from "./lib/orbits.js";
 import { setOrbitPolicy, setOrbitSettings } from "./lib/auth-client.js";
 
 /**
- * Orbit policy — the console panel, shared by HR and creators.
+ * Orbit policy, the console panel, shared by HR and creators.
  *
  * The consoles are the **only** writers of policy in the product. Everything
  * else reads it: the deck's CTA, the seat counter, the padlock on the Chat tab,
  * which leaderboard renders, who is in the pool. That is why this is one panel
- * rather than two — an HR console and a creator console editing the same six
+ * rather than two, an HR console and a creator console editing the same six
  * fields through different code is how the two drift into meaning different
  * things by the same name.
  *
  * The highest-value assertion in the whole build is that flipping a switch here
  * changes a member's screen **without a reload**. Every write returns the
- * caller's whole orbit list, and the shell re-renders off it — so the console
+ * caller's whole orbit list, and the shell re-renders off it, so the console
  * and the phone are never looking at two versions of the rules.
  *
  * Rows are labelled from POLICY_COPY, the same map the read-only rows in the
@@ -61,7 +61,7 @@ export function OrbitPolicyPanel({ orbit, onSaved, toast }) {
       </div>
       <p style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, margin: "8px 0 4px" }}>
         These six switches are the only thing that makes this orbit behave differently
-        from any other. Changes reach everyone here immediately — nobody has to sign out.
+        from any other. Changes reach everyone here immediately, nobody has to sign out.
       </p>
 
       <SettingRow label={POLICY_COPY.matchMode.label} sub={POLICY_COPY.matchMode.sub}>
@@ -100,7 +100,7 @@ export function OrbitPolicyPanel({ orbit, onSaved, toast }) {
       {orbit.kind === "private" && policy.levelGate && (
         <div style={{ background: C.amberTint, borderRadius: 10, padding: "10px 12px", marginTop: 12 }}>
           <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>
-            Only mentors graded <strong>Staff+</strong> in People appear in the deck. Ungraded seats don't clear the gate —
+            Only mentors graded <strong>Staff+</strong> in People appear in the deck. Ungraded seats don't clear the gate -
             grade them before anyone goes looking for a mentor.
           </div>
         </div>
@@ -110,7 +110,7 @@ export function OrbitPolicyPanel({ orbit, onSaved, toast }) {
 }
 
 /**
- * Org settings — the parts of a company orbit that aren't policy.
+ * Org settings, the parts of a company orbit that aren't policy.
  *
  * `allowExternal` is the one that matters commercially: it decides whether posts
  * by mentors an employee follows *outside* this orbit may appear inside it. On
@@ -192,7 +192,7 @@ export function CreatorConsole({ orbit, orbits, onSaved, toast, onOpenPosts }) {
           </div>
         )}
         <p style={{ fontSize: 11.5, color: C.mute, lineHeight: 1.5, margin: "10px 2px 0" }}>
-          Anyone with this link can join, and joining follows you — so your next post reaches them
+          Anyone with this link can join, and joining follows you, so your next post reaches them
           in every orbit they're in, not only this one.
         </p>
       </Card>

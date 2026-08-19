@@ -1,4 +1,4 @@
-/* GENERATED — world-atlas 110m country polygons, projected into the map's
+/* GENERATED, world-atlas 110m country polygons, projected into the map's
    720×360 equirectangular space (see lib/regions.js `project`) and rounded to
    0.1px. Regenerate with scripts/gen-basemap.mjs; do not hand-edit.
 

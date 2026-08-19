@@ -12,7 +12,7 @@ import { ensureHandle } from "../lib/handles.js";
 const utcDayKey = (d = new Date()) => d.toISOString().slice(0, 10);
 
 /**
- * GET /api/me — session user + Ryzn profile + live pairings.
+ * GET /api/me, session user + Ryzn profile + live pairings.
  *
  * Bootstraps the profile row on first call so Google OAuth signups (which never
  * hit our register endpoint) still get one.
@@ -38,7 +38,7 @@ async function peopleById(db, ids) {
 }
 
 /**
- * Authoritative "setup already done" — never trust Better Auth cookieCache alone.
+ * Authoritative "setup already done", never trust Better Auth cookieCache alone.
  * Order: profile flags → saved answers → fresh user doc → founders always done.
  * Backfills the profile flag so the next boot is a single read.
  */
@@ -94,7 +94,7 @@ async function handler(request, user) {
     updatedAt: new Date(),
     fresh: true,
     onboardingComplete: false,
-    // Founders (`admin`) get a mentor-shaped profile — they never sit on the mentee side.
+    // Founders (`admin`) get a mentor-shaped profile, they never sit on the mentee side.
     ...(isMentorRole(user.role)
       ? { impact: 0, tier: "Scout", mentorRank: null, cohort: [], greetingUploaded: false }
       : { week: 1, streak: 0, xp: 0, rank: null, earned: {} }),
@@ -116,19 +116,19 @@ async function handler(request, user) {
   const age = ageFrom(user.dateOfBirth);
   const isMinor = age !== null && age < 18;
 
-  /* ————— organisation ————— */
+  /* ----- organisation ----- */
   const orgCtx = await orgContext(db, user.id);
   const org = orgCtx
     ? publicOrg(orgCtx.org, { orgRole: orgCtx.membership.orgRole })
     : null;
 
-  /* ————— live pairings ————— */
+  /* ----- live pairings ----- */
   const side = sideOf(user);
   const accepted = await acceptedFor(user.id, side);
   const otherIds = accepted.map((m) => (side === "mentor" ? m.menteeId : m.mentorId));
   const { users: otherUsers, profiles: otherProfiles } = await peopleById(db, otherIds);
 
-  /* Every accepted mentor, oldest pairing first — a flat list, because each one
+  /* Every accepted mentor, oldest pairing first, a flat list, because each one
      opens its own Orbit and none of them outranks the others. This used to be
      `mentor` plus `supportMentors`, and only `mentor` had a product behind it. */
   let mentors = [];
@@ -141,12 +141,12 @@ async function handler(request, user) {
       return {
         matchId: String(m._id),
         id: m.mentorId,
-        name: u?.name || "—",
+        name: u?.name || "-",
         headline: p.headline ?? null,
         avatarUrl: p.avatarUrl ?? u?.image ?? null,
         tier: p.tier ?? "Scout",
         since: m.respondedAt ?? m.createdAt ?? null,
-        /* Which orbit this pairing was formed in — the client counts seats
+        /* Which orbit this pairing was formed in, the client counts seats
            against the *active* orbit's cap, so a mentor held in a circle must
            not occupy a seat at work. Pairings older than orbits belong to the
            public orbit, which is where Ryzn was. */
@@ -164,7 +164,7 @@ async function handler(request, user) {
       return {
         matchId: String(m._id),
         id: m.menteeId,
-        name: u?.name || "—",
+        name: u?.name || "-",
         headline: p.headline ?? null,
         avatarUrl: p.avatarUrl ?? u?.image ?? null,
         track: asLabel(p.track),
@@ -180,14 +180,14 @@ async function handler(request, user) {
         // Stage 1 flips when /api/exercises records their first submission.
         stage1: !!p.stage1Complete,
         status: "active",
-        // Which orbit this mentee sits in for this mentor — a cohort spans
+        // Which orbit this mentee sits in for this mentor, a cohort spans
         // orbits, and a console may only see the people in its own.
         orbitId: orbitOfMatch(m),
       };
     });
   }
 
-  /* Today's exercise — so the mentee home card survives a refresh without a
+  /* Today's exercise, so the mentee home card survives a refresh without a
      second round-trip, and so "done" isn't a useState that dies on reload. */
   let exercise = null;
   if (side === "mentee") {
@@ -211,18 +211,18 @@ async function handler(request, user) {
     };
   }
 
-  /* ————— at risk —————
+  /* ----- at risk -----
    *
    * Days since the last exercise, computed rather than stored. It has two
    * consumers and they must read the same number: the HR console's at-risk
    * count, and the mentee's own Home, where it becomes a nudge **attributed to
-   * their mentor** — "Jordan noticed…", never "your programme administrator
+   * their mentor**, "Jordan noticed…", never "your programme administrator
    * noticed". Social accountability outperforms administrative email, and a
    * person who feels monitored by HR closes the app rather than opening the
    * exercise.
    *
    * Three days is the threshold: two is a weekend, four is a habit already lost.
-   * A mentee with no mentor yet is not at risk — there is nobody for the nudge
+   * A mentee with no mentor yet is not at risk, there is nobody for the nudge
    * to come from, and the unlock track is already the thing asking them to move.
    */
   /* How many people follow this mentor. Portable, like everything else on the
@@ -254,13 +254,13 @@ async function handler(request, user) {
       image: user.image ?? null,
       role: user.role || "mentee",
       /* Capability flag (ADMIN_EMAILS or role:admin). Not enough alone to open
-         the console — mentees on the env list must not see founder tools. */
+         the console, mentees on the env list must not see founder tools. */
       isAdmin: isAdmin(user),
       /* Door into the founder console. Mentees never get this, even when their
-         email is in ADMIN_EMAILS — promote via admin invite or `admin:grant`. */
+         email is in ADMIN_EMAILS, promote via admin invite or `admin:grant`. */
       adminConsole: canAccessAdminConsole(user),
       emailVerified: user.emailVerified,
-      /* Resolved from profile / answers / fresh user doc — not cookieCache. */
+      /* Resolved from profile / answers / fresh user doc, not cookieCache. */
       onboardingComplete,
     },
     /* Collapse single-select arrays left over from the chat submit bug so the
@@ -272,7 +272,7 @@ async function handler(request, user) {
       industry: asLabel(profile?.industry) ?? profile?.industry ?? null,
       onboardingComplete,
       /* Resolved with defaults filled in. A preference added after someone
-         signed up must read as its default here, not as `undefined` — a Settings
+         signed up must read as its default here, not as `undefined`, a Settings
          toggle bound to `undefined` renders off and then silently turns a live
          notification stream off the first time it's touched. */
       prefs: prefsOf(profile),
@@ -285,7 +285,7 @@ async function handler(request, user) {
     // Non-null only when a mentee has stopped. Home turns it into a nudge from
     // their mentor; the console counts it. One number, two consumers.
     atRisk,
-    /* Their organisation, if they're in one — two indexed reads, and it's what
+    /* Their organisation, if they're in one, two indexed reads, and it's what
        lets the app show a way into the org console instead of the Teams pitch.
        The console itself still reads /api/orgs for the roster and codes. */
     org,

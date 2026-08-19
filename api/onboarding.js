@@ -4,7 +4,7 @@ import { json, fail, withUser } from "../lib/http.js";
 import { appSide } from "../lib/roles.js";
 
 /**
- * POST /api/onboarding — persist the Ryzn AI setup answers.
+ * POST /api/onboarding, persist the Ryzn AI setup answers.
  *
  * Until this existed the answers were collected in the chat and thrown away on
  * refresh, so a returning user was asked the same six questions forever and had
@@ -39,7 +39,7 @@ const cleanList = (v) =>
     ? v.map(cleanString).filter(Boolean).slice(0, MAX_ITEMS)
     : [];
 
-/** First usable string — arrays from single-select chat answers collapse here. */
+/** First usable string, arrays from single-select chat answers collapse here. */
 const asScalar = (v) => (Array.isArray(v) ? cleanString(v[0]) : cleanString(v));
 
 /** Answers arrive as string | string[] depending on the question type. */

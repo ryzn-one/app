@@ -6,9 +6,9 @@ import { registerTeamsInterest, fetchMe, fetchOrg, createOrg, messageFor } from 
 import OrgConsole from "./OrgConsole.jsx";
 import { useOrbits } from "../lib/orbits.js";
 
-/* ————————————————— RYZN FOR TEAMS —————————————————
+/* ----------------- RYZN FOR TEAMS -----------------
 
-   What this was: a 2,500-line simulated org console — a fictional company
+   What this was: a 2,500-line simulated org console, a fictional company
    ("Northbound"), four invented mentors with Impact scores, three invented
    mentees mid-programme, and three demo accounts whose passwords shipped in the
    JS bundle. It persisted to localStorage and talked to no server, so every
@@ -18,7 +18,7 @@ import { useOrbits } from "../lib/orbits.js";
 
    What it is now: the org model exists, so the console is real. A mentor creates
    an organisation here, seats their own people with org-scoped invite codes, and
-   opens an Orbit across them. Every number on it is counted from the database —
+   opens an Orbit across them. Every number on it is counted from the database -
    see api/orgs.js.
 
    Four states, decided by who is asking:
@@ -42,7 +42,7 @@ const goToApp = () => {
 };
 
 /* This route replaces the app shell rather than living inside it, so it owns
-   both edges itself — see `.safe-page` in index.css. Without the top inset the
+   both edges itself, see `.safe-page` in index.css. Without the top inset the
    "Back to Ryzn" button renders under the status bar clock. */
 const Shell = ({ children }) => (
   <div className="full-h app-scroll safe-page" style={{ fontFamily: F.sans, color: C.ink, overflowY: "auto", background: C.surface }}>
@@ -101,7 +101,7 @@ const Pitch = () => (
   </>
 );
 
-/* ————— waitlist ————— */
+/* ----- waitlist ----- */
 function Waitlist() {
   const [email, setEmail] = useState("");
   const [org, setOrg] = useState("");
@@ -155,7 +155,7 @@ function Waitlist() {
   );
 }
 
-/* ————— create ————— */
+/* ----- create ----- */
 function CreateOrg({ onCreated }) {
   const [name, setName] = useState("");
   const [size, setSize] = useState("");
@@ -182,7 +182,7 @@ function CreateOrg({ onCreated }) {
         Set up your organisation.
       </div>
       <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>
-        You’ll own it. That makes you an admin of your own roster — seats, people and the Orbit —
+        You’ll own it. That makes you an admin of your own roster, seats, people and the Orbit -
         and changes nothing about your Ryzn account or your mentees.
       </div>
 
@@ -206,7 +206,7 @@ function CreateOrg({ onCreated }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
           {[
             { icon: Users, title: "A roster you control", body: "Mint single-use codes. Each one makes someone a Ryzn mentor and seats them in your org." },
-            { icon: Radio, title: "An org Orbit", body: "One feed across everyone in the org — the profile posts your people already publish." },
+            { icon: Radio, title: "An org Orbit", body: "One feed across everyone in the org, the profile posts your people already publish." },
             { icon: Award, title: "Org admins", body: "Promote someone to run the roster with you. Org admin is scoped to your org, nothing else." },
           ].map(({ icon: Icon, title, body }) => (
             <Card key={title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -225,7 +225,7 @@ function CreateOrg({ onCreated }) {
   );
 }
 
-/* ————— root ————— */
+/* ----- root ----- */
 export default function RyznTeams() {
   /* "checking" until we know who's asking. Starting on the signed-out pitch and
      correcting a beat later would show a mentor with an org the waitlist form
@@ -242,7 +242,7 @@ export default function RyznTeams() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // 401 on either call just means signed out — that's a state, not an error.
+      // 401 on either call just means signed out, that's a state, not an error.
       const [mine, orgCtx] = await Promise.all([
         fetchMe().catch(() => null),
         fetchOrg().catch(() => null),
@@ -296,7 +296,7 @@ export default function RyznTeams() {
         <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, marginTop: 8 }}>
           {signedIn
             ? <>Organisations are created by mentors. Your account is on the mentee side, so claim a mentor
-              invitation first — then this page becomes your org console.</>
+              invitation first, then this page becomes your org console.</>
             : <>Organisations are created by mentors, from inside their own account. If you already mentor on
               Ryzn, sign in and this page becomes your org console.</>}
         </div>

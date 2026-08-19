@@ -7,7 +7,7 @@ import { PersonRow } from "./explore.jsx";
 import { MapBrowse } from "./map.jsx";
 import { exploreRoster } from "./lib/auth-client.js";
 
-/* ————————————————— DISCOVER —————————————————
+/* ----------------- DISCOVER -----------------
 
    The browsable half of finding people, with a map in front of it.
 
@@ -15,14 +15,14 @@ import { exploreRoster } from "./lib/auth-client.js";
    people are in a place and hands you a selection when you tap one; it never
    plots an individual, and `rollUp` guarantees the smallest thing it can point
    at is MIN_BUCKET people. That is what makes a geographic view of a roster
-   that contains minors a thing we can ship at all — see lib/regions.js.
+   that contains minors a thing we can ship at all, see lib/regions.js.
 
    It also happens to be the only version that scales: /api/roster answers 50
    rows at a time, so a map that drew a pin per person would silently claim the
    roster is 50 people. Counts come from an aggregate, the list stays paged.
 
    In Map view the map is the screen. Everything the old layout stacked
-   underneath it — a headcount line, a data badge, a filter row, a list — either
+   underneath it, a headcount line, a data badge, a filter row, a list, either
    moved into the sheet a tapped region opens or went away, because a map you
    cannot read is not improved by captions describing it. The rendering, panning
    and zooming all live in map.jsx.
@@ -34,7 +34,7 @@ const TRACKS = ["Any", "University", "High school"];
 /**
  * Map + list over one shared filter state.
  *
- * The selection is a filter chip like any other — tapping a bubble and tapping
+ * The selection is a filter chip like any other, tapping a bubble and tapping
  * a track are the same kind of act. That is the whole reason the map is worth
  * having: it is an input and a readout of the current filter at once.
  */
@@ -53,7 +53,7 @@ export const DiscoverPane = ({ role, toast, onRequest, onRespond, canRequest, ca
   const buckets = [];
   const selected = buckets.find((b) => b.id === regionId) || null;
 
-  /* Same debounce and same endpoint as Explore — this pane replaces that
+  /* Same debounce and same endpoint as Explore, this pane replaces that
      screen's chrome, not its data path. */
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +93,7 @@ export const DiscoverPane = ({ role, toast, onRequest, onRespond, canRequest, ca
     } finally { setBusy(false); }
   };
 
-  /* Derived entirely from matchState, same as Explore — the sheet and the row
+  /* Derived entirely from matchState, same as Explore, the sheet and the row
      can never disagree about what's possible. */
   const footerFor = (p) => {
     const first = firstNameOf(p.name);

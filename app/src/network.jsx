@@ -10,14 +10,14 @@ import {
   amplifyPost, unamplifyPost, postAction,
 } from "./lib/auth-client.js";
 
-/* ————————————————— THE MENTOR NETWORK —————————————————
+/* ----------------- THE MENTOR NETWORK -----------------
 
    Everything else in the app runs across the mentor/mentee line: the decks, the
    roster, the Orbit, Direct Connect. This screen is the one place a mentor
    meets the other mentors, and it does exactly two things.
 
    Follow      one-sided, no handshake, no seat. Unlike a match it commits
-               nobody — it only decides whose posts show up in Feed below.
+               nobody, it only decides whose posts show up in Feed below.
 
    Add to Orbit  a mentor putting a peer's public post in front of their own
                cohort. The post is never copied: the byline, the counters and
@@ -67,7 +67,7 @@ function PeerRow({ p, busy, onOpen, onToggleFollow }) {
       {p.expertise?.length > 0 && <div style={{ marginTop: 10 }}><TagRow items={p.expertise} limit={4} /></div>}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
         <AffinityTag affinity={p.affinity} />
-        {/* Reciprocity is worth saying out loud — it's the nudge that turns a
+        {/* Reciprocity is worth saying out loud, it's the nudge that turns a
             one-sided follow into two mentors actually reading each other. */}
         {p.followsYou && <Label color={C.teal}>FOLLOWS YOU</Label>}
         {p.followers > 0 && <Label>{p.followers} FOLLOWER{p.followers === 1 ? "" : "S"}</Label>}
@@ -77,7 +77,7 @@ function PeerRow({ p, busy, onOpen, onToggleFollow }) {
 }
 
 /**
- * The Roster — the mentor guild.
+ * The Roster, the mentor guild.
  *
  * It **lives above orbits**, and that is the design rather than an accident of
  * where it was built: a mentor belongs to the guild, not to whichever space they
@@ -105,7 +105,7 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
   const [detail, setDetail] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
-  /* Debounced so typing doesn't fire a query per keystroke — the directory can
+  /* Debounced so typing doesn't fire a query per keystroke, the directory can
      outgrow what's loaded, so search stays server-side. */
   useEffect(() => {
     let cancelled = false;

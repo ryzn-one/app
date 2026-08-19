@@ -9,7 +9,7 @@ import { PostCard } from "../feed.jsx";
 import { fetchOrgRoster, fetchOrgOrbit, postAction, messageFor } from "../lib/auth-client.js";
 import { fmtDate } from "../lib/calendar.js";
 
-/* ————————————————— RYZN FOR TEAMS · the employee app —————————————————
+/* ----------------- RYZN FOR TEAMS · the employee app -----------------
 
    The same account, the same data, a different shape. Somebody who belongs to
    an org is not on Ryzn-the-network browsing strangers; they are inside their
@@ -19,18 +19,18 @@ import { fmtDate } from "../lib/calendar.js";
 
    What actually changes:
 
-     the deck        /api/roster?scope=org — their colleagues, filtered by the
+     the deck        /api/roster?scope=org, their colleagues, filtered by the
                      org's programme rules, which the server applies (see
                      api/roster.js). Nothing here re-implements a rule.
      the tabs        four, not five. Exercises, Badges and Meets fold into the
-                     Home card and the profile — an employee gets one next step,
+                     Home card and the profile, an employee gets one next step,
                      not a menu of five places to look.
      the frame       every screen is stamped with the org, because the whole
                      point is that this mentoring happens at work.
 
    What does not change: the account, the mentor pairing, the exercises, the
    Impact Score, the posts. Leaving an org drops someone back into the consumer
-   app with all of it intact — see the `mode` switch in RyznApp.jsx.
+   app with all of it intact, see the `mode` switch in RyznApp.jsx.
 
    Everything on these screens is read from the API. There is no seeded org, no
    invented colleague and no placeholder number: an org that has invited nobody
@@ -46,14 +46,14 @@ export const TEAMS_NAV = {
     a screen the current mode doesn't render, and the body would go blank. */
 export const TEAMS_TABS = { mentee: ["home", "mentors", "chat", "profile"], mentor: ["home", "roster", "chat", "profile"] };
 
-/* ————— frame ————— */
+/* ----- frame ----- */
 
 const Mono = ({ children, color = C.lilac, size = 9 }) => (
   <div style={{ fontFamily: F.mono, fontSize: size, letterSpacing: 1.1, color, textTransform: "uppercase" }}>{children}</div>
 );
 
 /** The org-stamped header every teams screen wears. Mentee side is purple,
-    mentor side is ink — the same two-sided colour split the rest of the app
+    mentor side is ink, the same two-sided colour split the rest of the app
     already uses for "being helped" and "helping". */
 export const TeamsHeader = ({ org, eyebrow, title, name, avatarUrl, onAvatar, dark, children }) => (
   <div style={{ background: dark ? C.ink : C.purple, color: C.white, padding: "16px 18px 14px" }}>
@@ -72,7 +72,7 @@ export const TeamsHeader = ({ org, eyebrow, title, name, avatarUrl, onAvatar, da
 );
 
 /** Streak / XP / week, in the header rather than on three separate cards. Reads
-    the same profile figures the consumer Home shows — a teams seat does not get
+    the same profile figures the consumer Home shows, a teams seat does not get
     its own scoreboard. */
 const ProgressPill = ({ u, onOpen }) => (
   <button onClick={onOpen}
@@ -120,10 +120,10 @@ const Seg = ({ options, value, onChange }) => (
   </div>
 );
 
-/* ————— mentee: home —————
+/* ----- mentee: home -----
 
-   One card. The prototype's promise — "one step at a time, this is all you need
-   to do right now" — only holds if the step is computed rather than listed, so
+   One card. The prototype's promise, "one step at a time, this is all you need
+   to do right now", only holds if the step is computed rather than listed, so
    this picks the single next real action from the account's actual state and
    renders nothing else.
 
@@ -143,7 +143,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
     .sort((a, b) => new Date(a.confirmedSlot.start) - new Date(b.confirmedSlot.start))[0];
   /* The next-step card speaks to one person, so it names the first mentor and
      says how many others are behind it rather than pretending there is only
-     one. Stage 1 is the mentee's own milestone — it opens Direct Connect with
+     one. Stage 1 is the mentee's own milestone, it opens Direct Connect with
      every mentor at once, not just this one. */
   const mentors = u.mentors || [];
   const mentorFirst = mentors.length ? firstNameOf(mentors[0].name) : null;
@@ -206,7 +206,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: step.tone }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Mono color="rgba(255,255,255,.75)" size={8}>{step.whoLabel}</Mono>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.white, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{step.who || "—"}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.white, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{step.who || "-"}</div>
               </div>
             </div>
             <div style={{ padding: "16px 16px 18px" }}>
@@ -262,7 +262,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
   );
 };
 
-/* ————— the org deck —————
+/* ----- the org deck -----
 
    One hook for both sides. The rules that narrow this list are applied by the
    server; what arrives back is what this person is allowed to see, plus the
@@ -272,7 +272,7 @@ function useOrgRoster({ side, include, enabled = true }) {
   const load = useCallback(() => {
     if (!enabled) return;
     setState((s) => ({ ...s, loading: true }));
-    // `undefined`, not null — the query builder drops undefined and would
+    // `undefined`, not null, the query builder drops undefined and would
     // otherwise put a literal `side=null` on the URL.
     fetchOrgRoster({ side: side || undefined, include: include || undefined })
       .then((res) => setState({
@@ -307,14 +307,14 @@ const PersonRow = ({ p, right, onClick }) => (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontWeight: 600, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
       <div style={{ fontFamily: F.mono, fontSize: 9, color: C.mute, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {[p.headline, p.division].filter(Boolean).join(" · ").toUpperCase() || "—"}
+        {[p.headline, p.division].filter(Boolean).join(" · ").toUpperCase() || "-"}
       </div>
     </div>
     {right}
   </div>
 );
 
-/* ————— mentee: mentors ————— */
+/* ----- mentee: mentors ----- */
 export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toast, seatsLeft }) => {
   const mentors = u.mentors || [];
   const [view, setView] = useState(mentors.length ? "mine" : "discover");
@@ -362,7 +362,7 @@ export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toa
 
         {/* One card per mentor, each with its own Library and Message. The
             second and third used to render as bare rows under "Also supporting
-            you" with neither button — the Library they were missing existed the
+            you" with neither button, the Library they were missing existed the
             whole time, behind /api/posts?mentorId=. */}
         {view === "mine" && (
           mentors.length ? (
@@ -430,7 +430,7 @@ export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toa
               <Empty
                 title={people.length === 0 ? `No mentors at ${org?.name || "your company"} yet.` : "Nothing left under these filters."}
                 body={people.length === 0
-                  ? "Your admin invites mentors from the org console. You’ll see them here the moment they claim their seat — your exercises are open in the meantime."
+                  ? "Your admin invites mentors from the org console. You’ll see them here the moment they claim their seat, your exercises are open in the meantime."
                   : rules.crossDivision === false
                     ? "Your org limits matching to your own division. Ask your admin to widen it, or clear the division filter."
                     : "Widen the filter to see the rest of the roster."}
@@ -469,7 +469,7 @@ export const TeamsMentors = ({ u, org, name, onDecide, onOpenMentor, onOpen, toa
   );
 };
 
-/* ————— mentor: mentees ————— */
+/* ----- mentor: mentees ----- */
 export const TeamsCohort = ({ u, org, name, matches = [], sessions = [], onRespond, onOpenMentee, onOpen, busy, capacity }) => {
   const inbox = matches.filter((m) => m.awaitingYou);
   const cohort = u.cohort || [];
@@ -531,7 +531,7 @@ export const TeamsCohort = ({ u, org, name, matches = [], sessions = [], onRespo
           </div>
           {cohort.length === 0 ? (
             <div style={{ padding: 20, fontSize: 13, color: C.gray, lineHeight: 1.55 }}>
-              Nobody yet. People at {org?.name || "your company"} find you from their Mentors tab — or invite someone
+              Nobody yet. People at {org?.name || "your company"} find you from their Mentors tab, or invite someone
               yourself from the Roster.
             </div>
           ) : (
@@ -549,7 +549,7 @@ export const TeamsCohort = ({ u, org, name, matches = [], sessions = [], onRespo
   );
 };
 
-/* ————— mentor: the roster ————— */
+/* ----- mentor: the roster ----- */
 export const TeamsRoster = ({ u, org, name, onOpen, onOpenMentor, onInvite, toast, cohortSeatsLeft }) => {
   const [view, setView] = useState("mentors");
   const mentors = useOrgRoster({ side: "mentors", enabled: view === "mentors" });
@@ -619,7 +619,7 @@ export const TeamsRoster = ({ u, org, name, onOpen, onOpenMentor, onInvite, toas
   );
 };
 
-/* ————— the org feed —————
+/* ----- the org feed -----
    Closed until an org manager opens it, and empty until somebody publishes.
    Both are real states with their own copy: an org that has not activated its
    Orbit is not an org whose people have written nothing. */
@@ -702,8 +702,8 @@ const OrgOrbit = ({ org, toast }) => {
   );
 };
 
-/* ————— chat —————
-   Direct Connect, listed. A thread exists because a pairing was accepted — the
+/* ----- chat -----
+   Direct Connect, listed. A thread exists because a pairing was accepted, the
    list is the accepted matches and nothing else, so there is no thread here
    that the server would refuse to open. */
 export const TeamsChat = ({ u, org, name, role, matches = [], stage1, onOpenThread, onOpen }) => {
@@ -719,7 +719,7 @@ export const TeamsChat = ({ u, org, name, role, matches = [], stage1, onOpenThre
           <Card style={{ background: C.amberTint, border: "none" }}>
             <Label color={C.amber}>Not open yet</Label>
             <div style={{ fontSize: 13, color: C.ink, marginTop: 7, lineHeight: 1.55 }}>
-              Direct Connect opens when you finish your first exercise — it’s what gives your mentor
+              Direct Connect opens when you finish your first exercise, it’s what gives your mentor
               something to reply to.
             </div>
             <Btn small style={{ marginTop: 13 }} onClick={() => onOpen("exercises")}>Write it now</Btn>
@@ -746,6 +746,6 @@ export const TeamsChat = ({ u, org, name, role, matches = [], stage1, onOpenThre
   );
 };
 
-/* The org console is reached the same way in both modes — the gear on the
+/* The org console is reached the same way in both modes, the gear on the
    profile, then the organisation row in Settings (app-shared.jsx). Belonging to
    an org shapes the default surface; it never walls the account in. */

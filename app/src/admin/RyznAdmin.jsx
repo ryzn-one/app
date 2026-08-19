@@ -14,23 +14,23 @@ import {
 import { buildInviteUrl, copyText } from "../lib/invite-url.js";
 import { GoogleMark } from "../auth.jsx";
 
-/* ————————————————— RYZN ADMIN —————————————————
+/* ----------------- RYZN ADMIN -----------------
    The founders' console: platform analytics, the mentor invite Roster, and the
-   people table. It's a page in the same app, routed at /app/#/admin — no second
+   people table. It's a page in the same app, routed at /app/#/admin, no second
    site, no subdomain, so it shares the origin and the session with everything else.
 
    Reads /api/admin/* behind an admin-only gate (lib/admin.js). The console had
-   a second mode that rendered seeded sample numbers — invented users, invented
-   invite codes, invented signup counts — for anyone who opened the URL without
+   a second mode that rendered seeded sample numbers, invented users, invented
+   invite codes, invented signup counts, for anyone who opened the URL without
    a database. It's gone: an admin console that can show fictional platform
    metrics is one screenshot away from being quoted as real.
 */
 
 
-/* ————— small bits ————— */
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—");
+/* ----- small bits ----- */
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "-");
 const fmtAgo = (d) => {
-  if (!d) return "—";
+  if (!d) return "-";
   const mins = Math.round((Date.now() - new Date(d).getTime()) / 60000);
   if (mins < 60) return `${Math.max(1, mins)}m ago`;
   if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
@@ -41,7 +41,7 @@ const STATE_COLOR = { open: C.purple, claimed: C.teal, expired: C.gray, revoked:
 
 /* Full reload onto the consumer URL so the purple RYZN splash remounts as a
    buffer, then /api/me re-hydrates the same session into the mentor (or mentee)
-   app — no role picker, no sign-in again. Clearing the hash alone remounted
+   app, no role picker, no sign-in again. Clearing the hash alone remounted
    React but still left founders mapped wrong; the hard navigation makes the
    handoff feel intentional. */
 const goToApp = () => {
@@ -61,8 +61,8 @@ const Chip = ({ children, c = C.purple, bg = C.purpleTint }) => (
   <span style={{ fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, letterSpacing: 0.6, color: c, background: bg, padding: "4px 8px", whiteSpace: "nowrap" }}>{children}</span>
 );
 
-/* ————— sign-in gate ————— */
-/** An admin invite code arriving as /app/#/admin?code=… — prefilled so the
+/* ----- sign-in gate ----- */
+/** An admin invite code arriving as /app/#/admin?code=…, prefilled so the
     recipient only has to sign in. */
 const codeFromHash = () => {
   const q = (typeof window !== "undefined" ? window.location.hash : "").split("?")[1] || "";
@@ -137,7 +137,7 @@ function AdminGate({ onIn, error }) {
                   style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: F.mono, fontSize: 13, color: C.ink, minWidth: 0, textTransform: "uppercase" }} />
               </div>
               <div style={{ fontSize: 11.5, color: C.gray, marginTop: 7, lineHeight: 1.5 }}>
-                Sign in with your normal Ryzn account — the code promotes it. One use only.
+                Sign in with your normal Ryzn account, the code promotes it. One use only.
               </div>
             </div>
           ) : (
@@ -149,7 +149,7 @@ function AdminGate({ onIn, error }) {
           <FormError>{err || error}</FormError>
           <Btn style={{ marginTop: 18 }} disabled={busy} onClick={submit}><Shield size={15} /> {busy ? "Checking…" : "Enter the console"}</Btn>
           {/* Email + password was the only way in, which locks out any founder
-              who signed up with Google — most of them. Comes back to /app/#/admin
+              who signed up with Google, most of them. Comes back to /app/#/admin
               so the redirect lands on the console, not the consumer app. */}
           <Btn kind="ghost" style={{ marginTop: 10 }} disabled={busy}
             onClick={() => signIn.social({ provider: "google", callbackURL: "/app/#/admin" })}>
@@ -157,11 +157,11 @@ function AdminGate({ onIn, error }) {
           </Btn>
           {code.trim() && (
             <div style={{ fontSize: 11.5, color: C.gray, marginTop: 8, lineHeight: 1.5, textAlign: "center" }}>
-              Google sign-in won’t redeem the code above — sign in, then paste it here.
+              Google sign-in won’t redeem the code above, sign in, then paste it here.
             </div>
           )}
           {/* Without this the console is a dead end for anyone who doesn't
-              already have a Ryzn account — there's no sign-up on this screen.
+              already have a Ryzn account, there's no sign-up on this screen.
               The same link is the way out for anyone who landed here by mistake
               and just wants the normal sign-in. */}
           <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 18, paddingTop: 14, textAlign: "center" }}>
@@ -183,7 +183,7 @@ function AdminGate({ onIn, error }) {
   );
 }
 
-/* ————— overview ————— */
+/* ----- overview ----- */
 function Overview({ stats }) {
   const peak = Math.max(1, ...stats.daily.map(d => d.n));
   const funnel = [
@@ -254,7 +254,7 @@ function Overview({ stats }) {
         <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.line}` }}><Label>Newest accounts</Label></div>
         {stats.recent.map((u, i) => (
           <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: i < stats.recent.length - 1 ? `1px solid ${C.line}` : "none" }}>
-            <Monogram name={u.name === "—" ? u.email : u.name} size={32} />
+            <Monogram name={u.name === "-" ? u.email : u.name} size={32} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
               <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</div>
@@ -268,7 +268,7 @@ function Overview({ stats }) {
   );
 }
 
-/* ————— invites ————— */
+/* ----- invites ----- */
 function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderName }) {
   const [role, setRole] = useState("mentor");
   const [count, setCount] = useState(5);
@@ -343,14 +343,14 @@ function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderNam
           <div style={{ background: C.amberTint, borderRadius: 12, padding: "11px 12px", marginTop: 10, display: "flex", gap: 9 }}>
             <Shield size={15} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} />
             <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
-              An admin code hands over this whole console. Send it to one person, directly — never in a shared channel.
+              An admin code hands over this whole console. Send it to one person, directly, never in a shared channel.
               They sign in at <span style={{ fontFamily: F.mono, fontSize: 11.5 }}>/app/#/admin</span> with their own Ryzn account and paste it.
             </div>
           </div>
         )}
         {isMenteeCode && (
           <div style={{ background: C.tealTint, borderRadius: 12, padding: "11px 12px", marginTop: 10, fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
-            A mentee code grants the mentee role on claim — same redeem path as org mentee seats, without seating them in an organisation.
+            A mentee code grants the mentee role on claim, same redeem path as org mentee seats, without seating them in an organisation.
           </div>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginTop: 12 }}>
@@ -398,7 +398,7 @@ function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderNam
         <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10, lineHeight: 1.7 }}>
           {isAdminCode
             ? "CLAIMING AN ADMIN CODE IS THE ONLY WAY TO JOIN THIS CONSOLE WITHOUT TOUCHING SERVER CONFIG."
-            : "EACH CODE OPENS /MENTOR-INVITE.HTML PERSONALIZED WITH THEIR NAME. PREVIEW USES THE FIELDS ABOVE — IT DOESN'T MINT A CODE."}
+            : "EACH CODE OPENS /MENTOR-INVITE.HTML PERSONALIZED WITH THEIR NAME. PREVIEW USES THE FIELDS ABOVE, IT DOESN'T MINT A CODE."}
         </div>
       </Card>
 
@@ -416,13 +416,13 @@ function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderNam
               {iv.role === "mentee" && <Chip c={C.teal} bg={C.tealTint}>MENTEE</Chip>}
               {iv.role === "mentor" && <Chip c={C.purple} bg={C.purpleTint}>MENTOR</Chip>}
               <Chip c={STATE_COLOR[iv.state]} bg={iv.state === "claimed" ? C.tealTint : iv.state === "revoked" ? C.coralTint : iv.state === "expired" ? C.surface : C.purpleTint}>{iv.state.toUpperCase()}</Chip>
-              <button onClick={() => copyText(linkFor(iv)).then(() => toast(iv.role === "admin" ? "Admin link copied — send it directly" : "Invite link copied"))} title="Copy invite link"
+              <button onClick={() => copyText(linkFor(iv)).then(() => toast(iv.role === "admin" ? "Admin link copied, send it directly" : "Invite link copied"))} title="Copy invite link"
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Copy size={13} color={C.gray} /></button>
               <button onClick={() => window.open(linkFor(iv), "_blank", "noopener")} title={iv.role === "admin" ? "Open admin claim" : `Preview invite${iv.sentName ? ` for ${iv.sentName}` : ""}`}
                 style={{ border: "none", background: C.surface, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><ExternalLink size={13} color={C.gray} /></button>
               {iv.state === "open" && iv.role !== "admin" && (
                 <button onClick={() => {
-                  // No address on file means we have nowhere to send it — ask
+                  // No address on file means we have nowhere to send it, ask
                   // rather than firing a request that can only 400.
                   const dest = iv.sentTo || window.prompt(`Send ${iv.code} to which email?`, "");
                   if (dest) onResend(iv.code, dest.trim(), iv.sentName || undefined);
@@ -430,7 +430,7 @@ function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderNam
                   style={{ border: "none", background: C.purpleTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><Send size={13} color={C.purple} /></button>
               )}
               {iv.state === "open" && (
-                <button onClick={() => onRevoke(iv.code)} title="Revoke — kills the code, keeps the record"
+                <button onClick={() => onRevoke(iv.code)} title="Revoke, kills the code, keeps the record"
                   style={{ border: "none", background: C.coralTint, cursor: "pointer", borderRadius: 9, padding: "7px 9px", display: "flex" }}><RotateCcw size={13} color={C.coral} /></button>
               )}
               <button onClick={() => onDelete(iv)} title="Delete the row entirely"
@@ -439,7 +439,7 @@ function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderNam
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 6 }}>
               {iv.claimedBy
                 ? `CLAIMED BY ${iv.claimedBy.name.toUpperCase()} · ${iv.claimedBy.email} · ${fmtDate(iv.redeemedAt)}`
-                : `${(iv.note || "—").toUpperCase()} · MINTED ${fmtDate(iv.createdAt)}${iv.expiresAt ? ` · EXPIRES ${fmtDate(iv.expiresAt)}` : ""}`}
+                : `${(iv.note || "-").toUpperCase()} · MINTED ${fmtDate(iv.createdAt)}${iv.expiresAt ? ` · EXPIRES ${fmtDate(iv.expiresAt)}` : ""}`}
             </div>
             {iv.sentTo && (
               <div style={{ fontFamily: F.mono, fontSize: 9, color: iv.lastSendError ? C.coral : C.teal, marginTop: 4 }}>
@@ -455,7 +455,7 @@ function Invites({ rows, onMint, onRevoke, onResend, onDelete, toast, founderNam
   );
 }
 
-/* ————— people ————— */
+/* ----- people ----- */
 function People({ rows, q, setQ, role, setRole, onDelete, meId }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -476,7 +476,7 @@ function People({ rows, q, setQ, role, setRole, onDelete, meId }) {
         {rows.length === 0 && <div style={{ padding: 18, fontSize: 13, color: C.gray }}>Nobody matches that.</div>}
         {rows.map((u, i) => (
           <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: i < rows.length - 1 ? `1px solid ${C.line}` : "none" }}>
-            <Monogram name={u.name === "—" ? u.email : u.name} size={34} />
+            <Monogram name={u.name === "-" ? u.email : u.name} size={34} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
               <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -503,7 +503,7 @@ function People({ rows, q, setQ, role, setRole, onDelete, meId }) {
   );
 }
 
-/* ————— destructive actions —————
+/* ----- destructive actions -----
    Everything below erases something a person made. Each one names exactly what
    is about to go, and deleting an account makes you type the address first: a
    stray click in a row of icon buttons must not be able to remove somebody. */
@@ -549,15 +549,15 @@ function ConfirmDelete({ open, title, lines = [], confirmWord, busy, onCancel, o
   );
 }
 
-/* ————— posts ————— */
+/* ----- posts ----- */
 function Posts({ rows, loading, onDelete }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Card>
         <Label color={C.purple}>Moderation</Label>
         <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55, marginTop: 8 }}>
-          Every live post on the platform, newest first. Removing one here hides it everywhere —
-          feed, profile and public share page — and the author is not notified. The row itself is
+          Every live post on the platform, newest first. Removing one here hides it everywhere -
+          feed, profile and public share page, and the author is not notified. The row itself is
           kept, so what was taken down stays auditable.
         </div>
       </Card>
@@ -569,16 +569,16 @@ function Posts({ rows, loading, onDelete }) {
         {!loading && rows.length === 0 && <div style={{ padding: 18, fontSize: 13, color: C.gray }}>Nothing posted yet.</div>}
         {rows.map((p, i) => (
           <div key={p.id} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "12px 16px", borderBottom: i < rows.length - 1 ? `1px solid ${C.line}` : "none" }}>
-            <Monogram name={p.authorName === "—" ? (p.authorEmail || "?") : p.authorName} size={30} />
+            <Monogram name={p.authorName === "-" ? (p.authorEmail || "?") : p.authorName} size={30} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, lineHeight: 1.5, wordBreak: "break-word" }}>
                 {p.title ? <b>{p.title}{p.text ? " · " : ""}</b> : null}
                 {(p.text || "").slice(0, 200)}
                 {(p.text || "").length > 200 ? "…" : ""}
-                {!p.title && !p.text && <span style={{ color: C.gray }}>({p.kind || "post"} — no text)</span>}
+                {!p.title && !p.text && <span style={{ color: C.gray }}>({p.kind || "post"}, no text)</span>}
               </div>
               <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 6 }}>
-                {(p.authorName || "—").toUpperCase()}{p.authorEmail ? ` · ${p.authorEmail}` : ""} · {fmtDate(p.createdAt)}
+                {(p.authorName || "-").toUpperCase()}{p.authorEmail ? ` · ${p.authorEmail}` : ""} · {fmtDate(p.createdAt)}
                 {p.visibility ? ` · ${String(p.visibility).toUpperCase()}` : ""}
               </div>
             </div>
@@ -593,13 +593,13 @@ function Posts({ rows, loading, onDelete }) {
   );
 }
 
-/* ————— root ————— */
+/* ----- root ----- */
 export default function RyznAdmin() {
   const isDesktop = useIsDesktop();
   /* "checking" until we know whether the cookie we already have is a founder's.
      This used to start at false and go straight to the sign-in form, so opening
      the console in a second tab demanded a re-login even though the session was
-     valid and same-origin — which made "open the admin panel in a new window"
+     valid and same-origin, which made "open the admin panel in a new window"
      an unusable flow. */
   const [boot, setBoot] = useState("checking");
   const [authed, setAuthed] = useState(false);
@@ -623,7 +623,7 @@ export default function RyznAdmin() {
   const [confirmBusy, setConfirmBusy] = useState(false);
 
   /* Runs on mount, not just after sign-in: an existing session is the common
-     case when this opens in a new window. A 403 here is the real gate — the
+     case when this opens in a new window. A 403 here is the real gate, the
      sign-in form only proves you have an account, lib/admin.js decides whether
      it's a founder's. */
   useEffect(() => {
@@ -649,7 +649,7 @@ export default function RyznAdmin() {
         if (cancelled) return;
         setAuthed(false);
         setBoot("gate");
-        // 401 just means signed out — that's the gate doing its job, not an error
+        // 401 just means signed out, that's the gate doing its job, not an error
         // worth shouting about on first paint.
         if (e.status === 403) setGateError("Only mentor admins can open this console.");
         else if (e.status !== 401) setGateError(messageFor(e, "Couldn’t load the console."));
@@ -673,7 +673,7 @@ export default function RyznAdmin() {
 
   const visiblePeople = people;
 
-  /* Posts load only when that tab is opened — it is a moderation queue nobody
+  /* Posts load only when that tab is opened, it is a moderation queue nobody
      needs on first paint, and it reads every author's feed at once. */
   const loadPosts = async () => {
     setPostsLoading(true);
@@ -694,7 +694,7 @@ export default function RyznAdmin() {
       const { invites: fresh } = await adminInvites();
       setInvites(fresh);
       if (to) {
-        // A failed send doesn't undo the mint — the code is live either way, so
+        // A failed send doesn't undo the mint, the code is live either way, so
         // say what actually happened instead of a blanket success.
         if (res.sent) toast(`Invitation sent to ${to}`);
         else { copyText(res.url || res.created[0]); toast(res.sendError || `Minted but not sent · link copied`); }
@@ -723,7 +723,7 @@ export default function RyznAdmin() {
     } catch (e) { toast(messageFor(e, "Couldn’t revoke that code.")); }
   };
 
-  /* — deletes —
+  /*, deletes -
      Each `ask*` only describes the action; nothing happens until the modal's
      Delete is pressed and `run` fires. Reloading afterwards is deliberate:
      removing an account also revokes codes and changes the counts, so the
@@ -756,7 +756,7 @@ export default function RyznAdmin() {
     title: "Delete this account?",
     confirmWord: u.email,
     lines: [
-      `${u.name === "—" ? u.email : u.name} (${u.role}) will be erased, along with everything they own — profile, posts, comments, matches, messages, bookings and org seats.`,
+      `${u.name === "-" ? u.email : u.name} (${u.role}) will be erased, along with everything they own, profile, posts, comments, matches, messages, bookings and org seats.`,
       "Any invitation code they claimed is revoked, not returned to the pool.",
       "This cannot be undone.",
     ],
@@ -774,7 +774,7 @@ export default function RyznAdmin() {
     lines: [
       `${iv.code} will be removed from the ledger entirely.`,
       iv.state === "claimed"
-        ? "It has been claimed — deleting it erases the record of how that person joined. Their account and role are unaffected."
+        ? "It has been claimed, deleting it erases the record of how that person joined. Their account and role are unaffected."
         : "Revoke instead if you only want to stop it working: that kills the code but keeps the record.",
     ],
     run: async () => {
@@ -788,7 +788,7 @@ export default function RyznAdmin() {
   const askDeletePost = (p) => setConfirm({
     title: "Delete this post?",
     lines: [
-      `${p.authorName}'s post will be hidden everywhere — feed, profile and its public share link.`,
+      `${p.authorName}'s post will be hidden everywhere, feed, profile and its public share link.`,
       "The author is not notified. The row is kept so it stays auditable.",
     ],
     run: async () => {
@@ -835,7 +835,7 @@ export default function RyznAdmin() {
           </div>
           <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.55, marginTop: 10 }}>
             Org admin is scoped to one organisation and is not this console. An org code grants the
-            <b> mentor</b> role and nothing more — only an admin code minted here opens the founder console.
+            <b> mentor</b> role and nothing more, only an admin code minted here opens the founder console.
           </div>
           <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => { window.location.hash = "#/teams"; }}><Building2 size={15} /> Open the Teams page</Btn>
         </Card>
@@ -843,7 +843,7 @@ export default function RyznAdmin() {
           <Label>Mentor invite page</Label>
           <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55, marginTop: 8 }}>
             Personalized with the mentor's name, your founder signature, and their code.
-            Preview it from <b>Invites</b> using the name field — that opens the real page in preview mode without minting a code.
+            Preview it from <b>Invites</b> using the name field, that opens the real page in preview mode without minting a code.
           </div>
           <Btn kind="ghost" style={{ marginTop: 14 }} onClick={() => setNav("invites")}><Send size={15} /> Go to Invites to preview</Btn>
         </Card>
@@ -865,32 +865,32 @@ export default function RyznAdmin() {
             Checked server-side on every <span style={{ fontFamily: F.mono, fontSize: 12 }}>/api/admin/*</span> call. A caller passes if:
           </div>
           <ul style={{ margin: "10px 0 0 18px", padding: 0, fontSize: 13.5, lineHeight: 1.7, color: C.gray }}>
-            <li>their account has <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>role: "admin"</span> — set by claiming an admin code or <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>admin:grant</span>, or</li>
+            <li>their account has <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>role: "admin"</span>, set by claiming an admin code or <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>admin:grant</span>, or</li>
             <li>they are a <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>mentor</span> whose email is in <span style={{ fontFamily: F.mono, fontSize: 12, color: C.ink }}>ADMIN_EMAILS</span>.</li>
           </ul>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 12, lineHeight: 1.6 }}>
-            Mentees never get in — even when listed in ADMIN_EMAILS. Signing in only proves who you are.
+            Mentees never get in, even when listed in ADMIN_EMAILS. Signing in only proves who you are.
           </div>
         </Card>
         <Card>
           <Label>Address</Label>
           <div style={{ fontFamily: F.mono, fontSize: 11.5, lineHeight: 2, color: C.ink, marginTop: 8 }}>RYZN.ONE/APP/#/ADMIN</div>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 8, lineHeight: 1.55 }}>
-            The console is a page inside the app, not a separate site — same origin, same session, same deploy.
+            The console is a page inside the app, not a separate site, same origin, same session, same deploy.
           </div>
         </Card>
         <Card style={{ background: C.coralTint, border: "none" }}>
           <Label color={C.coral}>Read-only by design</Label>
           <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, marginTop: 8 }}>
             The console can mint invite codes, mail them, and revoke unclaimed ones. It cannot edit people or
-            hand out the mentor role — that still happens only when a mentor claims a code themselves.
+            hand out the mentor role, that still happens only when a mentor claims a code themselves.
           </div>
         </Card>
       </div>
     ),
   }[nav];
 
-  // alignSelf: stretch, not height: 100% — the row's height is set by the shell,
+  // alignSelf: stretch, not height: 100%, the row's height is set by the shell,
   // and a percentage height against it would collapse back to content height.
   const sidebar = (
     <div style={{ width: 212, flexShrink: 0, background: C.ink, display: "flex", flexDirection: "column", alignSelf: "stretch" }}>
@@ -907,7 +907,7 @@ export default function RyznAdmin() {
           }}><Icon size={16} color={nav === id ? C.white : "#8B8985"} />{label}</button>
         ))}
       </div>
-      {/* Leaving the console and ending the session are different intentions —
+      {/* Leaving the console and ending the session are different intentions -
           a founder checking the app still wants their cookie. */}
       <div style={{ padding: 12, borderTop: "1px solid #2C2C2C", display: "flex", flexDirection: "column", gap: 2 }}>
         <button onClick={goToApp} style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: "none", cursor: "pointer", padding: "8px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: "#B5B3AE", textAlign: "left" }}>

@@ -1,4 +1,4 @@
-/* ————————————————— REGIONS —————————————————
+/* ----------------- REGIONS -----------------
 
    Two things live here and nothing else does: the projection that turns a
    lat/lng into a point on the map's SVG, and `rollUp`, which is the rule that
@@ -11,7 +11,7 @@
 /**
  * The smallest number of people a bucket may name.
  *
- * A city with four mentees in it is not a statistic, it is close to a name —
+ * A city with four mentees in it is not a statistic, it is close to a name -
  * especially on the High school track, where "1 mentee in Kelowna" next to a
  * tappable list is most of an identification. Cities under this threshold lose
  * their own point on the map and fold into their parent region.
@@ -26,7 +26,7 @@ export const MIN_BUCKET = 5;
  * Equirectangular: longitude maps straight to x, latitude straight to y.
  *
  * The simplest projection there is, and the correct one for this screen. The
- * map here is a filter control, not an atlas — nothing is measured off it, so
+ * map here is a filter control, not an atlas, nothing is measured off it, so
  * area distortion toward the poles costs nothing, and the inverse is one
  * subtraction per axis when a click has to become a region.
  */
@@ -40,7 +40,7 @@ export const project = (lat, lng, w, h) => ({
  *
  * Anything under `min` is merged into its parent region and loses its own
  * point. The merged bucket keeps the full count, so the numbers on the map
- * still sum to the roster — dropping the people would make the map lie about
+ * still sum to the roster, dropping the people would make the map lie about
  * how many mentees exist. Only *where* they are is coarsened, which is the part
  * that carries the risk.
  *
@@ -84,7 +84,7 @@ export function rollUp(cities = [], min = MIN_BUCKET) {
   }
 
   /* A parent that only ever collected folded cities can itself land under the
-     threshold. Applying the rule once is not enough — it has to hold for the
+     threshold. Applying the rule once is not enough, it has to hold for the
      bucket the roll-up produced too, or the fold just relocates the problem. */
   const rolled = [];
   for (const b of parents.values()) {

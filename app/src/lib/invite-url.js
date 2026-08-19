@@ -8,14 +8,14 @@
  *
  * lib/invite-url.js at the repo root is the server-side twin, used when the
  * console mints and emails a code in one action. It cannot be shared with this
- * file — `app/` is the Vite root and cannot reach outside it — so the two must
+ * file, `app/` is the Vite root and cannot reach outside it, so the two must
  * be kept in step by hand. Change the query shape in one, change it in both.
  */
 
 /**
  * The public invitation page for a minted code.
  *
- * `claim` is where the recipient lands after confirming — the consumer app's
+ * `claim` is where the recipient lands after confirming, the consumer app's
  * mentor sign-up, with the code carried through so they never retype it. This
  * previously pointed at the Ryzn for Teams demo, which meant a real founding
  * mentor accepting a real invitation ended up in a mock org console instead of

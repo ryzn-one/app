@@ -3,7 +3,7 @@ import { json, fail } from "../../lib/http.js";
 import { withAdmin } from "../../lib/admin.js";
 
 /**
- * GET /api/admin/stats — everything the founder console renders above the fold.
+ * GET /api/admin/stats, everything the founder console renders above the fold.
  *
  * One round of countDocuments plus two small aggregations. Cheap enough to call
  * on every console load; if the user table ever gets big, cache it in Edge
@@ -68,7 +68,7 @@ async function handler(request) {
     daily,
     recent: recent.map((u) => ({
       id: String(u._id),
-      name: u.name || "—",
+      name: u.name || "-",
       email: u.email,
       role: u.role || "mentee",
       createdAt: u.createdAt,

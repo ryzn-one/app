@@ -7,7 +7,7 @@ import { orbitContext, PUBLIC_ORBIT_ID, PUBLIC_POLICY } from "../lib/orbits.js";
 import { recordedSteps, resolveStage, chatUnlocked } from "../lib/stage.js";
 
 /**
- * /api/messages — Direct Connect between an accepted mentee↔mentor pair.
+ * /api/messages, Direct Connect between an accepted mentee↔mentor pair.
  *
  *   GET  /api/messages?otherId=…     thread with that person
  *   POST /api/messages { otherId, text }
@@ -33,7 +33,7 @@ const shape = (doc, viewerId) => ({
  * Is Chat open for this pairing?
  *
  * `chatGate` is a policy field, so the answer depends on the orbit the pairing
- * was formed in — and an orbit that never gated chat must not inherit a gate
+ * was formed in, and an orbit that never gated chat must not inherit a gate
  * from one that does. Two things are read together:
  *
  *   policy.chatGate   does this orbit gate chat at all
@@ -98,7 +98,7 @@ async function handler(request, user) {
 
   if (request.method === "POST") {
     const rl = await rateLimit(`message-send:${user.id}`, { limit: 120, windowMs: 60 * 60 * 1000 });
-    if (!rl.ok) return fail(429, "rate_limited", "Slow down — try again in a bit.");
+    if (!rl.ok) return fail(429, "rate_limited", "Slow down, try again in a bit.");
 
     let body;
     try { body = await request.json(); } catch { return fail(400, "bad_request", "Expected JSON."); }
@@ -119,7 +119,7 @@ async function handler(request, user) {
       return fail(403, "locked", "Chat unlocks when the mentee finishes their first track in this orbit.");
     }
 
-    // Confirm the other party still exists — soft guard against stale client ids.
+    // Confirm the other party still exists, soft guard against stale client ids.
     const other = await db.collection(collections.user).findOne(
       { _id: new ObjectId(otherId) },
       { projection: { _id: 1 } }

@@ -15,12 +15,12 @@ import {
   orgSetRules, orgSetDivision,
 } from "../lib/auth-client.js";
 
-/* ————————————————— ORG CONSOLE —————————————————
+/* ----------------- ORG CONSOLE -----------------
 
    The real one. Every number on this screen is counted from the database: the
    roster is org_members, the codes are invites scoped to this org, the Orbit is
    the profile-visible posts of the org's own people. Nothing is seeded and
-   nothing is simulated — the console this replaces was a fictional company with
+   nothing is simulated, the console this replaces was a fictional company with
    invented mentors, which is exactly what an org console must never be.
 
    Who may do what is decided server-side in api/orgs.js. The controls here are
@@ -30,7 +30,7 @@ import {
 const STATE_COLOR = { open: C.purple, claimed: C.teal, expired: C.gray, revoked: C.coral };
 const STATE_BG = { open: C.purpleTint, claimed: C.tealTint, expired: C.surface, revoked: C.coralTint };
 
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—");
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "-");
 
 const Chip = ({ children, c = C.purple, bg = C.purpleTint }) => (
   <span style={{ fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, letterSpacing: 0.6, color: c, background: bg, padding: "4px 8px", whiteSpace: "nowrap" }}>{children}</span>
@@ -51,7 +51,7 @@ const ROLE_CHIP = {
 };
 
 /** The divisions this org actually uses, read off the roster. Never a second
-    list to maintain — a division exists because somebody is sitting in it. */
+    list to maintain, a division exists because somebody is sitting in it. */
 const divisionsOf = (members) =>
   [...new Set(members.map((m) => m.division).filter(Boolean))].sort();
 
@@ -68,7 +68,7 @@ const Switch = ({ on, onChange, disabled }) => (
 );
 
 /** One programme rule: what it does, and what it costs when it's on. The body
-    text is the point — a switch labelled only "Cross-division" tells a manager
+    text is the point, a switch labelled only "Cross-division" tells a manager
     nothing about who stops appearing in their people's decks. */
 const Rule = ({ title, body, on, onChange, disabled }) => (
   <div style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderBottom: `1px solid ${C.line}` }}>
@@ -80,7 +80,7 @@ const Rule = ({ title, body, on, onChange, disabled }) => (
   </div>
 );
 
-/* ————— overview ————— */
+/* ----- overview ----- */
 function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
   const open = invites.filter((i) => i.state === "open").length;
   const mentors = members.filter((m) => m.role === "mentor" || m.role === "admin").length;
@@ -101,7 +101,7 @@ function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
           <Label color={C.purple}>Next step</Label>
           <div style={{ fontSize: 14, lineHeight: 1.55, marginTop: 8 }}>
             {members.length < 2
-              ? <>Invite mentors and mentees. Each claim seats them in {org.name} on Ryzn — then open the Orbit so the whole org reads the same feed.</>
+              ? <>Invite mentors and mentees. Each claim seats them in {org.name} on Ryzn, then open the Orbit so the whole org reads the same feed.</>
               : <>You have a roster. Opening the Orbit puts everyone’s profile posts into one feed for the org.</>}
           </div>
           {canManage && (
@@ -116,7 +116,7 @@ function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
       <Card>
         <Label>What an org is here</Label>
         <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.6, marginTop: 8 }}>
-          Your people keep their own Ryzn accounts — profile, cohort, Impact Score — and the org is the
+          Your people keep their own Ryzn accounts, profile, cohort, Impact Score, and the org is the
           layer around them: a shared roster, seats you hand out yourself, and one feed. Being the owner
           makes you an admin <b style={{ color: C.ink }}>of {org.name}</b>, not of Ryzn.
         </div>
@@ -125,7 +125,7 @@ function Overview({ org, members, invites, onOrbit, onNav, canManage }) {
   );
 }
 
-/* ————— people ————— */
+/* ----- people ----- */
 
 /** Seats one person in a team. Free text with the org's existing divisions
     offered as suggestions: an org chart is not ours to enumerate, but retyping
@@ -189,7 +189,7 @@ function People({ org, members, canManage, isOwner, meId, onRole, onRemove, onDi
                 ? <DivisionCell member={m} divisions={divisions} onSet={onDivision} busy={busy} />
                 : m.division && <Chip c={C.gray} bg={C.surface}>{m.division.toUpperCase()}</Chip>}
               <Chip c={chip.c} bg={chip.bg}>{chip.label}</Chip>
-              {/* Only the owner reshuffles who runs the org — an org admin can
+              {/* Only the owner reshuffles who runs the org, an org admin can
                   seat and unseat members, not promote a peer above themselves. */}
               {isOwner && m.orgRole !== "owner" && (
                 <button disabled={busy} onClick={() => onRole(m.id, m.orgRole === "admin" ? "member" : "admin")}
@@ -209,13 +209,13 @@ function People({ org, members, canManage, isOwner, meId, onRole, onRemove, onDi
         })}
       </Card>
       <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", lineHeight: 1.7, padding: "0 4px" }}>
-        REMOVING SOMEONE TAKES THEIR ORG SEAT, NOT THEIR RYZN ACCOUNT — THEIR MENTEES, POSTS AND IMPACT STAY THEIRS.
+        REMOVING SOMEONE TAKES THEIR ORG SEAT, NOT THEIR RYZN ACCOUNT, THEIR MENTEES, POSTS AND IMPACT STAY THEIRS.
       </div>
     </div>
   );
 }
 
-/* ————— invites ————— */
+/* ----- invites ----- */
 function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, inviterName }) {
   const [to, setTo] = useState("");
   const [who, setWho] = useState("");
@@ -227,7 +227,7 @@ function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, invit
   const addressed = to.trim().length > 0;
   const isMentee = role === "mentee";
 
-  // Same query shape the server builds when it mails one — the page reads `org`
+  // Same query shape the server builds when it mails one, the page reads `org`
   // + `role` and opens with the company's name rather than Ryzn's founding pitch.
   const linkFor = (iv) =>
     buildInviteUrl({
@@ -244,7 +244,7 @@ function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, invit
         <Label color={C.purple}>Seat someone at {org.name}</Label>
         <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
           A code is single-use. Claiming it puts them in {org.name} on Ryzn
-          {isMentee ? " as a mentee" : " as a mentor with their own profile and Impact Score"} —
+          {isMentee ? " as a mentee" : " as a mentor with their own profile and Impact Score"} -
           one link, one sign-in, no approval queue.
         </div>
 
@@ -303,7 +303,7 @@ function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, invit
               style={{ width: "100%", marginTop: 7, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, fontFamily: F.mono, fontSize: 14, outline: "none", background: C.white, boxSizing: "border-box" }} />
           </div>
           {/* Set here so they land already seated in a team. Leaving it blank is
-              fine — a division-less person sees everyone regardless of the rule. */}
+              fine, a division-less person sees everyone regardless of the rule. */}
           <div style={{ gridColumn: "span 2", minWidth: 0 }}>
             <Label>Division (optional)</Label>
             <input value={division} list="invite-divisions" onChange={(e) => setDivision(e.target.value)}
@@ -371,10 +371,10 @@ function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, invit
   );
 }
 
-/* ————— programme rules —————
+/* ----- programme rules -----
    The two switches below predate orbits and are still enforced by /api/roster.
    The six that decide everything else are `orbit.policy`, edited through
-   OrbitPolicyPanel above them — one panel, shared with the creator console, so
+   OrbitPolicyPanel above them, one panel, shared with the creator console, so
    the same rule cannot come to mean two things under one name.
 
    `crossDivision` appears in both. It is one rule with one value: api/orgs.js
@@ -395,7 +395,7 @@ function Programme({ org, members, canManage, onRules, busy, orbit, onOrbitSaved
         <Label color={C.purple}>Programme rules</Label>
         <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.55 }}>
           These decide who your people see when they browse mentors inside {org.name}. They are
-          applied by the server on every request, not by the app — so they hold no matter which
+          applied by the server on every request, not by the app, so they hold no matter which
           screen someone is looking at.
         </div>
 
@@ -404,7 +404,7 @@ function Programme({ org, members, canManage, onRules, busy, orbit, onOrbitSaved
             title="Mentors from any division"
             body={
               rules.crossDivision
-                ? "On. Anyone at the company can be matched with anyone — the widest pool, and the usual choice for a first cohort."
+                ? "On. Anyone at the company can be matched with anyone, the widest pool, and the usual choice for a first cohort."
                 : `Off. People only see mentors sitting in their own division.${unseated ? ` ${unseated} of your ${members.length} still have no division, and they keep seeing everyone until you seat them.` : ""}`
             }
             on={!!rules.crossDivision}
@@ -434,7 +434,7 @@ function Programme({ org, members, canManage, onRules, busy, orbit, onOrbitSaved
       <Card>
         <Label>Divisions · {divisions.length}</Label>
         <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.55 }}>
-          A division is a team inside {org.name}. It exists because somebody is sitting in it —
+          A division is a team inside {org.name}. It exists because somebody is sitting in it -
           set one on a person from the People tab, or on the invitation before you send it.
         </div>
         {divisions.length === 0 ? (
@@ -476,7 +476,7 @@ function Programme({ org, members, canManage, onRules, busy, orbit, onOrbitSaved
   );
 }
 
-/* ————— orbit ————— */
+/* ----- orbit ----- */
 function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
   const [state, setState] = useState({ loading: true, posts: [], error: null, members: 0 });
   const [reacted, setReacted] = useState({});
@@ -545,7 +545,7 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
           <div style={{ fontSize: 13.5, color: C.gray, marginTop: 8, lineHeight: 1.55, maxWidth: 420, margin: "8px auto 0" }}>
             Open it and everyone in the org reads one feed: every post your people have marked
             profile-visible, newest first. Posts written for a mentor’s own cohort stay private to
-            that cohort — the Orbit never widens who can see those.
+            that cohort, the Orbit never widens who can see those.
           </div>
           {canManage
             ? <Btn style={{ marginTop: 18, maxWidth: 260, marginLeft: "auto", marginRight: "auto" }} disabled={busy} onClick={() => onOrbit(true)}>
@@ -604,7 +604,7 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
   );
 }
 
-/* ————— settings ————— */
+/* ----- settings ----- */
 function OrgSettings({ org, canManage, isOwner, onSave, onLeave, busy }) {
   const [name, setName] = useState(org.name);
   const [size, setSize] = useState(org.size || "");
@@ -642,7 +642,7 @@ function OrgSettings({ org, canManage, isOwner, onSave, onLeave, busy }) {
         <Label>Handle</Label>
         <div style={{ fontFamily: F.mono, fontSize: 12, marginTop: 8 }}>{org.slug}</div>
         <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.55 }}>
-          Set when the org was created and left alone on rename — it’s the handle your invitations
+          Set when the org was created and left alone on rename, it’s the handle your invitations
           were minted against.
         </div>
       </Card>
@@ -651,7 +651,7 @@ function OrgSettings({ org, canManage, isOwner, onSave, onLeave, busy }) {
         <Card style={{ background: C.amberTint, border: "none" }}>
           <Label color={C.amber}>You own this org</Label>
           <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, marginTop: 8 }}>
-            The owner can’t leave or be removed — that would leave {org.name} with nobody able to
+            The owner can’t leave or be removed, that would leave {org.name} with nobody able to
             seat anyone. Promote an org admin if you need cover while you’re away.
           </div>
         </Card>
@@ -672,7 +672,7 @@ function OrgSettings({ org, canManage, isOwner, onSave, onLeave, busy }) {
   );
 }
 
-/* ————— root ————— */
+/* ----- root ----- */
 export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrbitsChanged }) {
   const isDesktop = useIsDesktop();
   const [nav, setNav] = useState("overview");
@@ -685,7 +685,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
   const meId = me?.user?.id;
 
   /* Every write answers with the whole context, so there is one setState and no
-     second GET — and no window where the roster on screen disagrees with the
+     second GET, and no window where the roster on screen disagrees with the
      server's. Returns true so callers can clear their own form on success. */
   const run = async (fn, okMsg) => {
     setBusy(true); setErr(null);
@@ -719,7 +719,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
     );
     if (!res) return false;
     if (to) {
-      // A failed send doesn't undo the mint — the code is live either way, so
+      // A failed send doesn't undo the mint, the code is live either way, so
       // say what actually happened rather than a blanket success.
       if (res.sent) toast(`Seat sent to ${to}`);
       else { copyText(res.url || res.created?.[0] || ""); toast(res.sendError || "Minted but not sent · link copied"); }
@@ -758,7 +758,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
     <div className="full-h app-scroll" style={{ fontFamily: F.sans, color: C.ink, background: C.surface, overflowY: "auto", paddingBottom: "var(--safe-bottom)" }}>
       {/* The console replaces the app shell, so its header is the thing sitting
           at viewport y=0 and it pads the status bar inset itself. The white
-          runs into the inset — the header owns that strip, it is never a bare
+          runs into the inset, the header owns that strip, it is never a bare
           gap above it. */}
       <div style={{
         background: C.white, borderBottom: `1px solid ${C.line}`,

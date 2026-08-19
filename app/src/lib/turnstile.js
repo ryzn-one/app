@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Cloudflare Turnstile site key — public by design (like a Stripe publishable
+ * Cloudflare Turnstile site key, public by design (like a Stripe publishable
  * key), safe to inline into the bundle. Unset means the widget simply never
  * renders and signUp proceeds without a captcha header, so local dev and any
  * deploy that hasn't configured Turnstile yet still work unchanged.
@@ -27,7 +27,7 @@ const loadScript = () => {
 /**
  * Renders a Turnstile widget into `ref` and returns the current pass/fail
  * token. Server side (lib/auth.js) requires this on /sign-up/email whenever
- * TURNSTILE_SECRET_KEY is set — the two must be configured together.
+ * TURNSTILE_SECRET_KEY is set, the two must be configured together.
  */
 export function useTurnstile() {
   const ref = useRef(null);

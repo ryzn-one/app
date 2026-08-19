@@ -7,7 +7,7 @@ import { json, fail, withUser, getUser } from "../lib/http.js";
 import { handleResources } from "../lib/resources.js";
 
 /**
- * /api/profile — the fields people write about themselves.
+ * /api/profile, the fields people write about themselves.
  *
  *   PATCH  /api/profile            headline, education, experience, industry,
  *                                  avatarUrl, bannerUrl, prefs
@@ -15,7 +15,7 @@ import { handleResources } from "../lib/resources.js";
  *   DELETE /api/profile            erase the account and everything it owns
  *   POST   /api/profile?upload=1   Vercel Blob token for an avatar / banner
  *
- *   …?resources=1                  the "Promote to Ryzn" shelf — see
+ *   …?resources=1                  the "Promote to Ryzn" shelf, see
  *                                  lib/resources.js, which owns every method
  *                                  once that flag is present.
  *
@@ -43,7 +43,7 @@ const prefixFor = (userId) => `avatars/${userId}/`;
 /**
  * The browser uploads straight to Blob storage and then tells us the URL, so
  * "the client said so" has to be checked before it becomes someone's picture.
- * Right host, and a path inside the caller's own folder — the same two checks
+ * Right host, and a path inside the caller's own folder, the same two checks
  * api/posts.js makes, for the same reason: without them any URL on the internet
  * could be pinned to a profile and served as though we host it.
  *
@@ -62,7 +62,7 @@ function cleanImageUrl(value, userId) {
 
 /** Best-effort cleanup of the file a picture just replaced. Uploads carry a
     random suffix, so without this every re-crop leaks a blob forever. A failure
-    here must not fail the save — the new image is already live. */
+    here must not fail the save, the new image is already live. */
 async function forget(url) {
   try { await del(url); } catch (err) { console.warn("[profile] stale blob left behind:", err?.message); }
 }
@@ -70,7 +70,7 @@ async function forget(url) {
 /**
  * Everything Ryzn holds about the caller, as one JSON file.
  *
- * A compliance blocker for any enterprise pilot, and — more usefully — the
+ * A compliance blocker for any enterprise pilot, and, more usefully, the
  * honest version of "your data is yours". It reads the caller's own rows only,
  * and it deliberately omits other people's words: a mentor's replies in a shared
  * thread are that mentor's, and an export that carried them would hand over
@@ -99,7 +99,7 @@ async function exportData(db, user) {
     stageProgress: stage.map(strip),
     exercises: exercises.map(strip),
     posts: posts.map(strip),
-    // What you put your name behind — links you promoted, and your own note on
+    // What you put your name behind, links you promoted, and your own note on
     // each. Yours in the same sense a post is.
     resources: resources.map(strip),
     xpLedger: xpEvents.map(strip),
@@ -111,7 +111,7 @@ async function exportData(db, user) {
 /**
  * Delete the account and everything it owns.
  *
- * Refused while the caller still owns an orbit — a company orbit or a circle
+ * Refused while the caller still owns an orbit, a company orbit or a circle
  * with members would be left ownerless, and the people in it would lose a space
  * because someone else closed their account. Hand it over first.
  */
@@ -151,14 +151,14 @@ async function handler(request, user) {
   /* The shelf takes the request whole, before anything below can see it.
      Checked first and by exact value because the alternative is a DELETE that
      meant "take this link down" falling through to the branch that erases the
-     account — the one place in this file where routing by query param has to be
+     account, the one place in this file where routing by query param has to be
      unambiguous rather than merely tidy. */
   if (new URL(request.url).searchParams.get("resources") === "1") {
     return handleResources(request, user, db);
   }
 
   /* Export and delete ride on this function rather than their own. Vercel counts
-     functions per deployment and this project sits near the ceiling — the same
+     functions per deployment and this project sits near the ceiling, the same
      reason the upload token lives here. */
   if (request.method === "GET") {
     if (new URL(request.url).searchParams.get("export") === "1") {
@@ -246,7 +246,7 @@ async function upload(request) {
         if (!user) throw new Error("Sign in to upload.");
         /* This hook can approve a destination but not rewrite it, so the client
            proposes the path and anything outside the caller's own folder is
-           refused — otherwise one account could write into another's prefix and
+           refused, otherwise one account could write into another's prefix and
            then claim the file as their picture. */
         if (!String(pathname).startsWith(prefixFor(user.id))) {
           throw new Error("Bad upload path.");
@@ -259,7 +259,7 @@ async function upload(request) {
         };
       },
       onUploadCompleted: async () => {
-        /* Never fires on localhost — there's no public URL to call back to. The
+        /* Never fires on localhost, there's no public URL to call back to. The
            PATCH that follows is what saves the picture, so this stays empty and
            the flow behaves the same in both places. */
       },

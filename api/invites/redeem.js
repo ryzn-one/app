@@ -8,7 +8,7 @@ import { isMentorRole } from "../../lib/roles.js";
 /**
  * POST /api/invites/redeem  { code }   (authenticated)
  *
- * Promotes the caller to the role recorded ON THE INVITE — "mentor" by default,
+ * Promotes the caller to the role recorded ON THE INVITE, "mentor" by default,
  * "mentee" for org mentee seats, or "admin" for codes minted as admin invites
  * in the founder console. This is the only path to mentor/admin: `role` is
  * input:false in the Better Auth config, so a client can never send one, and
@@ -51,12 +51,12 @@ async function handler(request, user) {
   const peek = await invites.findOne({ code: normalized }, { projection: { role: 1, orgId: 1 } });
   const grants = roleOf(peek);
   // An org code carries a seat as well as a role, so a mentor who already holds
-  // the role still has something to claim — skipping it here would leave a
+  // the role still has something to claim, skipping it here would leave a
   // mentor invited by their own company permanently outside it.
   //
   // Mentee codes never take this exit. `mentee` is the default role on every
   // new account (see the Better Auth config in lib/auth.js), so "already holds
-  // it" is true for someone who has claimed nothing at all — and returning
+  // it" is true for someone who has claimed nothing at all, and returning
   // here left the code unspent forever: still live for the next person handed
   // the link, and never showing as claimed in the console.
   if (grants !== "mentee" && user.role === grants && !peek?.orgId) {
@@ -76,7 +76,7 @@ async function handler(request, user) {
 
   if (!claimed) {
     // Distinguish "wrong code" from "already spent" without leaking existence
-    // to unauthenticated callers — this endpoint requires a session, so it's safe.
+    // to unauthenticated callers, this endpoint requires a session, so it's safe.
     const existing = await invites.findOne({ code: normalized });
     if (!existing) return fail(404, "invalid_code", "That code isn't recognized.");
     if (existing.revokedAt) return fail(410, "revoked", "That invitation was withdrawn.");
@@ -84,11 +84,11 @@ async function handler(request, user) {
     return fail(410, "expired", "That invitation has expired.");
   }
 
-  // Re-read the role off the claimed document rather than trusting the peek —
+  // Re-read the role off the claimed document rather than trusting the peek -
   // the peek and the claim are two round trips, and only this one is atomic.
   const granted = roleOf(claimed);
 
-  // Never demote a mentor/admin who claims a mentee seat — they still join the
+  // Never demote a mentor/admin who claims a mentee seat, they still join the
   // org below. Promoting mentee → mentor|admin and seating mentees are fine.
   const nextRole =
     granted === "mentee" && isMentorRole(user.role) ? (user.role || "mentor") : granted;
@@ -117,8 +117,8 @@ async function handler(request, user) {
   } else if (nextRole === "mentee" && !isMentorRole(user.role)) {
     /* Scaffold a mentee profile, but never reset one. Progress used to be $set
        unconditionally, which was safe only while the single caller was a
-       brand-new account. An existing mentee claiming a second code — their
-       company seating them in its org, most likely — would have had their
+       brand-new account. An existing mentee claiming a second code, their
+       company seating them in its org, most likely, would have had their
        week, streak, XP and badges wiped by accepting the invitation. */
     await db.collection(collections.profiles).updateOne(
       { userId: user.id },
@@ -138,7 +138,7 @@ async function handler(request, user) {
       { upsert: true }
     );
   } else if (nextRole === "admin") {
-    // Admins are staff, not participants — flag the role and leave the rest
+    // Admins are staff, not participants, flag the role and leave the rest
     // of their profile alone so they keep whatever they had.
     await db.collection(collections.profiles).updateOne(
       { userId: user.id },
@@ -158,7 +158,7 @@ async function handler(request, user) {
       { projection: { name: 1, slug: 1 } }
     ).catch(() => null);
     if (orgDoc) {
-      // Mentee seats are always org members — org admin is a mentor-side tool.
+      // Mentee seats are always org members, org admin is a mentor-side tool.
       const wantedOrgRole = granted === "mentee" ? "member" : claimed.orgRole;
       const orgRole = GRANTABLE_ORG_ROLES.has(wantedOrgRole) ? wantedOrgRole : "member";
       await db.collection(collections.orgMembers).updateOne(

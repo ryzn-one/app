@@ -1,4 +1,4 @@
-/* Ryzn brand kit — always served from origin root (/branding/...), not under /app/ */
+/* Ryzn brand kit, always served from origin root (/branding/...), not under /app/ */
 
 export const brandAsset = (path) => `/branding/ryzn-brand-kit/${String(path).replace(/^\//, "")}`;
 

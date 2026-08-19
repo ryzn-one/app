@@ -3,7 +3,7 @@ import { Sparkles, Users, Compass } from "lucide-react";
 import { C, F } from "./theme.js";
 import { Btn } from "./ui.jsx";
 
-/* ————————————————— ONBOARDING TUTORIAL ————————————————— */
+/* ----------------- ONBOARDING TUTORIAL ----------------- */
 /* Two parts: a one-time intro slideshow, and per-tab spotlight hints.
    "Seen" state lives in localStorage keyed by role so a mentee and a mentor
    on the same device each get their own tour. Replay / reset live in Settings. */
@@ -26,7 +26,7 @@ function writeLS(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* quota exceeded or private-mode storage block — tour just won't persist this run */
+    /* quota exceeded or private-mode storage block, tour just won't persist this run */
   }
 }
 
@@ -56,7 +56,7 @@ export const resetTour = (role) => {
   writeLS(LS_KEYS.comprehensiveTour, { ...seen, [role]: false });
 };
 
-/* ————— content ————— */
+/* ----- content ----- */
 
 export const TOUR_STEPS = {
   mentee: [
@@ -73,18 +73,18 @@ export const TOUR_STEPS = {
 
 export const TAB_HINTS = {
   mentee: {
-    home: { target: "mentee-home-progress", title: "Your daily progress", body: "Your streak and XP live here — check in every day to keep it going.", placement: "bottom" },
+    home: { target: "mentee-home-progress", title: "Your daily progress", body: "Your streak and XP live here, check in every day to keep it going.", placement: "bottom" },
     exercises: { target: "mentee-exercises-submit", title: "Submit today's exercise", body: "A few minutes a day builds your streak and earns XP toward badges.", placement: "top" },
     badges: { target: "mentee-badges-first", title: "Your badges", body: "Tap an earned badge for QR verification and a one-tap LinkedIn share.", placement: "bottom" },
-    meets: { target: "meets-ticket-mentee", title: "In-person Meets", body: "Keep showing up and your ticket unlocks — track your progress here.", placement: "bottom" },
+    meets: { target: "meets-ticket-mentee", title: "In-person Meets", body: "Keep showing up and your ticket unlocks, track your progress here.", placement: "bottom" },
     profile: { target: "mentee-profile-hero", title: "Your profile", body: "Goals, badges, and mentors live here. Settings (and this tour) are up in the gear.", placement: "bottom" },
   },
   mentor: {
-    home: { target: "mentor-home-impact", title: "Your Impact Score", body: "This grows as your mentees hit milestones — it drives your tier.", placement: "bottom" },
+    home: { target: "mentor-home-impact", title: "Your Impact Score", body: "This grows as your mentees hit milestones, it drives your tier.", placement: "bottom" },
     feed: { target: "mentor-feed-compose", title: "Your feed", body: "Publish a greeting or a post here. Mentees on your Orbit see what you share.", placement: "bottom" },
     sessions: { target: "mentor-sessions-list", title: "Book your sessions", body: "Propose a few times to a mentee. When they pick one it's booked, and both of you can add it to your calendar.", placement: "bottom" },
     meets: { target: "meets-ticket-mentor", title: "In-person Meets", body: "Your seat at the quarterly event lands here once a date is set.", placement: "bottom" },
-    profile: { target: "mentor-profile-program", title: "Design your course", body: "Tap here to open the course designer — add phases from kickoff to graduation, with optional certificates.", placement: "bottom" },
+    profile: { target: "mentor-profile-program", title: "Design your course", body: "Tap here to open the course designer, add phases from kickoff to graduation, with optional certificates.", placement: "bottom" },
   },
 };
 
@@ -92,10 +92,10 @@ export const COMPREHENSIVE_TOUR_STEPS = {
   mentee: [
     { type: "intro", icon: Sparkles, title: "Welcome to Ryzn", body: "You've been matched with a mentor who wants to see you win. This tour walks you through the full app." },
     { type: "intro", icon: Users, title: "How mentorship works", body: "Show up daily for exercises to build your streak, earn XP, and unlock badges. Your mentor shares guidance in their Orbit feed." },
-    { type: "screen", tab: "home", title: "Your dashboard", body: "This is your home — check your daily progress, streak, and XP. Your mentor's name appears here once you're matched." },
+    { type: "screen", tab: "home", title: "Your dashboard", body: "This is your home, check your daily progress, streak, and XP. Your mentor's name appears here once you're matched." },
     { type: "screen", tab: "exercises", title: "Daily exercises", body: "A few minutes a day builds your streak and earns XP. Complete one now to start unlocking features." },
     { type: "screen", tab: "badges", title: "Your badges", body: "Earn badges as you hit milestones. Tap one to verify with QR and share to LinkedIn." },
-    { type: "screen", tab: "meets", title: "In-person meets", body: "Quarterly events for the cohort. Your ticket unlocks at Week 8 — track your progress here." },
+    { type: "screen", tab: "meets", title: "In-person meets", body: "Quarterly events for the cohort. Your ticket unlocks at Week 8, track your progress here." },
     { type: "screen", tab: "profile", title: "Your profile", body: "Your goals, mentors, and settings live here. Come back anytime to update or explore more." },
     { type: "outro", icon: Sparkles, title: "You're all set", body: "Dive in and show up daily. Your streak and engagement unlock new features over time." },
   ],
@@ -111,7 +111,7 @@ export const COMPREHENSIVE_TOUR_STEPS = {
   ],
 };
 
-/* ————— intro slideshow ————— */
+/* ----- intro slideshow ----- */
 
 export const IntroTourModal = ({ role, onDone }) => {
   const steps = TOUR_STEPS[role] || TOUR_STEPS.mentee;
@@ -148,7 +148,7 @@ export const IntroTourModal = ({ role, onDone }) => {
   );
 };
 
-/* ————— per-tab spotlight hint ————— */
+/* ----- per-tab spotlight hint ----- */
 
 function bubblePosition(rect, placement) {
   const PAD = 12, WIDTH = 240;
@@ -222,7 +222,7 @@ export const SpotlightHint = ({ role, tab, onDismiss }) => {
   );
 };
 
-/* ————— comprehensive tour ————— */
+/* ----- comprehensive tour ----- */
 
 export const ComprehensiveTour = ({ role, onDone, onNavTo }) => {
   const steps = COMPREHENSIVE_TOUR_STEPS[role] || COMPREHENSIVE_TOUR_STEPS.mentee;

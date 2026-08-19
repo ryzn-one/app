@@ -16,7 +16,7 @@ import { MyShelf, MentorShelf } from "./resources.jsx";
 import { TagRow } from "./chatmatch.jsx";
 import { fetchMenteeExercises, fetchProgram, setPhaseComplete, fetchImpactHistory } from "./lib/auth-client.js";
 
-/* Suggested starter phases — one tap seeds a course so mentors aren't staring
+/* Suggested starter phases, one tap seeds a course so mentors aren't staring
    at a blank timeline wondering what "phase" means. */
 const STARTER_PHASES = [
   { title: "Kickoff & goals", duration: "Week 1", description: "Align on career goals, set a weekly cadence, and share your first intro." },
@@ -26,7 +26,7 @@ const STARTER_PHASES = [
 ];
 
 /**
- * Full-screen course designer. Studio only shows a door into this — the phases
+ * Full-screen course designer. Studio only shows a door into this, the phases
  * live here so "design your course" feels like opening a workspace, not editing
  * a card buried under profile strength.
  */
@@ -94,7 +94,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
           </div>
           {list.length > 0 && (
             <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
-              Order matters — use the arrows to reorder.
+              Order matters, use the arrows to reorder.
             </div>
           )}
           <ProgramTimeline
@@ -112,14 +112,14 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
   );
 };
 
-/* ————————————————— APP: MENTOR ————————————————— */
+/* ----------------- APP: MENTOR ----------------- */
 
 export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
   const isDesktop = useIsDesktop();
   const firstName = (name || "").split(" ")[0];
   const cohortCount = (u.cohort || []).length;
 
-  /* Trend line for the hero card — real points from the xp_events ledger,
+  /* Trend line for the hero card, real points from the xp_events ledger,
      not a fabricated curve. Fetched here rather than lifted to root state,
      same as the mentee exercise journal and program timeline below. */
   const [impactPoints, setImpactPoints] = useState([]);
@@ -149,7 +149,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
       </div>
     </div>
     <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
-      {/* Dynamic impact graph, pinned to the corner — real cumulative Impact
+      {/* Dynamic impact graph, pinned to the corner, real cumulative Impact
           points from the xp_events ledger, not a decorative fake curve. */}
       <div style={{ position: "absolute", top: 18, right: 18 }}>
         <Sparkline points={impactPoints} color="#B7AFF2" />
@@ -160,7 +160,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <div style={{ fontSize: 13.5, fontWeight: 600, color: "#B5B3AE" }}>mentee{cohortCount === 1 ? "" : "s"} impacted</div>
       </div>
       {/* One meta line, not three stacked ones. Impact, tier and rank are the
-          same fact at three resolutions, so they read as a single run — and
+          same fact at three resolutions, so they read as a single run, and
           rank still only renders once the server has one, rather than printing
           "RANKING OPENS THIS QUARTER" as though it were a stat. */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.5, color: "#8B8985", marginTop: 14 }}>
@@ -257,7 +257,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
   }, [mentee.id]);
 
   /* This mentor's own phases, plus this specific mentee's progress against
-     them — fetched here rather than lifted to root state, same as the
+     them, fetched here rather than lifted to root state, same as the
      exercise journal above. */
   useEffect(() => {
     if (!mentee.id) return;
@@ -318,7 +318,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: mentee.stage1 ? C.teal : C.ink }}>{mentee.stage1 ? "Direct line open" : "Chat unlocks at their Stage 1"}</div>
-              <div style={{ fontSize: 12, color: mentee.stage1 ? C.teal : C.gray, marginTop: 2, opacity: mentee.stage1 ? 0.85 : 1, lineHeight: 1.4 }}>{mentee.stage1 ? `${mentee.name.split(" ")[0]} earned Direct Connect — message any time.` : "They earn it by finishing their first exercise. You’ll get a nudge the moment it opens."}</div>
+              <div style={{ fontSize: 12, color: mentee.stage1 ? C.teal : C.gray, marginTop: 2, opacity: mentee.stage1 ? 0.85 : 1, lineHeight: 1.4 }}>{mentee.stage1 ? `${mentee.name.split(" ")[0]} earned Direct Connect, message any time.` : "They earn it by finishing their first exercise. You’ll get a nudge the moment it opens."}</div>
             </div>
             {mentee.stage1 && <Btn small style={{ background: C.teal }} onClick={() => openDm(mentee)}><MessageCircle size={13} /> Message</Btn>}
           </div>
@@ -405,7 +405,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
    a card per mentee, printed "NOT YET BOOKED" under every one, and told mentors
    to agree a time in their thread because nothing could be booked at all. */
 
-/* The quarterly board. Every competitor row was invented — named mentors with
+/* The quarterly board. Every competitor row was invented, named mentors with
    Impact scores in the 800–1200 range, which also set the implied bar for a
    real mentor's own number. There is no cross-mentor ranking service yet, so
    this shows the caller's own quarter and says plainly that the board is not
@@ -425,7 +425,7 @@ export const MentorBoard = ({ u, back }) => (
         <Label>Your quarter breakdown</Label>
         {[
           ["Mentees in your cohort", `${(u.cohort || []).length}`, C.teal],
-          ["Cohort capacity", `${u.capacity ?? "—"}`, C.purple],
+          ["Cohort capacity", `${u.capacity ?? "-"}`, C.purple],
           ["Graduations", (u.cohort || []).length ? "First cohort in progress" : "None yet", C.amber],
         ].map(([l, v, c]) => (
           <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
@@ -436,7 +436,7 @@ export const MentorBoard = ({ u, back }) => (
       </Card>
       <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.55 }}>
-          The quarterly leaderboard opens once the founding roster is complete. Until then your Impact Score stands on its own — sessions, milestones and graduations all count toward it.
+          The quarterly leaderboard opens once the founding roster is complete. Until then your Impact Score stands on its own, sessions, milestones and graduations all count toward it.
         </div>
       </Card>
     </div>
@@ -448,7 +448,7 @@ export const MentorBoard = ({ u, back }) => (
  * sees).
  *
  * The toggle used to read "Profile strength | Public view" and defaulted a
- * returning mentor straight to the preview — which is how "where is the content
+ * returning mentor straight to the preview, which is how "where is the content
  * studio?" happened. The word came back, the pane became a real management
  * surface, and the composer deliberately stayed in the Feed tab: Feed is where
  * you write, Studio is where you curate. Two composers is the confusion that
@@ -470,8 +470,8 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
     ["Why-I-mentor statement", !!u?.why, "done in setup", null],
     ["First feed post", posts.length >= 1, "+10 Impact", () => go("feed")],
     ["3+ pieces of content", posts.length >= 3, "3× more requests", () => go("feed")],
-    /* Promoting costs a mentor nothing they haven't already done — they have
-       read the thing — which is exactly why it belongs on the list beside items
+    /* Promoting costs a mentor nothing they haven't already done, they have
+       read the thing, which is exactly why it belongs on the list beside items
        that ask them to record a video. */
     ["Something promoted to Ryzn", shelfCount >= 1, "+5 Impact", null],
   ];
@@ -496,7 +496,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} align="center" dark>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u?.tier || "Scout").toUpperCase()} MENTOR</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
-              {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "—", "CAPACITY"]].map(([n, l]) => (
+              {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "-", "CAPACITY"]].map(([n, l]) => (
                 <div key={l}><div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
               ))}
             </div>
@@ -540,7 +540,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
               <div style={{ marginTop: 12 }}><ProgramTimeline phases={phases} /></div>
             </Card>
           )}
-          {/* The shelf, read exactly as a mentee reads it — including the cohort-
+          {/* The shelf, read exactly as a mentee reads it, including the cohort-
               only picks, because that is who this preview is for. Its own section
               above the tabs rather than inside Resources: what you made and what
               you vouch for are different claims, and a mentee scanning a profile
@@ -551,7 +551,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
           <ContentTabs feed={posts} authorName={name} authorId={u?.id} view={contentTab} readOnly
             emptyText="Nothing on your profile yet. What you post in Feed shows up here." />
         </>) : (<>
-          {/* Studio is the editing surface — the pictures are changed here and
+          {/* Studio is the editing surface, the pictures are changed here and
               previewed in the other tab, not edited in both places. */}
           <ProfileHeader name={name} headline={[u?.headline, u?.industry].filter(Boolean).join(" · ") || null}
             avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} userId={userId} editable
@@ -577,7 +577,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 12 }}>STRONG PROFILES GET 3× MORE MENTEE REQUESTS</div>
           </Card>
 
-          {/* Door into the course designer — not an inline editor. Mentors open
+          {/* Door into the course designer, not an inline editor. Mentors open
               a dedicated workspace to author phases, then come back here. */}
           <Card data-tour="mentor-profile-program" onClick={() => openOverlay("course")}
             style={{ border: `1.5px solid ${C.teal}`, cursor: "pointer", padding: 18, background: C.tealTint }}>
@@ -605,7 +605,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
 
           <Card>
             <Label>Background</Label>
-            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Your headline is the line every mentee reads under your name — in the match deck, in Explore, and on your profile.</div>
+            <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>Your headline is the line every mentee reads under your name, in the match deck, in Explore, and on your profile.</div>
             <EditableRow label="Headline" value={u?.headline} maxLength={220}
               placeholder="e.g., Senior Product Manager at Meta · ex-Stripe · I coach PMs into their first role"
               emptyText="Add a headline" onSave={v => onUpdateProfile("headline", v)} />
@@ -624,7 +624,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             </div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
               {greetingUp
-                ? "Everything here lands in every mentee’s Orbit — no meeting required. Pin what they should see first."
+                ? "Everything here lands in every mentee’s Orbit, no meeting required. Pin what they should see first."
                 : "Start with a greeting video, then post status, photos, videos and resources. It all lands in your mentees’ Orbit."}
             </div>
             <Btn style={{ marginTop: 12 }} onClick={() => go("feed")}><Upload size={15} /> {posts.length ? "Post something new" : "Post your first update"}</Btn>
@@ -632,7 +632,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
 
           {/* The other half of a profile: what you didn't make but will vouch
               for. Sits directly under "Your content" because the two answer the
-              same question a mentee is asking — is this person worth my time —
+              same question a mentee is asking, is this person worth my time -
               and only one of them requires the mentor to produce anything. */}
           <Card style={{ border: `1.5px solid ${shelfCount ? C.teal : C.line}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -641,7 +641,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             </div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
               The TikToks, shorts, books and papers you’d tell a mentee to go and read. The link stays
-              where it lives — what lands on your profile is your name behind it, and the reason.
+              where it lives, what lands on your profile is your name behind it, and the reason.
             </div>
           </Card>
           <MyShelf toast={toast} onChange={setShelfCount} />

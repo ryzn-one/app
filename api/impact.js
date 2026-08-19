@@ -3,10 +3,10 @@ import { json, fail, withUser } from "../lib/http.js";
 import { isMentorRole } from "../lib/roles.js";
 
 /**
- * GET /api/impact — this mentor's Impact Score trend, built from the xp_events
+ * GET /api/impact, this mentor's Impact Score trend, built from the xp_events
  * ledger /api/posts already writes to (kind: "impact") every time a post or
  * greeting video lands. The founding cohort is thin on history, so a handful
- * of points — or none — is a normal, honest answer here; nothing is
+ * of points, or none, is a normal, honest answer here; nothing is
  * backfilled or smoothed to look busier than it is.
  */
 async function handler(request, user) {

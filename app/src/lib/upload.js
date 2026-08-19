@@ -4,7 +4,7 @@ import { upload } from "@vercel/blob/client";
  * Media uploads.
  *
  * The file goes browser → Blob storage directly. It never passes through a
- * Vercel function, which caps a request body at 4.5 MB — a 90-second greeting
+ * Vercel function, which caps a request body at 4.5 MB, a 90-second greeting
  * video is comfortably past that, so routing it server-side isn't a style
  * choice we could have made differently. /api/posts?upload=1 only signs a token.
  *
@@ -39,7 +39,7 @@ function durationOf(file) {
  * A still from the video, as a JPEG.
  *
  * This is the thumbnail a shared link unfurls with. It has to be grabbed here
- * because nothing server-side can produce one — the file goes browser → Blob
+ * because nothing server-side can produce one, the file goes browser → Blob
  * directly and a Vercel function has neither the video nor a decoder for it.
  * Resolves null whenever the browser can't decode the codec (a .mov from an
  * iPhone on Chrome, say), and the link falls back to the Ryzn card.
@@ -96,13 +96,13 @@ const safeName = (name) => String(name).replace(/[^\w.\-]+/g, "_").slice(-80) ||
  * `userId` is part of the path because the destination is chosen here, not on
  * the server: onBeforeGenerateToken can't override the pathname, it can only
  * approve or reject it. So the client proposes `posts/<its id>/<file>` and the
- * server checks that prefix against the session twice — once when signing the
+ * server checks that prefix against the session twice, once when signing the
  * token, once when the post is created.
  */
 export async function uploadMedia(file, kind, onProgress, userId) {
   const cap = kind === "video" ? MAX.video : MAX.other;
   if (file.size > cap) {
-    throw new Error(`That file is ${Math.round(file.size / 1048576)} MB — the limit is ${Math.round(cap / 1048576)} MB.`);
+    throw new Error(`That file is ${Math.round(file.size / 1048576)} MB, the limit is ${Math.round(cap / 1048576)} MB.`);
   }
   if (!userId) throw new Error("Not signed in.");
 
@@ -118,7 +118,7 @@ export async function uploadMedia(file, kind, onProgress, userId) {
     posterOf(file),
   ]);
 
-  /* The poster is a nicety — a failure here must not cost the mentor the
+  /* The poster is a nicety, a failure here must not cost the mentor the
      upload they just sat through. */
   let posterUrl = null;
   if (poster) {
@@ -152,7 +152,7 @@ const MAX_PROFILE_IMAGE = 8 * 1024 * 1024;
  * follows up with updateProfile({ avatarUrl }) to actually pin it, and the
  * server re-checks the host and prefix before it stores the URL.
  *
- * `kind` only shapes the filename — the destination folder is the caller's own
+ * `kind` only shapes the filename, the destination folder is the caller's own
  * either way, which is what the token check is written against.
  */
 export async function uploadProfileImage(file, kind, onProgress, userId) {
@@ -160,7 +160,7 @@ export async function uploadProfileImage(file, kind, onProgress, userId) {
     throw new Error("Pick a JPG, PNG, WEBP or GIF.");
   }
   if (file.size > MAX_PROFILE_IMAGE) {
-    throw new Error(`That image is ${Math.round(file.size / 1048576)} MB — the limit is ${Math.round(MAX_PROFILE_IMAGE / 1048576)} MB.`);
+    throw new Error(`That image is ${Math.round(file.size / 1048576)} MB, the limit is ${Math.round(MAX_PROFILE_IMAGE / 1048576)} MB.`);
   }
   if (!userId) throw new Error("Not signed in.");
 

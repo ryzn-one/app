@@ -9,14 +9,14 @@ import { withAdmin } from "../../lib/admin.js";
  *
  * Nothing here edits a role: promotion still happens only through an invite
  * claim, so a compromised console cannot mint mentors. Deletion is the single
- * write this endpoint allows, and it is deliberately total — a founder
+ * write this endpoint allows, and it is deliberately total, a founder
  * clearing out a test account should not be leaving its posts, matches and
  * messages behind for the next query to trip over.
  */
 
 /* Every collection that stores a user id, and the field holding it. A miss
-   here fails silently — it leaves an orphan that outlives the account and that
-   nobody goes looking for — so this list is the thing to update when a new
+   here fails silently, it leaves an orphan that outlives the account and that
+   nobody goes looking for, so this list is the thing to update when a new
    collection is added to lib/db.js. */
 const OWNED = [
   [collections.session, "userId"],
@@ -40,7 +40,7 @@ const OWNED = [
 ];
 
 /* The domain collections all write String(user._id), and Better Auth's own
-   tables do too — but match both shapes rather than bet the cascade on it. */
+   tables do too, but match both shapes rather than bet the cascade on it. */
 const idShapes = (id) => (ObjectId.isValid(id) ? [id, new ObjectId(id)] : [id]);
 
 async function remove(request, admin) {
@@ -65,16 +65,16 @@ async function remove(request, admin) {
   if (!target) return fail(404, "not_found", "No such account.");
 
   // The console is reachable only with an admin role, so removing the last one
-  // locks it permanently — for everyone, including whoever pressed the button.
+  // locks it permanently, for everyone, including whoever pressed the button.
   if (target.role === "admin" && (await users.countDocuments({ role: "admin" })) <= 1) {
-    return fail(409, "last_admin", "That's the last admin account — promote someone else first.");
+    return fail(409, "last_admin", "That's the last admin account, promote someone else first.");
   }
 
   // An organisation outlives its owner in every table that points at it, so
   // refuse rather than strand a company with no one able to administer it.
   const owned = await db.collection(collections.orgs).countDocuments({ ownerId: userId });
   if (owned) {
-    return fail(409, "owns_org", `That account owns ${owned} organisation${owned === 1 ? "" : "s"} — transfer or delete ${owned === 1 ? "it" : "them"} first.`);
+    return fail(409, "owns_org", `That account owns ${owned} organisation${owned === 1 ? "" : "s"}, transfer or delete ${owned === 1 ? "it" : "them"} first.`);
   }
 
   const shapes = idShapes(userId);
@@ -84,7 +84,7 @@ async function remove(request, admin) {
     if (res.deletedCount) removed[name] = (removed[name] || 0) + res.deletedCount;
   }
 
-  /* A code claimed by an account that no longer exists cannot stay "claimed" —
+  /* A code claimed by an account that no longer exists cannot stay "claimed" -
      the ledger would show a seat held by nobody. Revoking keeps the audit trail
      and, unlike releasing it, does not bring a single-use code back to life for
      whoever still has the original invitation email. */
@@ -139,7 +139,7 @@ async function handler(request, admin) {
       const p = byUser.get(String(u._id)) || {};
       return {
         id: String(u._id),
-        name: u.name || "—",
+        name: u.name || "-",
         email: u.email,
         role: u.role || "mentee",
         createdAt: u.createdAt,

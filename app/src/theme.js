@@ -1,4 +1,4 @@
-/* ————— RYZN tokens (Brand Kit v1.0 — matches public/branding/ryzn-brand-kit/tokens) ————— */
+/* ----- RYZN tokens (Brand Kit v1.0, matches public/branding/ryzn-brand-kit/tokens) ----- */
 export const C = {
   purple: "#5B4FCF", deep: "#2D2580", ink: "#1A1A1A", white: "#FFFFFF",
   teal: "#0F6E56", coral: "#D85A30", amber: "#BA7517", gray: "#5F5E5A",

@@ -13,7 +13,7 @@ import {
 } from "../lib/orbits.js";
 
 /**
- * /api/orbits — the spaces one identity moves through.
+ * /api/orbits, the spaces one identity moves through.
  *
  *   GET                                        every orbit I'm in, policy resolved
  *   GET  ?slug=…                               a circle's join page, membership not required
@@ -21,24 +21,24 @@ import {
  *   PATCH { action: "policy", orbitId, … }     write the policy, managers only
  *   PATCH { action: "settings", orbitId, … }   circle/orbit identity, managers only
  *   PATCH { action: "join", orbitId | slug }   join a circle
- *   PATCH { action: "leave", orbitId }         leave an orbit — identity survives
+ *   PATCH { action: "leave", orbitId }         leave an orbit, identity survives
  *
  * This is the endpoint the whole client shell is built on: it answers the orbit
  * switcher, and the policy it returns is what every screen branches on. The
  * resolution order lives in lib/orbits.js and runs *here*, once, on the way out.
- * No client merges defaults — two implementations of the resolution order is how
+ * No client merges defaults, two implementations of the resolution order is how
  * a console and a phone start disagreeing about what the rules are.
  *
  * The public orbit is in every answer and is in no collection. It cannot be
  * joined (everyone is already in it), left (there is nowhere below it), or
- * configured (nobody administers Ryzn's own orbit) — all three are rejected
+ * configured (nobody administers Ryzn's own orbit), all three are rejected
  * here rather than being allowed to write a document that shouldn't exist.
  */
 
 const MAX_TAGLINE = 80;
 
 /** A circle as a stranger sees it before joining: enough to decide, nothing more.
-    No member list, no policy internals — a join page is not a roster leak. */
+    No member list, no policy internals, a join page is not a roster leak. */
 const joinCard = (orbit, memberCount) => ({
   id: String(orbit._id),
   kind: kindOf(orbit),
@@ -59,13 +59,13 @@ const joinCard = (orbit, memberCount) => ({
  * `policy.chatGate && !stage.complete`, and asking that question in two places
  * is how a tab ends up padlocked over a screen that lets you type.
  *
- * Three reads for every orbit at once rather than per-orbit round trips —
+ * Three reads for every orbit at once rather than per-orbit round trips -
  * the switcher renders progress on every row.
  */
 async function withStage(db, user, list) {
   if (sideOf(user) !== "mentee") {
     /* Mentors have no unlock track. Their Chat is open the moment a mentee they
-       accepted has earned it — the gate is the mentee's to clear, and putting a
+       accepted has earned it, the gate is the mentee's to clear, and putting a
        padlock on a mentor's tab would gate the wrong person. */
     return list.map((o) => ({ ...o, stage: null, chatOpen: true }));
   }
@@ -86,7 +86,7 @@ async function withStage(db, user, list) {
     const steps = recorded.get(o.id) || [];
     /* Bridge for anyone who finished Stage 1 before it was orbit-scoped: their
        one completion belongs to the public orbit, which is where Ryzn was. It is
-       not spread across the orbits they have joined since — those each start at
+       not spread across the orbits they have joined since, those each start at
        step one, which is the whole reason progress is scoped. */
     const legacy = o.id === PUBLIC_ORBIT_ID && profile?.stage1Complete ? ["first-exercise"] : [];
     const stage = resolveStage({
@@ -104,13 +104,13 @@ async function handler(request, user) {
   const members = db.collection(collections.orbitMembers);
   const url = new URL(request.url);
 
-  /* ————— read ————— */
+  /* ----- read ----- */
   if (request.method === "GET") {
     const slug = String(url.searchParams.get("slug") || "").trim().toLowerCase();
     if (slug) {
       const doc = await orbits.findOne({ slug });
       /* Circles only. A company orbit's existence is not something a slug guess
-         should confirm — private orbits are joined with a code, never a link. */
+         should confirm, private orbits are joined with a code, never a link. */
       if (!doc || kindOf(doc) !== "community") {
         return fail(404, "no_circle", "No circle with that link.");
       }
@@ -122,11 +122,11 @@ async function handler(request, user) {
     return json({ orbits: await withStage(db, user, await myOrbits(db, user.id)) });
   }
 
-  /* ————— open a circle ————— */
+  /* ----- open a circle ----- */
   if (request.method === "POST") {
     /* Same gate as creating an org: the mentor role is what says someone is here
        to run a space rather than move through one, and it still only comes from
-       claiming an invite. Opening a circle hands out no platform privilege — a
+       claiming an invite. Opening a circle hands out no platform privilege, a
        creator runs their own audience, not Ryzn. */
     if (!isMentorRole(user.role)) {
       return fail(403, "mentors_only", "Circles are opened by mentors. Claim a mentor invitation first.");
@@ -164,7 +164,7 @@ async function handler(request, user) {
         const res = await orbits.insertOne({ ...base, slug });
         inserted = { _id: res.insertedId, ...base, slug };
       } catch (err) {
-        if (err?.code !== 11000) throw err; // slug taken between check and insert — retry
+        if (err?.code !== 11000) throw err; // slug taken between check and insert, retry
       }
     }
     if (!inserted) return fail(409, "name_taken", "Couldn't reserve that name. Try a slightly different one.");
@@ -183,7 +183,7 @@ async function handler(request, user) {
   try { body = await request.json(); } catch { return fail(400, "bad_request", "Expected a JSON body."); }
   const action = String(body.action || "");
 
-  /* ————— join a circle ————— */
+  /* ----- join a circle ----- */
   if (action === "join") {
     const bySlug = String(body.slug || "").trim().toLowerCase();
     const byId = String(body.orbitId || "");
@@ -192,7 +192,7 @@ async function handler(request, user) {
 
     const doc = await orbits.findOne(query);
     /* Circles are the only orbit you can walk into. A company orbit is entered by
-       claiming an invite code, which is where the platform role is decided —
+       claiming an invite code, which is where the platform role is decided -
        routing around that here would be a way to seat yourself at an employer. */
     if (!doc || kindOf(doc) !== "community") {
       return fail(404, "no_circle", "That's not a circle you can join.");
@@ -206,9 +206,9 @@ async function handler(request, user) {
       { upsert: true }
     );
 
-    /* Joining a circle follows its creator. The follow is the reach mechanic —
+    /* Joining a circle follows its creator. The follow is the reach mechanic -
        it is the reason the creator's next post reaches this person in *every*
-       orbit they are in, not only this one — and a circle you joined but whose
+       orbit they are in, not only this one, and a circle you joined but whose
        creator you don't follow is an empty room. Unfollowing afterwards is
        theirs to do; this only seeds it, and only on the first join. */
     if (res.upsertedCount && doc.ownerId !== user.id) {
@@ -223,7 +223,7 @@ async function handler(request, user) {
   if (ctx.orbit.id === PUBLIC_ORBIT_ID) {
     /* Not a permission error dressed up: there is genuinely no document. The
        public orbit has no membership to end and no policy to write. */
-    return fail(400, "public_orbit", "The public orbit isn't configured or left — it's where everyone starts.");
+    return fail(400, "public_orbit", "The public orbit isn't configured or left, it's where everyone starts.");
   }
 
   const orbitId = ctx.orbit.id;
@@ -238,7 +238,7 @@ async function handler(request, user) {
     }
     await members.deleteOne({ orgId: orbitId, userId: user.id });
     /* Only the membership goes. XP, tier, badges, streak and follows are
-       identity-level and stay exactly where they were — the Settings copy
+       identity-level and stay exactly where they were, the Settings copy
        promises this, and this delete is the promise. Orbit-scoped progress is
        what ends, and it ends by having nowhere to be read from. */
     return json({ orbits: await withStage(db, user, await myOrbits(db, user.id)), left: orbitId });
@@ -274,13 +274,13 @@ async function handler(request, user) {
     if (body.tagline !== undefined) $set.tagline = cleanShort(body.tagline).slice(0, MAX_TAGLINE) || null;
     if (body.accent !== undefined) $set.accent = /^#[0-9a-f]{6}$/i.test(String(body.accent)) ? String(body.accent) : ctx.doc.accent;
     if (body.coverUrl !== undefined) $set.coverUrl = String(body.coverUrl || "").slice(0, 500) || null;
-    /* §6.5 / open decision 4 — whether posts by mentors a member follows outside
+    /* §6.5 / open decision 4, whether posts by mentors a member follows outside
        this orbit may appear inside it. The enterprise answer to content leakage,
        and meaningless in a circle, which is nothing *but* external reach. */
     if (body.allowExternal !== undefined && ctx.orbit.kind === "private") {
       $set.allowExternal = !!body.allowExternal;
     }
-    // The slug is the circle's link and may already be in circulation — renaming
+    // The slug is the circle's link and may already be in circulation, renaming
     // does not silently move it.
     await orbits.updateOne({ _id: ctx.doc._id }, { $set });
     return json({ orbits: await withStage(db, user, await myOrbits(db, user.id)) });
@@ -289,7 +289,7 @@ async function handler(request, user) {
   if (action === "seat") {
     /* One write for the two things a seat records: which team someone sits in
        and how senior they are. `crossDiv` reads the first, `levelGate` the
-       second — both are policy fields, so both need a real field to filter on. */
+       second, both are policy fields, so both need a real field to filter on. */
     const userId = String(body.userId || "");
     const $set = {};
     if (body.division !== undefined) $set.division = cleanDivision(body.division);

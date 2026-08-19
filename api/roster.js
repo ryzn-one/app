@@ -12,7 +12,7 @@ import {
 } from "../lib/orbits.js";
 
 /**
- * /api/roster — the people directory.
+ * /api/roster, the people directory.
  *
  *   GET  /api/roster                    the other side of the platform
  *   GET  /api/roster?side=mentors       mentor peers (mentors only)
@@ -25,13 +25,13 @@ import {
  *
  * `?side=mentors` is the one same-side view, and it is the mentor side only.
  * Mentors are adults on invite-only accounts who already appear in every
- * mentee's deck, so a peer directory exposes nothing new — it just gives a
+ * mentee's deck, so a peer directory exposes nothing new, it just gives a
  * mentor somewhere to find the other mentors, follow them, and read what they
  * publish. A mentee asking for it gets the ordinary mentor roster, which is the
  * same list; the branch exists for the follow state, not for access.
  *
  * Replaces the hard-coded MENTOR_MATCHES / MENTEE_MATCHES fixtures the match
- * decks used to render. An empty roster is a real answer — early cohorts start
+ * decks used to render. An empty roster is a real answer, early cohorts start
  * empty, and the deck shows an empty state rather than invented people. Invited
  * mentors appear even before they finish the AI chat; mentees only appear once
  * setup is done.
@@ -45,27 +45,27 @@ import {
  *   ?scope=org     only the caller's own organisation, under that org's
  *                  programme rules. See below.
  *
- * ————— org scope —————
+ * ----- org scope -----
  *
  * The Teams surface is not the platform deck with a different header: an
  * employee browsing mentors is browsing *their company*, under rules their HR
  * set. `?scope=org` is that read.
  *
  * It is opt-in rather than implied by membership, because the two decks answer
- * different questions and a person in an org can legitimately be asked both —
+ * different questions and a person in an org can legitimately be asked both -
  * "who at Northbound can mentor me" and "who on Ryzn can". The client picks;
  * the server decides whether it may have it.
  *
  * Scoping only ever narrows. The candidate id list *is* the org's membership,
  * so no rule applied afterwards can re-admit somebody from outside the company,
- * and a caller with no org gets a 403 rather than an empty list — answering []
+ * and a caller with no org gets a 403 rather than an empty list, answering []
  * would read as "nobody from your company is on Ryzn", which is a different and
  * much worse claim than "you asked the wrong question".
  */
 
 const LIMIT = 50;
 
-/** Mongo's regex is a real regex — an unescaped query is a DoS waiting to be
+/** Mongo's regex is a real regex, an unescaped query is a DoS waiting to be
     pasted. Same escaping as api/admin/users.js. */
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -73,7 +73,7 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  *
  *  Deliberately transparent rather than clever: there is no matching engine yet,
  *  and a made-up "96%" next to someone's face is a claim the product can't back.
- *  This is a real count of shared answers, normalised — nothing more is implied.
+ *  This is a real count of shared answers, normalised, nothing more is implied.
  */
 function affinity(viewerProfile, candidateProfile, viewerRole) {
   const mine = new Set(
@@ -94,7 +94,7 @@ function affinity(viewerProfile, candidateProfile, viewerRole) {
 }
 
 /**
- * Overlap between two mentors — shared expertise, or the same industry.
+ * Overlap between two mentors, shared expertise, or the same industry.
  *
  * `affinity` above is written around the mentee-wants / mentor-teaches
  * asymmetry, which has no meaning between two peers. Same honest shape: a real
@@ -108,7 +108,7 @@ function peerAffinity(viewerProfile, candidateProfile) {
   return { shared: hits, of: Math.max(mine.size, theirs.length) };
 }
 
-/** POST /api/roster — follow or unfollow another mentor. */
+/** POST /api/roster, follow or unfollow another mentor. */
 async function follow(request, user) {
   if (sideOf(user) !== "mentor") {
     return fail(403, "mentors_only", "Following is between mentors.");
@@ -152,14 +152,14 @@ async function handler(request, user) {
   const q = (url.searchParams.get("q") || "").trim().slice(0, 80);
   /* Which orbit's pool this deck is drawn from.
      `?orbitId=` is the v2 form. `?scope=org` predates orbits and still means
-     "my company orbit" — kept working rather than migrated at every call site,
+     "my company orbit", kept working rather than migrated at every call site,
      since the two resolve to the same document. */
   const askedOrbit = url.searchParams.get("orbitId");
   const legacyOrgScope = url.searchParams.get("scope") === "org";
 
   const db = await getDb();
 
-  /* Orbit context, resolved before anything else — everything below narrows
+  /* Orbit context, resolved before anything else, everything below narrows
      against it. `seats` is the membership, and it doubles as the candidate id
      list, the division lookup and the seniority lookup for each card.
 
@@ -210,7 +210,7 @@ async function handler(request, user) {
   // Anyone already requested, paired with, or passed on drops out of the deck.
   // Without this the deck re-offers people the caller has already answered for,
   // and a second request would just 409. Explore keeps them and shows the state.
-  // A peer list has no matches to answer for — mentors don't pair with mentors.
+  // A peer list has no matches to answer for, mentors don't pair with mentors.
   const answered = peers ? [] : await listMatches(user, {
     statuses: [MATCH_STATUS.PENDING, MATCH_STATUS.ACCEPTED, MATCH_STATUS.DECLINED],
   });
@@ -220,7 +220,7 @@ async function handler(request, user) {
 
   /* What the caller can do about this person right now. `pending_them` is the
      one that matters: they asked first, so the action is accept/decline, not
-     request. `requestedBy` is the side ("mentee"|"mentor"), not a user id —
+     request. `requestedBy` is the side ("mentee"|"mentor"), not a user id -
      comparing it to user.id made every pending match look like "asked for you". */
   const stateOf = (id) => {
     if (peers) return {};
@@ -238,7 +238,7 @@ async function handler(request, user) {
   const roleFilter =
     wanted === "mentee" ? { role: { $in: [null, "mentee"] } } : { role: { $in: ["mentor", "admin"] } };
 
-  /* Search spans two collections — name lives on `user`, everything else on
+  /* Search spans two collections, name lives on `user`, everything else on
      `profiles`. Two indexed queries and a union of ids beats a $lookup here,
      and stays readable. */
   let idFilter = null;
@@ -286,24 +286,24 @@ async function handler(request, user) {
   const viewerProfile = byUser.get(user.id) || {};
 
   /* Who belongs on the deck:
-       - finished setup (user flag OR profile flag — they can drift briefly), or
+       - finished setup (user flag OR profile flag, they can drift briefly), or
        - an invited mentor: redeeming a code puts them on the Roster, and hiding
          them until the AI chat finishes made mentees see "No mentors yet" while
          the admin People table already listed MENTOR accounts.
-     Mentees still need setup done — a half-signed-up student shouldn't land in
+     Mentees still need setup done, a half-signed-up student shouldn't land in
      a mentor's swipe deck. */
   const ready = (u, p) =>
     Boolean(u.onboardingComplete || p.onboardingComplete) ||
     (wanted === "mentor" && isMentorRole(u.role));
 
-  /* The two pool filters, both of them policy fields — `crossDiv` and
-     `levelGate` — applied through the one helper api/matches.js enforces with,
+  /* The two pool filters, both of them policy fields, `crossDiv` and
+     `levelGate`, applied through the one helper api/matches.js enforces with,
      so a deck cannot show someone the write path will then refuse.
 
      Only bites on a matching deck: two mentors browsing each other is not a
      pairing, so an orbit that keeps mentees in their own division has said
      nothing about who its mentors may know. `visibleInDeck` also skips the
-     division rule when the viewer's own seat has none — an unassigned employee
+     division rule when the viewer's own seat has none, an unassigned employee
      would otherwise match nobody and be shown an empty deck they have no way to
      explain or fix. */
   const poolOk = (id) => {
@@ -311,7 +311,7 @@ async function handler(request, user) {
     const seat = seats.get(id) || {};
     /* `levelGate` hides mentors below Staff+ *from a mentee's deck*. It says
        nothing about who a mentor may take on, so a cohort deck is graded by
-       nobody — passing the gate a mentee-side policy would filter a mentor's
+       nobody, passing the gate a mentee-side policy would filter a mentor's
        own candidates by a rule written for the other direction. */
     const forThisSide = wanted === "mentor" ? policy : { ...policy, levelGate: false };
     return visibleInDeck(forThisSide, mySeat, seat);
@@ -356,7 +356,7 @@ async function handler(request, user) {
       // have not agreed to talk yet; contact details are what accepting is for.
       const base = {
         id: String(u._id),
-        name: u.name || "—",
+        name: u.name || "-",
         image: u.image ?? null,
         // The picture they set on Ryzn, falling back to whatever Google gave us
         // at sign-in. Every card that shows a face reads this one field.
@@ -369,7 +369,7 @@ async function handler(request, user) {
         // to render an empty label.
         ...(orbitScoped ? {
           division: seats.get(String(u._id))?.division ?? null,
-          // Seniority in this orbit — what `levelGate` filters on, shown so a
+          // Seniority in this orbit, what `levelGate` filters on, shown so a
           // narrow deck reads as a rule rather than as a shortage of people.
           level: seats.get(String(u._id))?.level ?? null,
         } : {}),
@@ -409,17 +409,17 @@ async function handler(request, user) {
     });
 
   /* `policy`, `rules` and `org` ride along on a scoped read so the deck can say
-     why it is narrower than the platform one — the "PRODUCT ONLY" and "STAFF+"
+     why it is narrower than the platform one, the "PRODUCT ONLY" and "STAFF+"
      chips have to come from the rules that were actually applied here, not from
      a copy of the settings kept in the client. Same reason the CTA reads
      `policy.matchMode` off this payload rather than deciding for itself. */
   /**
-   * The Roster's stats banner — the mentor guild.
+   * The Roster's stats banner, the mentor guild.
    *
    * Counted, never cached, and only on a peer read because that is the only
    * screen that renders it. The first two numbers are the same in every orbit
    * because the guild **lives above orbits**: a mentor belongs to it, not to the
-   * space they happen to be standing in. The third adapts — "here" is the one
+   * space they happen to be standing in. The third adapts, "here" is the one
    * fact that depends on where they are, and it is what makes the banner feel
    * like a place rather than a statistic.
    *

@@ -1,4 +1,4 @@
-/* ————————————————— HOME VIEW —————————————————
+/* ----------------- HOME VIEW -----------------
 
    Where the map should be pointing the moment it opens.
 
@@ -7,7 +7,7 @@
    starts over the viewer's own continent and lets them zoom out if they want
    the rest.
 
-   The viewer's location is not a field on the profile — nothing in the schema
+   The viewer's location is not a field on the profile, nothing in the schema
    carries one today. The browser's IANA timezone is, though, and it is exactly
    as coarse as this needs to be: `America/Toronto` says North America, which is
    the whole question being asked. No permission prompt, no geolocation API, no
@@ -29,7 +29,7 @@ export const HOME_VIEWS = {
 };
 
 /* `America/*` is two continents. These are the zones on the southern half of
-   it — everything else under that prefix is North America, which is the right
+   it, everything else under that prefix is North America, which is the right
    default for a prefix this lopsided. */
 const SOUTH_AMERICAN = /^America\/(Argentina|Sao_Paulo|Bahia|Fortaleza|Recife|Belem|Manaus|Cuiaba|Campo_Grande|Araguaina|Maceio|Noronha|Santarem|Porto_Velho|Boa_Vista|Rio_Branco|Eirunepe|Lima|Bogota|Santiago|Caracas|La_Paz|Asuncion|Montevideo|Guayaquil|Cayenne|Paramaribo|Guyana|Punta_Arenas)/;
 

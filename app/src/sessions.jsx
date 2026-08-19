@@ -9,7 +9,7 @@ import {
   countdown, dayKeyOf, defaultSlot, downloadIcs, fmtDate, fmtRange, fmtTime, googleCalendarUrl,
 } from "./lib/calendar.js";
 
-/* ————————————————— 1:1 SESSIONS —————————————————
+/* ----------------- 1:1 SESSIONS -----------------
 
    One side proposes times, the other picks one. Nothing here claims a booking
    that both people haven't agreed to: a session shows a date only once it is
@@ -49,7 +49,7 @@ const Pill = ({ status }) => {
   );
 };
 
-/* ————————————————— MONTH CALENDAR —————————————————
+/* ----------------- MONTH CALENDAR -----------------
    Booked sessions in solid purple, proposals still waiting on someone in amber.
    Tapping a day filters the list underneath it. */
 
@@ -156,7 +156,7 @@ export const MonthCalendar = ({ sessions = [], selected, onSelect }) => {
   );
 };
 
-/* ————————————————— TIME PICKER —————————————————
+/* ----------------- TIME PICKER -----------------
    Up to five options. The other side picks one; that pick is the booking. */
 
 const SlotRows = ({ slots, setSlots, max = 5 }) => (
@@ -195,7 +195,7 @@ const SlotRows = ({ slots, setSlots, max = 5 }) => (
   </div>
 );
 
-/* ————————————————— COMPOSER ————————————————— */
+/* ----------------- COMPOSER ----------------- */
 
 export const SessionComposer = ({ role, people = [], onCreate, onError }) => {
   const [open, setOpen] = useState(false);
@@ -336,7 +336,7 @@ export const SessionComposer = ({ role, people = [], onCreate, onError }) => {
   );
 };
 
-/* ————————————————— SESSION CARD ————————————————— */
+/* ----------------- SESSION CARD ----------------- */
 
 const AddToCalendar = ({ session, toast }) => {
   const google = googleCalendarUrl(session);
@@ -370,7 +370,7 @@ export const SessionCard = ({ session, busy, onAction, toast }) => {
   return (
     <Card style={session.awaitingYou ? { border: `1.5px solid ${C.amber}` } : undefined}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <Monogram name={session.person?.name || "—"} size={40} />
+        <Monogram name={session.person?.name || "-"} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{session.person?.name}</div>
           <div style={{ fontSize: 12.5, color: C.gray, marginTop: 1 }}>{session.title}</div>
@@ -460,7 +460,7 @@ export const SessionCard = ({ session, busy, onAction, toast }) => {
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <Btn small style={{ flex: 1 }} disabled={busy || !slots.every((s) => s.start && s.end)}
               onClick={async () => {
-                // Only collapse on success — a rejected time should keep the
+                // Only collapse on success, a rejected time should keep the
                 // rows on screen so they can be fixed rather than retyped.
                 const res = await act("reschedule", {
                   slots: slots.map((s) => ({ start: new Date(s.start).toISOString(), end: new Date(s.end).toISOString() })),
@@ -504,7 +504,7 @@ export const SessionCard = ({ session, busy, onAction, toast }) => {
   );
 };
 
-/* ————————————————— SCREEN —————————————————
+/* ----------------- SCREEN -----------------
    Shared by the mentor's Sessions tab and the mentee's Sessions overlay: the
    flow is symmetric, so there is one screen rather than two that drift. */
 
@@ -585,7 +585,7 @@ export const SessionsScreen = ({
           </Card>
         )}
 
-        {/* Always show the month grid — Bilal's ask was a calendar mentors can
+        {/* Always show the month grid, Bilal's ask was a calendar mentors can
             work from, not a widget that only appears after the first booking. */}
         <MonthCalendar sessions={sessions} selected={selectedDay} onSelect={setSelectedDay} />
 

@@ -1,7 +1,7 @@
 /**
  * Sharing out of Ryzn.
  *
- * A post link is a public page — ryzn.one/{handle}/{slug} — served by
+ * A post link is a public page, ryzn.one/{handle}/{slug}, served by
  * lib/post-page.js with its own Open Graph tags, the way an Instagram or TikTok
  * link is. Anyone can open it, app or no app, account or no account.
  *
@@ -12,7 +12,7 @@
  * keeps its pairing check, and its link lands on the locked page. The Share
  * button says which one you copied so nobody sends a link that dead-ends.
  *
- * LinkedIn still uses the text composer — LinkedIn's share endpoint takes a
+ * LinkedIn still uses the text composer, LinkedIn's share endpoint takes a
  * text body, not a URL, so the link goes in as part of the post.
  */
 import { copyText } from "./invite-url.js";
@@ -29,7 +29,7 @@ export const isPublicPost = (post) => !!(post?.slug && post?.visibility === "pub
 
 /**
  * The link to hand out. Falls back to the authenticated deep link for a post
- * old enough to have no slug yet — the next read of that post mints one.
+ * old enough to have no slug yet, the next read of that post mints one.
  */
 export function buildPostShareUrl(post) {
   const slug = typeof post === "string" ? null : post?.slug;
@@ -43,8 +43,8 @@ export function buildPostShareUrl(post) {
 /**
  * Sharing a promoted resource.
  *
- * The link that goes out is the *original* one — the TikTok, the book, the
- * paper — not a Ryzn page wrapped around it. Interposing ourselves between a
+ * The link that goes out is the *original* one, the TikTok, the book, the
+ * paper, not a Ryzn page wrapped around it. Interposing ourselves between a
  * creator and their views to farm a click-through would be the exact behaviour
  * that makes people stop pasting links, and a mentor forwarding a recommendation
  * wants their friend to land on the thing, not on a signup wall.
@@ -89,7 +89,7 @@ export async function sharePostLink(post, { title, text } = {}) {
       });
       return "shared";
     } catch (err) {
-      // User dismissed the sheet — not an error worth toasting as failure.
+      // User dismissed the sheet, not an error worth toasting as failure.
       if (err?.name === "AbortError") return "shared";
     }
   }

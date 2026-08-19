@@ -3,7 +3,7 @@ import { json, fail } from "../lib/http.js";
 import { rateLimit } from "../lib/ratelimit.js";
 
 /**
- * POST /api/teams-interest — Ryzn for Teams waitlist.
+ * POST /api/teams-interest, Ryzn for Teams waitlist.
  *
  * Unauthenticated: the whole point is to hear from people who don't have an
  * account. That makes it the second public write endpoint on the platform, so

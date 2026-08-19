@@ -37,7 +37,7 @@ import { InstallBanner } from "./install.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
 import { fmtDate } from "./lib/calendar.js";
 
-/* ————————————————— ROOT SHELL —————————————————
+/* ----------------- ROOT SHELL -----------------
 
    Identity comes from the server. On mount this asks /api/me who the caller is
    and builds the whole app state from the answer; there are no hard-coded
@@ -52,7 +52,7 @@ import { fmtDate } from "./lib/calendar.js";
  *
  * The invite page confirms the code against /api/invites/validate and then
  * hands it over here so it never has to be retyped. The code alone grants
- * nothing — it is still claimed atomically server-side at sign-up.
+ * nothing, it is still claimed atomically server-side at sign-up.
  */
 function inviteFromHash() {
   if (typeof window === "undefined") return { code: null, role: null };
@@ -68,7 +68,7 @@ function inviteFromHash() {
   };
 }
 
-/** Share deep link: /app/#/post/{id} — cleared once handled. */
+/** Share deep link: /app/#/post/{id}, cleared once handled. */
 function postIdFromHash() {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash || "";
@@ -79,7 +79,7 @@ function postIdFromHash() {
 /** A circle invitation: /app/#/circle/{slug}.
  *
  *  The community answer to an org's invite code. A circle is open, so the link
- *  is the whole credential — there is nothing to verify and nothing to claim
+ *  is the whole credential, there is nothing to verify and nothing to claim
  *  atomically, which is exactly what separates it from an org invite. */
 function circleSlugFromHash() {
   if (typeof window === "undefined") return null;
@@ -154,7 +154,7 @@ function toAppUser(me) {
     rank: p.rank ?? null,
     stage1Complete: !!p.stage1Complete,
     todayExercise: me.exercise?.today ?? null,
-    /* Every accepted mentor, equal, oldest first. Empty until one accepts —
+    /* Every accepted mentor, equal, oldest first. Empty until one accepts -
        screens must handle "no mentor yet" rather than falling back to a name.
        Each entry carries the mentor's *user* id, which is what /api/posts,
        /api/program and /api/messages all key on; `matchId` is only for ending
@@ -214,12 +214,12 @@ export default function RyznComplete() {
   const [reacted, setReacted] = useState({});
   const [mentorFeed, setMentorFeed] = useState([]);
   /* Posts by other mentors that this mentor put in their own Orbit. Kept apart
-     from `mentorFeed` because they are not theirs to edit, pin or delete — only
+     from `mentorFeed` because they are not theirs to edit, pin or delete, only
      to stop relaying. A mentee's Orbit gets the two already merged server-side. */
   const [relayed, setRelayed] = useState([]);
   /* The mentee side: one feed per mentor, keyed by mentor user id, because a
      mentee holds up to three and each Orbit shows only its own. `mentorFeed`
-     above stays what its name says — the signed-in mentor's own posts. */
+     above stays what its name says, the signed-in mentor's own posts. */
   const [feeds, setFeeds] = useState({});
   const [highlightPostId, setHighlightPostId] = useState(null);
   /* A circle link waiting to be accepted: `{ slug, circle, joined, error }`.
@@ -228,7 +228,7 @@ export default function RyznComplete() {
   const [circleInvite, setCircleInvite] = useState(null);
   const [circleBusy, setCircleBusy] = useState(false);
   /* The unlock ceremony, and the orbit it fired for. Keyed by orbit because the
-     track is per orbit — finishing it at work is a separate moment from
+     track is per orbit, finishing it at work is a separate moment from
      finishing it in a circle, and each one is worth marking. */
   const [chatCeremony, setChatCeremony] = useState(null);
   const chatOpenRef = useRef({});
@@ -253,7 +253,7 @@ export default function RyznComplete() {
   const addUserXp = (n) => setUser(u => u && u.xp !== undefined ? { ...u, xp: u.xp + n } : u);
   const addUserImpact = (n) => setUser(u => u && u.impact !== undefined ? { ...u, impact: u.impact + n } : u);
 
-  /* — solo or teams —
+  /*, solo or teams -
      Belonging to an organisation changes which product this is. Somebody who
      joined a company's programme is not browsing Ryzn-the-network; they are
      inside their employer, under rules their HR set, and the surface reflects
@@ -262,11 +262,11 @@ export default function RyznComplete() {
      being invited or removed flips the app on the next /api/me with nothing
      stored locally to go stale. Declared here because `navTo` and the tab
      guard both need it long before the screens do. */
-  /* — orbits —
+  /*, orbits -
      Since v2 the switch above is the *active orbit*, not the account. A person
      can hold a company seat, a circle membership and the public orbit at once,
      and which surface they see is decided by where they are standing right now
-     — not by a field on their user row. `session.org` still says which company
+    , not by a field on their user row. `session.org` still says which company
      they belong to; it no longer says which product they are using.
 
      Every screen below branches on `policy` values, never on `orbit.kind`. The
@@ -281,11 +281,11 @@ export default function RyznComplete() {
      rather than on the hook's object, which is a new reference each render. */
   const activeOrbitId = orbits.orbitId;
   /* Until /api/orbits answers, the account's org is the best guess at where this
-     person stands — and it is the answer the app gave before orbits existed. Not
+     person stands, and it is the answer the app gave before orbits existed. Not
      guessing would flash the public surface at an employee on every cold start. */
   const mode = (orbits.loading ? !!session?.org : orbit?.kind === "private") ? "teams" : "solo";
   /* Teams screens read the org payload from /api/me for names, invites and
-     counts. It is the right one whenever the active orbit is the company one —
+     counts. It is the right one whenever the active orbit is the company one -
      which is exactly when `mode` is "teams". */
   const org = mode === "teams" ? (session?.org ?? null) : null;
 
@@ -297,7 +297,7 @@ export default function RyznComplete() {
     const allowed = mode === "teams"
       ? TEAMS_TABS[role]
       : (role === "mentee"
-        // "meets" stays allowed though it left the tab bar — notification deep
+        // "meets" stays allowed though it left the tab bar, notification deep
         // links still land there, and a destination with no tab is fine.
         ? ["home", "exercises", "chat", "badges", "meets", "profile"]
         : ["home", "feed", "sessions", "meets", "profile"]);
@@ -306,7 +306,7 @@ export default function RyznComplete() {
 
   /* Moving between orbits. Not a reload and not a re-auth: the identity below is
      the same one, so XP, badges, follows and the session all stay put. What
-     changes is the resolved policy — and, because the surfaces differ, the tab
+     changes is the resolved policy, and, because the surfaces differ, the tab
      and any open overlay, which would otherwise point at a screen the new orbit
      doesn't have. The toast names the rules rather than the orbit, so the first
      thing someone learns after switching is what is different here. */
@@ -327,7 +327,7 @@ export default function RyznComplete() {
     setIntroTourOpen(false); setSpotlightTab(null); introCheckedRef.current = false;
   };
 
-  /* — session bootstrap —
+  /*, session bootstrap -
      One call answers three questions: who are you, what role, and have you set
      up yet. A 401 is the normal signed-out case, not an error. */
   const loadSession = useCallback(async () => {
@@ -347,7 +347,7 @@ export default function RyznComplete() {
   const applyMe = useCallback((me) => {
     if (!me) return;
     setUser(toAppUser(me));
-    /* Preferences arrive resolved, with defaults already filled in server-side —
+    /* Preferences arrive resolved, with defaults already filled in server-side -
        so a toggle never renders off for a preference that is actually on. */
     if (me.profile?.prefs) setPrefs(me.profile.prefs);
     if (!isMentorRole(me.user.role || "mentee")) {
@@ -362,7 +362,7 @@ export default function RyznComplete() {
   useEffect(() => { if (inviteCode) stashPendingInvite(inviteCode); }, [inviteCode]);
 
   /* Spend a stashed code now that there is a session to spend it with, and
-     re-read /api/me if it changed anything — a claim can flip the role, and
+     re-read /api/me if it changed anything, a claim can flip the role, and
      every screen below branches on it. Returns the session either way. */
   const settleInvite = useCallback(async (me) => {
     if (!me || !readPendingInvite()) return me;
@@ -389,7 +389,7 @@ export default function RyznComplete() {
     return () => { alive = false; };
   }, [loadSession, applyMe, settleInvite]);
 
-  /* — roster —
+  /*, roster -
      Loaded when the match deck is about to show. Empty is a valid result: an
      early cohort has nobody on the other side yet. */
   /* Both reads are scoped to the orbit the person is standing in: the deck draws
@@ -436,7 +436,7 @@ export default function RyznComplete() {
 
   useEffect(() => { if (stage === "matches" && phase === "journey") loadRoster(); }, [stage, phase, loadRoster]);
   /* Pending invites must reach the in-app Notifications surface, not only the
-     onboarding deck — otherwise a mentor invite sits unanswered with no UI.
+     onboarding deck, otherwise a mentor invite sits unanswered with no UI.
      Poll while the app is open so an invite that lands mid-session pops the
      top-right alert without a refresh. */
   useEffect(() => {
@@ -454,9 +454,9 @@ export default function RyznComplete() {
     };
   }, [phase, loadMatches]);
 
-  /* — mentor content —
+  /*, mentor content -
      A mentor loads their own feed; a mentee loads one per mentor they hold.
-     Same endpoint, and the server decides what each is allowed to see —
+     Same endpoint, and the server decides what each is allowed to see -
      /api/posts?mentorId= has always been per-mentor and pair-authorised, so
      this is the client catching up to it. It previously fetched only the
      "active" mentor's posts, which is why a second mentor's Orbit was empty of
@@ -464,12 +464,12 @@ export default function RyznComplete() {
 
      `viewerState` restores what's already been watched and reacted to. It comes
      back per request, so the maps are merged across mentors rather than
-     replaced — otherwise the last feed to land would erase the others. */
+     replaced, otherwise the last feed to land would erase the others. */
   const mentorIds = useMemo(
     () => (role === "mentee" ? (user?.mentors || []).map(m => m.id) : []),
     [role, user?.mentors]
   );
-  // Stable across renders that don't change the set — the loaders depend on it.
+  // Stable across renders that don't change the set, the loaders depend on it.
   const mentorIdKey = mentorIds.join(",");
 
   const loadFeed = useCallback(async () => {
@@ -506,7 +506,7 @@ export default function RyznComplete() {
   useEffect(() => { if (phase === "app") loadFeed(); }, [phase, loadFeed]);
 
   /* The unlock ceremony. Fires on the transition from locked to open, never on
-     the state itself — otherwise it re-fires on every refresh for someone who
+     the state itself, otherwise it re-fires on every refresh for someone who
      unlocked chat weeks ago. The first reading of an orbit only seeds the ref,
      which is why arriving already-unlocked is silent. */
   useEffect(() => {
@@ -517,7 +517,7 @@ export default function RyznComplete() {
     if (before === false && orbit.chatOpen === true) setChatCeremony(orbit.id);
   }, [phase, role, orbit?.id, orbit?.chatOpen]);
 
-  /* A circle invitation link. Resolved once there is a session to join with —
+  /* A circle invitation link. Resolved once there is a session to join with -
      a signed-out visitor lands in the normal journey first and the slug waits in
      the hash, which is where it came from and where a page load can't lose it. */
   useEffect(() => {
@@ -537,7 +537,7 @@ export default function RyznComplete() {
     return () => { cancelled = true; };
   }, [phase, user, circleInvite?.slug]);
 
-  /** One tap, then straight into the circle — and the follow that comes with it
+  /** One tap, then straight into the circle, and the follow that comes with it
       is what puts the creator's next post in this person's feed everywhere. */
   const acceptCircle = async () => {
     if (!circleInvite?.circle || circleBusy) return;
@@ -612,7 +612,7 @@ export default function RyznComplete() {
 
   /* The authored program. A mentor has one; a mentee reads one per mentor, and
      each is that mentor's own curriculum with the mentee's progress against it
-     — so they are held apart by mentor id and never merged into a single
+    , so they are held apart by mentor id and never merged into a single
      timeline. `program` stays the mentor's own for the mentor side. */
   const loadProgram = useCallback(async () => {
     if (role === "mentee") {
@@ -660,7 +660,7 @@ export default function RyznComplete() {
     }
   }, []);
 
-  /* Meets is a tab in solo and an overlay in teams — load on either, or the
+  /* Meets is a tab in solo and an overlay in teams, load on either, or the
      teams side opens a screen that never fetches. */
   useEffect(() => {
     if (phase === "app" && (tab === "meets" || overlay === "meets")) loadEvents();
@@ -678,7 +678,7 @@ export default function RyznComplete() {
     return res;
   };
 
-  /* — 1:1 sessions —
+  /*, 1:1 sessions -
      Both sides read the same documents, so a booking made by one is visible to
      the other on their next load. Polled alongside the app being open because a
      proposal can land while the tab sits there. */
@@ -706,7 +706,7 @@ export default function RyznComplete() {
   }, [phase, loadSessions]);
 
   /* Who the caller can book with: an accepted pairing on either side. The server
-     enforces the same rule — this only decides what the composer offers. */
+     enforces the same rule, this only decides what the composer offers. */
   const sessionPeople = useMemo(() => {
     if (!user) return [];
     if (role === "mentor") return (user.cohort || []).map(m => ({ id: m.id, name: m.name, week: m.week }));
@@ -758,7 +758,7 @@ export default function RyznComplete() {
     return res;
   }, [loadRoster]);
 
-  /* — entry points into the app — */
+  /*, entry points into the app, */
   const enterApp = async (known) => {
     resetAppState();
     const me = known || await loadSession();
@@ -801,7 +801,7 @@ export default function RyznComplete() {
     resetAppState(); setPhase("journey"); setStage("welcome");
   };
 
-  /* — first-run tutorial: slideshow once per role, then per-tab spotlights — */
+  /*, first-run tutorial: slideshow once per role, then per-tab spotlights, */
   useEffect(() => {
     if (introCheckedRef.current || phase !== "app" || !user) return;
     introCheckedRef.current = true;
@@ -821,7 +821,7 @@ export default function RyznComplete() {
 
   const dismissTabHint = () => { markTabHintSeen(role, tab); setSpotlightTab(null); };
 
-  /* — onboarding completion —
+  /*, onboarding completion -
      Persist first, then route. If the write fails the answers are still in
      memory, so the user is told rather than silently losing six questions. */
   const completeOnboarding = async (answers) => {
@@ -829,7 +829,7 @@ export default function RyznComplete() {
       await saveOnboarding(answers);
     } catch (err) {
       console.error("[ryzn] /api/onboarding failed:", err);
-      toast("Couldn’t save your answers — check your connection.");
+      toast("Couldn’t save your answers, check your connection.");
       return;
     }
     await loadSession();
@@ -867,7 +867,7 @@ export default function RyznComplete() {
     try {
       /* Written in an orbit, and it completes that orbit's track. Someone six
          weeks in at work is still on step one in a circle they joined
-         yesterday — the paragraph counts where it was written. */
+         yesterday, the paragraph counts where it was written. */
       const res = await submitExercise({ text, exerciseId: "write-your-why", orbitId: activeOrbitId });
       setTodayDone(true);
       setUser(u => u && ({
@@ -879,7 +879,7 @@ export default function RyznComplete() {
       }));
       toast(`+${res.awarded || todayEx.xp} XP · streak day ${res.streak ?? (user?.streak || 0)}`);
       /* Re-read the orbits so the track advances and, if that was the last step,
-         the unlock ceremony fires. The ceremony is the announcement now — a
+         the unlock ceremony fires. The ceremony is the announcement now, a
          toast claiming Direct Connect was open would be wrong in an orbit whose
          policy still gates it, or whose track has a step left. */
       await orbits.refresh();
@@ -926,7 +926,7 @@ export default function RyznComplete() {
         return res;
       }
       /* The post lives in the mentor's own feed or in one of the mentee's
-         per-mentor feeds — patch wherever it is rather than guessing which. */
+         per-mentor feeds, patch wherever it is rather than guessing which. */
       const bump = (p) => (p.id === id ? { ...p, reactions: (p.reactions ?? 0) + 1 } : p);
       setMentorFeed((feed) => (feed || []).map(bump));
       setFeeds((byMentor) => Object.fromEntries(
@@ -949,7 +949,7 @@ export default function RyznComplete() {
       return;
     }
     /* Returning to the Orbit the profile was opened from means remembering
-       *which* Orbit — `from` carries the whole overlay, not a bare string. */
+       *which* Orbit, `from` carries the whole overlay, not a bare string. */
     const from = (overlay === "orbit" || overlay?.orbit) ? overlay : undefined;
     /* One of the mentee's own mentors, tapped from an Orbit or a post header.
        Checked against every mentor they hold, not just one: the details on the
@@ -990,10 +990,10 @@ export default function RyznComplete() {
   };
 
   /* Follow lives on `overlay.mentorProfile` itself rather than separate state,
-     same as network.jsx keeps it on `detail` — one object to keep in sync
+     same as network.jsx keeps it on `detail`, one object to keep in sync
      instead of two. Resolved lazily: most callers (a feed post's byline, a
      match card) don't know the viewer's follow state up front, only the
-     mentor network list does. Mentor-to-mentor only, matching api/roster.js —
+     mentor network list does. Mentor-to-mentor only, matching api/roster.js -
      a mentee viewing their own mentor, or a mentor viewing themselves, never
      gets a follow lookup or button. */
   useEffect(() => {
@@ -1012,7 +1012,7 @@ export default function RyznComplete() {
             : o));
         }
       } catch {
-        // A failed lookup just leaves the button unresolved for this open —
+        // A failed lookup just leaves the button unresolved for this open -
         // it still works, starting from "Follow" rather than blocking on it.
       }
     })();
@@ -1045,15 +1045,15 @@ export default function RyznComplete() {
     catch (e) { toast(e.message || "Couldn’t change that."); }
   };
 
-  /* Public is what makes ryzn.one/p/<slug> open for a stranger — the same
+  /* Public is what makes ryzn.one/p/<slug> open for a stranger, the same
      switch that puts the post on the mentor's profile. */
   const setPostVisibility = async (id, visibility) => {
     try {
       await updatePost(id, { visibility });
       await loadFeed();
       toast(visibility === "public"
-        ? "Public — anyone with the link can open this"
-        : "Private — only your cohort can see this");
+        ? "Public, anyone with the link can open this"
+        : "Private, only your cohort can see this");
     } catch (e) { toast(e.message || "Couldn’t change that."); }
   };
 
@@ -1063,7 +1063,7 @@ export default function RyznComplete() {
   };
 
   /* The relay toggle as it appears on your own Feed tab, where everything shown
-     is already in your Orbit — so this is almost always the "remove" direction.
+     is already in your Orbit, so this is almost always the "remove" direction.
      It still honours `next` rather than assuming, because the card stays on
      screen until loadFeed answers. Re-throws so PostCard can restore its own
      button on failure. */
@@ -1073,7 +1073,7 @@ export default function RyznComplete() {
     toast(next ? "Added to your Orbit" : "Removed from your Orbit");
   };
 
-  /* The greeting is a pinned video post like any other — that's what makes it
+  /* The greeting is a pinned video post like any other, that's what makes it
      show up in a mentee's Orbit. It used to set a boolean and nothing else. */
   const uploadGreeting = async (media) => {
     await createPost({ kind: "video", title: "Start here", media, greeting: true });
@@ -1082,7 +1082,7 @@ export default function RyznComplete() {
   };
 
   /* `answer` is what the applicant wrote to qualify. It is required where the
-     orbit's policy is Apply and ignored where it is Open — the deck collects it
+     orbit's policy is Apply and ignored where it is Open, the deck collects it
      or doesn't, and this passes on whatever it got rather than deciding again. */
   const addMentor = async (m, answer) => {
     try {
@@ -1095,7 +1095,7 @@ export default function RyznComplete() {
     } catch (e) { toast(e.message || "Couldn’t send that request."); }
   };
   /* Leaving writes to the shared match record, so the mentor sees the same
-     change. There is no promote any more — mentors aren't ranked, so there is
+     change. There is no promote any more, mentors aren't ranked, so there is
      nothing to promote a mentor to. */
   const leaveMentor = async (m) => {
     try {
@@ -1114,7 +1114,7 @@ export default function RyznComplete() {
     } catch (e) { toast(e.message || "Couldn’t send that invitation."); }
   };
 
-  /* — preferences, export, deletion —
+  /*, preferences, export, deletion -
      Preferences are identity-level: one set per person, carried into every
      orbit. Written optimistically because a toggle that waits on a round trip
      feels broken, and reconciled from the server's merged answer. */
@@ -1148,7 +1148,7 @@ export default function RyznComplete() {
   const deleteAccountHandler = async () => {
     try {
       await deleteMyAccount();
-      /* Nothing to clean up locally — the account is gone, so a full reload
+      /* Nothing to clean up locally, the account is gone, so a full reload
          lands on the signed-out journey with no stale state to disagree. */
       window.location.href = "/app/";
     } catch (e) { toast(e.message || "Couldn't delete that account."); }
@@ -1174,12 +1174,12 @@ export default function RyznComplete() {
     } catch (e) { toast(e.message || "Couldn’t save that."); }
   };
 
-  /* Seats, in one place — Explore and the add decks must agree on whether
+  /* Seats, in one place, Explore and the add decks must agree on whether
      there’s room, and the answer differs per side. */
   const mentorCapacity = session?.profile?.capacity ?? 4;
   /* Seats are per orbit, so only the mentors held *here* count against the cap.
      Matches formed before orbits existed carry no orbitId and belong to the
-     public orbit — the same rule the server reads them under. */
+     public orbit, the same rule the server reads them under. */
   const mentorsHeld = (user?.mentors || []).filter(
     (m) => (m.orbitId || "public") === orbits.orbitId
   ).length;
@@ -1188,11 +1188,11 @@ export default function RyznComplete() {
   const mentorSeatsLeft = (policy?.cap ?? 3) - mentorsHeld;
   const cohortSeatsLeft = mentorCapacity - (user?.cohort?.length || 0);
 
-  /* — notification deep links — */
+  /*, notification deep links, */
   const navTo = (to) => {
     setOverlay(null);
     /* Teams keeps four tabs, so most destinations are overlays there and two of
-       the remaining tabs are named differently. Mapped rather than ignored — a
+       the remaining tabs are named differently. Mapped rather than ignored, a
        notification deep link has to land on a real screen in both modes. */
     if (mode === "teams") {
       const asOverlay = ["exercises", "badges", "meets", "sessions", "cohort", "dm", "orbit", "board", "explore", "network"];
@@ -1207,7 +1207,7 @@ export default function RyznComplete() {
     else setTab(to);
   };
 
-  /* — journey content — */
+  /*, journey content, */
   const journeyContent = () => {
     switch (stage) {
       case "role": return <RoleSelect onPick={(r) => { setRole(r); setStage("welcome"); }} />;
@@ -1221,16 +1221,16 @@ export default function RyznComplete() {
       }} />;
       case "login": return <Login role={role} go={setStage} onDone={async () => {
         // Someone can arrive from an invitation link already holding an
-        // account and sign in rather than register — the code is still theirs.
+        // account and sign in rather than register, the code is still theirs.
         const me = await settleInvite(await loadSession());
-        // Setup is one-time — never re-open the chat for a finished account.
+        // Setup is one-time, never re-open the chat for a finished account.
         if (isOnboardingDone(me)) await enterApp(me);
         else setStage("chat");
       }} />;
       case "forgot": return <Forgot go={setStage} />;
       /* The same conversation in every orbit. `orbit` seeds one sentence of
-         context into the opening message — where they are and what stays
-         theirs — and changes nothing else about the script. */
+         context into the opening message, where they are and what stays
+         theirs, and changes nothing else about the script. */
       case "chat": return <ChatScreen role={role} xp={xp} addXp={addXp} onComplete={completeOnboarding} firstName={session?.user?.name?.split(" ")[0] || ""} orbit={orbit} />;
       case "matches": return (
         <SectionBoundary name="matches" resetKey={`matches-${role}`}>
@@ -1263,7 +1263,7 @@ export default function RyznComplete() {
     }
   }, [inviteBusy, matches, loadMatches, loadRoster, refreshUser, role, overlay, toast]);
 
-  /* — overlay content (rendered inline on mobile, in a modal on desktop) — */
+  /*, overlay content (rendered inline on mobile, in a modal on desktop), */
   const overlayContent = () => {
     if (!user || !overlay) return null;
     if (overlay === "notifs") return (
@@ -1292,7 +1292,7 @@ export default function RyznComplete() {
       />
     );
     /* One sheet for both roles and all three orbit kinds. It branches on
-       `orbit.kind` for SSO-locked fields and copy — presentation only; nothing
+       `orbit.kind` for SSO-locked fields and copy, presentation only; nothing
        here changes what the app *does*. */
     if (overlay === "settings") return (
       <SettingsSheet
@@ -1313,7 +1313,7 @@ export default function RyznComplete() {
       />
     );
     /* Teams has four tabs, so the screens solo reaches from its tab bar are
-       reached from the Home card and the profile instead. Same components —
+       reached from the Home card and the profile instead. Same components -
        only the way in changes, and each gets the back affordance a tab body
        never needed. */
     if (overlay === "exercises") return (
@@ -1337,7 +1337,7 @@ export default function RyznComplete() {
       </div>
     );
     if (overlay === "cohort") return <CohortScreen u={user} back={() => setOverlay(null)} />;
-    /* Mentees reach the same screen from Home — the mentor has a tab for it. */
+    /* Mentees reach the same screen from Home, the mentor has a tab for it. */
     if (overlay === "sessions") return (
       <SessionsScreen
         role={role} people={sessionPeople} sessions={sessions}
@@ -1349,8 +1349,8 @@ export default function RyznComplete() {
     if (overlay === "addmentor") return <AddMentorScreen candidates={roster} used={mentorsHeld} onAdd={addMentor} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} policy={policy} orbit={orbit} />;
     if (overlay === "addmentee") return <AddMenteeScreen candidates={roster} addsUsed={menteeAdds} onAdd={addMentee} back={() => setOverlay(null)} toast={toast} onLoad={loadRoster} loading={rosterLoading} />;
     /* The three-tab mentee surface. Wraps the deck, Discover and the inbox that
-       used to be reached three separate ways. "explore" below still resolves —
-       notification deep links point at it — but Cohort now opens this. */
+       used to be reached three separate ways. "explore" below still resolves -
+       notification deep links point at it, but Cohort now opens this. */
     if (overlay === "mentees") return (
       <MenteesScreen
         role={role} back={() => setOverlay(null)} toast={toast}
@@ -1378,7 +1378,7 @@ export default function RyznComplete() {
         capacityNote={role === "mentee" ? "Mentor seats full · 3 of 3" : `Cohort full · ${mentorCapacity} seats`}
         openAccepted={(p) => {
           setOverlay(null);
-          // Their Orbit, not "the" Orbit — the mentee may hold three.
+          // Their Orbit, not "the" Orbit, the mentee may hold three.
           if (role === "mentee") setTimeout(() => setOverlay({ orbit: p.id }), 60);
           else { const m = user.cohort?.find(c => c.id === p.id); if (m) setTimeout(() => setOverlay({ mentee: m }), 60); }
         }}
@@ -1450,7 +1450,7 @@ export default function RyznComplete() {
     );
     if (overlay.mentee) return <MenteeDetailScreen u={user} mentee={overlay.mentee} back={() => setOverlay(null)} openDm={(m) => setOverlay({ dmPeer: m, from: { mentee: m } })} />;
     if (overlay.mentorProfile) {
-      // Following is a mentor-to-mentor thing only (see api/roster.js) — a
+      // Following is a mentor-to-mentor thing only (see api/roster.js), a
       // mentee never gets the button, and neither does a mentor on their own
       // profile, which can't reach this branch anyway (openAuthorProfile
       // routes that to the Profile tab instead).
@@ -1480,7 +1480,7 @@ export default function RyznComplete() {
     return null;
   };
 
-  /* — solo or teams —
+  /*, solo or teams -
      Belonging to an organisation changes which product this is. Somebody who
      joined a company's programme is not browsing Ryzn-the-network; they are
      inside their employer, under rules their HR set, and the surface reflects
@@ -1489,11 +1489,11 @@ export default function RyznComplete() {
      leave, so being invited or removed flips the app on the next /api/me with
      nothing stored locally to go stale.
 
-     It is a different set of screens, not a theme — see teams/TeamsApp.jsx for
+     It is a different set of screens, not a theme, see teams/TeamsApp.jsx for
      what actually differs. The account underneath is identical either way.
      `mode` and `org` are declared with the session state, above. */
 
-  /** Teams folds Exercises, Badges, Meets and the Orbit into overlays — the
+  /** Teams folds Exercises, Badges, Meets and the Orbit into overlays, the
       tab bar is deliberately short, so everything else opens over it. */
   const teamsOpen = (what) => {
     if (what === "profile") { setOverlay(null); setTab("profile"); return; }
@@ -1538,7 +1538,7 @@ export default function RyznComplete() {
     }
   };
 
-  /* — current tab content (always the active tab, regardless of overlay) — */
+  /*, current tab content (always the active tab, regardless of overlay), */
   const tabContent = () => {
     if (!user) return null;
     if (mode === "teams") return teamsContent();
@@ -1574,8 +1574,8 @@ export default function RyznComplete() {
   };
 
   /* Chat is a permanent tab, padlocked rather than hidden. Hiding a gated
-     feature removes the goal gradient — someone cannot want a thing they can't
-     see — so it stays in the bar and lands on a designed locked screen that
+     feature removes the goal gradient, someone cannot want a thing they can't
+     see, so it stays in the bar and lands on a designed locked screen that
      names the unlock condition. `chatOpen` is resolved server-side from
      `policy.chatGate` and this orbit's Stage 1, so the padlock and the endpoint
      that refuses the message are answering the same question. */
@@ -1591,7 +1591,7 @@ export default function RyznComplete() {
     || (overlay && overlay.dmPeer)
     || (overlay && overlay.mentorProfile)
   );
-  /* Screens that lay themselves out as a full-height flex column — a fixed
+  /* Screens that lay themselves out as a full-height flex column, a fixed
      header over something that takes the rest. Unlike `fullScreenOverlay` they
      keep the tab bar and the modal chrome; they only need the box they are
      handed to have a height. Given `height: auto` instead, their `flex: 1`
@@ -1715,7 +1715,7 @@ export default function RyznComplete() {
                 {nav.map(([id, Icon, label]) => {
                   const active = tab === id && !overlay;
                   /* A locked tab is rendered, not removed, and it still
-                     navigates — the locked screen behind it explains the unlock
+                     navigates, the locked screen behind it explains the unlock
                      condition, which is the whole mechanic. */
                   const locked = id === "chat" && chatLocked;
                   return (
@@ -1744,7 +1744,7 @@ export default function RyznComplete() {
       )}
 
       {/* A circle link, answered over whatever they were already doing. Declining
-          leaves them exactly where they were — an invitation is not a redirect. */}
+          leaves them exactly where they were, an invitation is not a redirect. */}
       <AnimatePresence>
         {phase === "app" && circleInvite && (
           <ModalShell onClose={() => { clearCircleHash(); setCircleInvite(null); }}>
@@ -1792,8 +1792,8 @@ export default function RyznComplete() {
         )}
       </AnimatePresence>
 
-      {/* The offer to put Ryzn on the home screen. It waits for the app proper —
-          never the signed-out journey — and stands down for anything already
+      {/* The offer to put Ryzn on the home screen. It waits for the app proper -
+          never the signed-out journey, and stands down for anything already
           asking for an answer, so it is the only thing on screen wanting a tap.
           On phones it sits above the tab bar rather than over it. */}
       <InstallBanner

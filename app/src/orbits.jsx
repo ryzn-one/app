@@ -7,7 +7,7 @@ import { copyFor, PUBLIC_ORBIT_ID, POLICY_COPY } from "./lib/orbits.js";
 import { spring } from "./motion.js";
 
 /**
- * The orbit switcher — the top-level navigation control.
+ * The orbit switcher, the top-level navigation control.
  *
  * It is not a settings menu. It is the surface that makes "one identity, several
  * spaces" legible: the same person, the same XP and the same follows, seen from
@@ -16,7 +16,7 @@ import { spring } from "./motion.js";
  * buried inside each orbit.
  *
  * Switching orbits never re-authenticates and never reloads. The shell swaps one
- * resolved `policy` for another and the screens below re-render against it —
+ * resolved `policy` for another and the screens below re-render against it -
  * that swap is the entire architecture, visible in one interaction.
  */
 
@@ -24,7 +24,7 @@ const ICON_FOR = { public: Globe, community: Users, private: Building2 };
 
 export const orbitIcon = (kind) => ICON_FOR[kind] || Globe;
 
-/** A one-line summary of what is different here — the rules, in a person's words.
+/** A one-line summary of what is different here, the rules, in a person's words.
     Drawn from the same POLICY_COPY the consoles write through, so the row and
     the switch can never describe the rule differently. */
 export function policySummary(policy) {
@@ -73,7 +73,7 @@ function OrbitRow({ orbit, active, unread = 0, onSelect }) {
  * The control in the app header: current orbit, tap to switch.
  *
  * Collapsed it is one line, because most sessions never leave the orbit they
- * started in. Expanded it is the whole membership list — and the place a circle
+ * started in. Expanded it is the whole membership list, and the place a circle
  * is joined or opened, since those are orbit-level acts rather than settings.
  */
 export function OrbitSwitcher({ orbits, orbitId, onSwitch, unread = {}, onJoinCircle, onOpenCircle, canOpenCircle }) {
@@ -122,7 +122,7 @@ export function OrbitSwitcher({ orbits, orbitId, onSwitch, unread = {}, onJoinCi
                   Saying so here is worth more than saying it in a help page: this
                   is the moment someone wonders what they lose by switching. */}
               <p style={{ fontSize: 11.5, color: C.gray, lineHeight: 1.5, margin: "10px 4px 14px" }}>
-                Your XP, tier, badges, streak and the people you follow are yours — they're the same in every orbit.
+                Your XP, tier, badges, streak and the people you follow are yours, they're the same in every orbit.
                 What changes is the rules, the people and the board.
               </p>
 
@@ -143,7 +143,7 @@ export function OrbitSwitcher({ orbits, orbitId, onSwitch, unread = {}, onJoinCi
 }
 
 /**
- * JoinFlow — how someone enters an orbit that isn't the public one.
+ * JoinFlow, how someone enters an orbit that isn't the public one.
  *
  * The two kinds enter differently, and the difference is real rather than
  * cosmetic:
@@ -152,7 +152,7 @@ export function OrbitSwitcher({ orbits, orbitId, onSwitch, unread = {}, onJoinCi
  *              anyone in is the point. Joining follows the creator, which is
  *              what makes their next post reach this person everywhere.
  *
- *   private    an invite code or SSO, and — before either — a plain statement of
+ *   private    an invite code or SSO, and, before either, a plain statement of
  *              what their employer can and cannot see. That paragraph is not
  *              legal cover; it is the thing that decides whether someone writes
  *              an honest goal in the next screen.
@@ -193,10 +193,10 @@ export function JoinCircle({ circle, joined, busy, error, onJoin, onCancel }) {
 
       {/* Said before joining, not after. The one thing a person actually wants to
           know at this moment is what they are signing up to lose, and the answer
-          is nothing — identity is theirs and travels. */}
+          is nothing, identity is theirs and travels. */}
       <Card style={{ marginTop: 10, background: C.surface }}>
         <p style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6, margin: 0 }}>
-          Joining follows the creator, so their posts reach you in every orbit you're in — not only this one.
+          Joining follows the creator, so their posts reach you in every orbit you're in, not only this one.
           Your XP, tier, badges, streak and follows stay yours. You can leave any time and keep all of it.
         </p>
       </Card>

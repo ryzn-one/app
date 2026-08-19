@@ -11,15 +11,15 @@ import {
   openResource, saveResource, unsaveResource, updateResource, deleteResource,
 } from "./lib/auth-client.js";
 
-/* ————————————————— PROMOTE TO RYZN —————————————————
+/* ----------------- PROMOTE TO RYZN -----------------
 
    A mentor's shelf: the things they didn't make but will vouch for. A post is
    what a mentor wrote; this is what they read, watched and still think about,
-   and until now there was nowhere on a profile to say so — which pushed mentors
+   and until now there was nowhere on a profile to say so, which pushed mentors
    into re-uploading other people's work or saying nothing at all.
 
    Every card leaves for the original platform. Ryzn stores the endorsement, not
-   the content: the note, the name behind it, and — when it's been passed on —
+   the content: the note, the name behind it, and, when it's been passed on -
    who it came through. See lib/resources.js for why that boundary is the whole
    feature rather than an implementation detail.
 */
@@ -36,7 +36,7 @@ export const RESOURCE_META = {
 
 const metaFor = (kind) => RESOURCE_META[kind] || RESOURCE_META.link;
 
-/** Cosmetic only — the server is what actually classifies a link. This just
+/** Cosmetic only, the server is what actually classifies a link. This just
     lets the composer show where a pasted URL points before it's submitted. */
 const hostOf = (value) => {
   const raw = String(value || "").trim();
@@ -51,8 +51,8 @@ const hostOf = (value) => {
 /**
  * One shelf, loaded and kept in sync.
  *
- * Three screens render a shelf — the mentor's own Studio, a mentee's Orbit, and
- * a profile someone is looking at — and each of them needs the same four things:
+ * Three screens render a shelf, the mentor's own Studio, a mentee's Orbit, and
+ * a profile someone is looking at, and each of them needs the same four things:
  * the rows, whether they've landed, a way to reload, and a way to patch one row
  * in place after a tap. Written once here rather than three times there, which
  * is the same reason ContentTabs is shared between the Orbit and the preview.
@@ -92,7 +92,7 @@ export function useShelf({ mentorId, scope, enabled = true } = {}) {
   return { items, loading, error, reload, patch, drop, setItems };
 }
 
-/* ————————————————— the composer ————————————————— */
+/* ----------------- the composer ----------------- */
 
 const KIND_ORDER = ["video", "book", "article", "podcast", "course", "tool", "link"];
 
@@ -106,7 +106,7 @@ const input = {
  * Paste a link, say why. That's the whole form.
  *
  * `kind` is a row of chips rather than a required choice because the server
- * already reads it off the host — a mentor who has to classify a TikTok before
+ * already reads it off the host, a mentor who has to classify a TikTok before
  * they can recommend it is a mentor who closes the sheet. The chips are there
  * for the cases the host can't answer: a PDF of a book, a lecture on a personal
  * site.
@@ -161,7 +161,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.purple }}>Promote to Ryzn</div>
           <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>
-            A TikTok, a short, a book, a paper — anything you’d tell a mentee to go and read.
+            A TikTok, a short, a book, a paper, anything you’d tell a mentee to go and read.
           </div>
         </div>
       </div>
@@ -179,7 +179,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
       </div>
 
       <input value={url} onChange={(e) => setUrl(e.target.value)} inputMode="url" autoFocus
-        placeholder="Paste the link — tiktok.com/…, a YouTube short, a book page"
+        placeholder="Paste the link, tiktok.com/…, a YouTube short, a book page"
         style={{ ...input, marginTop: 12 }} />
       {host && (
         <div style={{ marginTop: 8 }}>
@@ -188,7 +188,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
       )}
 
       <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160}
-        placeholder="Title — what is it called?" style={{ ...input, marginTop: 8 }} />
+        placeholder="Title, what is it called?" style={{ ...input, marginTop: 8 }} />
       <input value={creator} onChange={(e) => setCreator(e.target.value)} maxLength={120}
         placeholder="Who made it? (optional)" style={{ ...input, marginTop: 8 }} />
       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={400}
@@ -236,7 +236,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
   );
 };
 
-/* ————————————————— one card ————————————————— */
+/* ----------------- one card ----------------- */
 
 const iconTile = (kind, size) => {
   const m = metaFor(kind), Icon = m.icon;
@@ -255,7 +255,7 @@ const actionBtn = (extra = {}) => ({
 
 /**
  * `mine` is the owner's view: pin, take down, flip who it's for.
- * `onRepromote` appears only where a caller wired it — the same convention
+ * `onRepromote` appears only where a caller wired it, the same convention
  * PostCard's `onAmplify` follows, and it means the same thing: a mentor is
  * looking at a peer's public pick.
  */
@@ -286,7 +286,7 @@ export const ResourceCard = ({
   const share = async () => {
     try {
       const how = await shareResourceLink(resource, { by });
-      toast?.(how === "copied" ? "Copied — the link goes straight to the source" : "Shared");
+      toast?.(how === "copied" ? "Copied, the link goes straight to the source" : "Shared");
     } catch (e) {
       toast?.(e.message || "Couldn’t share that.");
     }
@@ -339,7 +339,7 @@ export const ResourceCard = ({
       {resource.note && (
         <div style={{ fontSize: 13, lineHeight: 1.55, color: C.ink, marginTop: 11, fontStyle: "italic" }}>
           “{resource.note}”
-          {by && !mine && <span style={{ fontStyle: "normal", color: C.gray }}> — {firstNameOf(by)}</span>}
+          {by && !mine && <span style={{ fontStyle: "normal", color: C.gray }}>, {firstNameOf(by)}</span>}
         </div>
       )}
 
@@ -387,7 +387,7 @@ export const ResourceCard = ({
             <div style={{ fontSize: 11.5, color: C.gray, marginTop: 1, lineHeight: 1.35 }}>
               {resource.onMyShelf
                 ? `Your mentees see it, credited to ${by ? firstNameOf(by) : "them"}.`
-                : `Pass it on and your cohort reads it — ${by ? firstNameOf(by) : "they"} keeps the credit.`}
+                : `Pass it on and your cohort reads it, ${by ? firstNameOf(by) : "they"} keeps the credit.`}
             </div>
           </div>
           {!resource.onMyShelf && (
@@ -402,7 +402,7 @@ export const ResourceCard = ({
       )}
 
       {/* Owner controls. Who it's for reads as a sentence, the same way a post's
-          visibility does — a mentor deciding between "my cohort" and "everyone"
+          visibility does, a mentor deciding between "my cohort" and "everyone"
           is deciding who they're vouching to. */}
       {mine && (onVisibility || onPin || onDelete) && (
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
@@ -445,12 +445,12 @@ export const ResourceCard = ({
   );
 };
 
-/* ————————————————— the shelf ————————————————— */
+/* ----------------- the shelf ----------------- */
 
 /**
  * A list of promoted resources, with the section header that names whose they
  * are. Rendered on the mentor's own Studio, inside the Resources tab of an
- * Orbit, and on the profile sheet a mentee or a peer opens — one component, so
+ * Orbit, and on the profile sheet a mentee or a peer opens, one component, so
  * the mentor's preview of their shelf is the shelf.
  */
 export const ResourceShelf = ({
@@ -486,14 +486,14 @@ export const ResourceShelf = ({
   );
 };
 
-/* ————————————————— the wired shelves ————————————————— */
+/* ----------------- the wired shelves ----------------- */
 
 /**
  * The read-only shelf a mentee or a peer sees on somebody's profile.
  *
  * It owns its own fetch and its own optimistic updates rather than taking them
  * as props, because all three of the screens that show a shelf were otherwise
- * going to grow the same twenty lines of state — and the version of that which
+ * going to grow the same twenty lines of state, and the version of that which
  * drifts is the one where a save works in the Orbit and silently doesn't on the
  * profile sheet.
  */
@@ -507,7 +507,7 @@ export const MentorShelf = ({ mentorId, mentorName, toast, canRepromote, onRepro
       const { xp } = await openResource(r.id);
       if (xp) toast?.(`+${xp} XP`);
     } catch {
-      /* The link is already open in the other tab — the person got what they
+      /* The link is already open in the other tab, the person got what they
          tapped for. Rolling the count back would be the only visible effect of
          telling them about it. */
       shelf.patch(r.id, { opened: false, clicks: r.clicks ?? 0 });
@@ -581,7 +581,7 @@ export const NetworkShelf = ({ toast, onRepromoted }) => {
       <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, marginTop: 8 }}>No picks yet</div>
       <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
         Follow a few mentors and whatever they promote to Ryzn lands here. Anything worth passing on
-        goes onto your own shelf in a tap — and they keep the credit for finding it.
+        goes onto your own shelf in a tap, and they keep the credit for finding it.
       </div>
     </Card>
   );
@@ -593,7 +593,7 @@ export const NetworkShelf = ({ toast, onRepromoted }) => {
 };
 
 /**
- * The reading list — everything this person kept off other people's shelves.
+ * The reading list, everything this person kept off other people's shelves.
  *
  * The half of the feature that faces a mentee. A curated shelf is only worth
  * scrolling if the things on it can be kept, and a Save button with nowhere to

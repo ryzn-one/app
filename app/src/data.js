@@ -1,5 +1,5 @@
-/* ————— Data —————
-   What lives here is program design — the badge ladder, the setup script, the
+/* ----- Data -----
+   What lives here is program design, the badge ladder, the setup script, the
    Week-1 exercise track, the influencer picker options. It is authored content,
    the same for every user, and it is real.
 
@@ -21,7 +21,7 @@ export const BADGE_DEFS = [
   { id: "alum", name: "Meets Alum", tier: "coral", when: "Post-event", req: "Attend a Mentor Meets event", unlocks: "Priority access to next cohort" },
 ];
 
-/* Picker options for the "who do you follow" question — public figures offered
+/* Picker options for the "who do you follow" question, public figures offered
    as prompts, not platform members. Nothing here is presented as a Ryzn user. */
 export const GENERAL_INFLUENCERS = ["Michelle Obama", "Oprah Winfrey", "Malala Yousafzai", "Simon Sinek", "Brené Brown", "Mel Robbins", "David Goggins", "Jay Shetty", "Steven Bartlett"];
 export const INFLUENCERS_BY_CATEGORY = {
@@ -39,12 +39,12 @@ export const INFLUENCERS_BY_CATEGORY = {
   "Music": ["Taylor Swift", "Rihanna", "Jay-Z", "Bad Bunny", "Billie Eilish"],
 };
 
-/* ————— Ryzn AI setup scripts —————
+/* ----- Ryzn AI setup scripts -----
    Functions, not constants: the opening line greets the person who actually
-   signed in. Passing no name drops the greeting rather than substituting one —
+   signed in. Passing no name drops the greeting rather than substituting one -
    addressing a real user by an invented name was the bug that started all this.
 
-   Conversational onboarding is the front door in *every* orbit — there is no
+   Conversational onboarding is the front door in *every* orbit, there is no
    form anywhere, including behind an HR invite. What changes per orbit is one
    sentence of context: an employee who lands here from their company's invite
    should be told where they are, by name, before they are asked anything. That
@@ -52,35 +52,35 @@ export const INFLUENCERS_BY_CATEGORY = {
    identical in all three orbits. */
 
 /** The opening line's context sentence. `orbit` is the resolved orbit payload;
-    no orbit (or the public one) gets no extra sentence — Ryzn is the default
+    no orbit (or the public one) gets no extra sentence, Ryzn is the default
     place and saying so would be noise. */
 export const orbitIntro = (orbit) => {
   if (!orbit || orbit.kind === "public") return null;
   if (orbit.kind === "community") {
-    return `You're joining ${orbit.name} — a circle run by one person, not by Ryzn. Your XP, badges and follows come with you and stay yours.`;
+    return `You're joining ${orbit.name}, a circle run by one person, not by Ryzn. Your XP, badges and follows come with you and stay yours.`;
   }
-  return `You're setting up inside ${orbit.name}'s orbit. Your answers here are visible to your mentor, not to your manager — and your XP, badges and follows are yours, not your employer's.`;
+  return `You're setting up inside ${orbit.name}'s orbit. Your answers here are visible to your mentor, not to your manager, and your XP, badges and follows are yours, not your employer's.`;
 };
 
 export const menteeScript = (firstName, orbit) => [
   { id: "track", xp: 20, type: "single",
     ai: [
-      `Welcome to Ryzn${firstName ? `, ${firstName}` : ""}. I’m your setup guide — five questions, about two minutes. Every answer earns XP and sharpens your mentor match.`,
+      `Welcome to Ryzn${firstName ? `, ${firstName}` : ""}. I’m your setup guide, five questions, about two minutes. Every answer earns XP and sharpens your mentor match.`,
       ...(orbitIntro(orbit) ? [orbitIntro(orbit)] : []),
       "First: where are you right now?",
     ],
     options: ["High school", "University"] },
   { id: "interests", xp: 40, type: "multi", min: 3, custom: true,
-    ai: ["What pulls at you? Pick at least three. If the list misses something, write your own — specifics beat categories."],
+    ai: ["What pulls at you? Pick at least three. If the list misses something, write your own, specifics beat categories."],
     options: ["Product & tech", "Design", "Entrepreneurship", "Finance", "Marketing", "Engineering", "Law", "Health & medicine", "Media & content", "Sports business", "Climate", "Music"] },
   { id: "skills", xp: 40, type: "multi", min: 2, custom: true,
-    ai: ["Now the skills you’d claim today — even at beginner level. Honesty here gets you a mentor who fills the real gaps."],
+    ai: ["Now the skills you’d claim today, even at beginner level. Honesty here gets you a mentor who fills the real gaps."],
     options: ["Public speaking", "Writing", "Coding", "Design tools", "Video editing", "Data & spreadsheets", "Selling", "Leading a team", "Social media", "Research"] },
   { id: "influence", xp: 40, type: "multi", min: 1, custom: true,
     ai: ["Who do you actually follow and learn from? People of influence tell me more about your direction than any category. Add anyone I’ve missed."],
     options: ["Michelle Obama", "Sara Blakely", "MrBeast", "Mark Cuban", "Simone Biles", "Malala Yousafzai", "Serena Williams", "Ryan Reynolds"] },
   { id: "goals", xp: 60, type: "goals",
-    ai: ["Last one, and it matters most: your program goals. One is enough to start — write up to three. Specific beats vague: “land a summer internship in product” works, “be successful” doesn’t."],
+    ai: ["Last one, and it matters most: your program goals. One is enough to start, write up to three. Specific beats vague: “land a summer internship in product” works, “be successful” doesn’t."],
     placeholders: ["Land a summer internship in product", "Build a portfolio that gets replies", "Speak confidently in interviews"] },
 ];
 
@@ -91,20 +91,20 @@ export const mentorScript = (firstName, orbit) => [
       ...(orbitIntro(orbit) ? [orbitIntro(orbit)] : []),
       "Six questions, then I’ll show you the mentees matched to you. First: your current role and company, in your own words.",
     ],
-    placeholder: "Head of Product at —" },
+    placeholder: "Head of Product at -" },
   { id: "industry", xp: 20, type: "single", ai: ["Which industry do you call home?"],
     options: ["Technology", "Finance", "Design & media", "Health", "Law", "Climate & energy"] },
   { id: "expertise", xp: 40, type: "multi", min: 3, custom: true,
-    ai: ["What can you genuinely teach? Pick at least three. Mentees see these — claim only what you’d defend in a session."],
+    ai: ["What can you genuinely teach? Pick at least three. Mentees see these, claim only what you’d defend in a session."],
     options: ["Product strategy", "Career navigation", "Public speaking", "Hiring & interviews", "Storytelling", "Negotiation", "Technical leadership", "Fundraising", "Personal brand", "First-job readiness"] },
   { id: "menteefit", xp: 40, type: "multi", min: 2, custom: true,
     ai: ["Who do you most want in your cohort? This shapes matching more than anything else."],
     options: ["First-gen students", "Aspiring product people", "Student founders", "Career switchers", "High schoolers exploring", "International students", "Women in tech", "Student athletes"] },
   { id: "capacity", xp: 20, type: "single",
-    ai: ["Capacity check. How many mentees can you take this cohort? Smaller is fine — depth beats volume, and your Impact Score reflects outcomes, not headcount."],
+    ai: ["Capacity check. How many mentees can you take this cohort? Smaller is fine, depth beats volume, and your Impact Score reflects outcomes, not headcount."],
     options: ["2 mentees", "4 mentees", "6 mentees"] },
   { id: "why", xp: 50, type: "write",
-    ai: ["Last question. Why mentor? One or two honest sentences — this appears on your public profile, so say the thing."],
+    ai: ["Last question. Why mentor? One or two honest sentences, this appears on your public profile, so say the thing."],
     placeholder: "Nobody in my family worked in tech. One person took a chance on me and…" },
 ];
 
@@ -120,7 +120,7 @@ export const STATUS = {
    (three done, one missed) for accounts that had never opened the app. */
 export const EXERCISE_TRACK = [
   { day: "Today · Day 1", title: "Write your why", mins: 6, xp: 30,
-    prompt: "One honest paragraph: why are you here, really? Your mentor reads this before your first session — it sets the tone for all twelve weeks.", state: "open" },
+    prompt: "One honest paragraph: why are you here, really? Your mentor reads this before your first session, it sets the tone for all twelve weeks.", state: "open" },
   { day: "Tomorrow", title: "Your opening question", mins: 5, xp: 30, state: "upcoming" },
   { day: "Day 3", title: "Map what you already know", mins: 8, xp: 40, state: "upcoming" },
 ];

@@ -1,14 +1,14 @@
-/* ————— Add to calendar —————
+/* ----- Add to calendar -----
 
    A confirmed session is only useful if it reaches the calendar the person
    actually looks at, so this emits both routes: an .ics file (Apple Calendar,
    Outlook, anything) and a Google Calendar template URL. Everything is built in
-   the browser from the session we already hold — no third-party calendar
+   the browser from the session we already hold, no third-party calendar
    integration, no OAuth, and nothing leaves the app until the user clicks. */
 
 const pad = (n) => String(n).padStart(2, "0");
 
-/** UTC basic format: 20260730T170000Z — what both ICS and Google expect. */
+/** UTC basic format: 20260730T170000Z, what both ICS and Google expect. */
 export const toStamp = (value) => {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
@@ -83,7 +83,7 @@ export function downloadIcs(session) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  // Revoke on the next tick — Safari needs the URL alive through the click.
+  // Revoke on the next tick, Safari needs the URL alive through the click.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   return true;
 }
@@ -104,7 +104,7 @@ export function googleCalendarUrl(session) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-/* ————— formatting helpers shared by the session screens ————— */
+/* ----- formatting helpers shared by the session screens ----- */
 
 export const dayKeyOf = (value) => {
   const d = new Date(value);
@@ -121,7 +121,7 @@ export const fmtDate = (value) =>
 export const fmtRange = (slot) =>
   slot ? `${fmtDate(slot.start)} · ${fmtTime(slot.start)}–${fmtTime(slot.end)}` : "";
 
-/** "in 3 days" / "tomorrow" / "today" — relative, from now. */
+/** "in 3 days" / "tomorrow" / "today", relative, from now. */
 export function countdown(value) {
   const then = new Date(value).getTime();
   if (Number.isNaN(then)) return "";
@@ -140,7 +140,7 @@ export function countdown(value) {
 export const toLocalInput = (d) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-/** Next occurrence of a round hour, `days` from now — the composer's default. */
+/** Next occurrence of a round hour, `days` from now, the composer's default. */
 export function defaultSlot(days = 3, hour = 17, minutes = 45) {
   const start = new Date();
   start.setDate(start.getDate() + days);

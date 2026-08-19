@@ -16,14 +16,14 @@ import { uploadProfileImage, ACCEPT } from "./lib/upload.js";
 import { EventComposer, EventCard } from "./events.jsx";
 import { notifPrefLabel } from "./settings.jsx";
 
-/* ————————————————— APP: SHARED ————————————————— */
+/* ----------------- APP: SHARED ----------------- */
 
 /**
  * One tap-to-edit line on a profile: label, current value, and a textarea that
  * takes its place. Both profile screens had this written out per field, so the
  * mentee and mentor copies had already drifted on which fields they offered.
  *
- * `maxLength` mirrors the cap /api/profile enforces — the server is still the
+ * `maxLength` mirrors the cap /api/profile enforces, the server is still the
  * one that truncates, this just stops people writing past it blind.
  */
 export const EditableRow = ({ label, value, placeholder, emptyText, maxLength, rows = 2, onSave }) => {
@@ -64,8 +64,8 @@ export const EditableRow = ({ label, value, placeholder, emptyText, maxLength, r
  * The cover-image + profile-picture block at the top of both profile screens.
  *
  * One component for two quite different heroes (a mentee's white card, a
- * mentor's dark public-view card) because the part that differs is layout —
- * passed in as children — and the part that's identical is the upload: pick a
+ * mentor's dark public-view card) because the part that differs is layout -
+ * passed in as children, and the part that's identical is the upload: pick a
  * file, push it to Blob storage, then PATCH the URL onto the profile. That
  * sequence written twice is the version that drifts.
  *
@@ -97,7 +97,7 @@ export const ProfileHeader = ({
   const centred = align === "center";
   const AVATAR = 76;
 
-  /* Sits on the cover, so it has to stay legible over whatever someone uploads —
+  /* Sits on the cover, so it has to stay legible over whatever someone uploads -
      hence the scrim rather than a flat brand colour. */
   const camera = (onClick, label, loading, style) => (
     <button onClick={onClick} disabled={!!busy} aria-label={label} title={label}
@@ -213,7 +213,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
             <>
               <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.6, marginTop: 6 }}>Not scheduled yet</div>
               <div style={{ fontSize: 13.5, marginTop: 6, opacity: 0.92, lineHeight: 1.5 }}>
-                Meets run quarterly, in person, once the founding cohort is underway. Date and city land here — and in your inbox — as soon as they’re set.
+                Meets run quarterly, in person, once the founding cohort is underway. Date and city land here, and in your inbox, as soon as they’re set.
               </div>
             </>
           )}
@@ -282,7 +282,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
   );
 };
 
-/* Derived from state the client actually holds — a real match, a real badge, a
+/* Derived from state the client actually holds, a real match, a real badge, a
    real cohort. There is no notification service yet, so nothing is invented to
    fill the list: it previously shipped a six-item history including messages
    quoted from a mentor who didn't exist and a session on a date nobody set.
@@ -293,7 +293,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
  * One notification row.
  *
  * A muted row is the same row, dimmed, with the switch that is holding it back
- * named where its timestamp would be — "MUTED BY LEADERBOARD MOVEMENT" points
+ * named where its timestamp would be, "MUTED BY LEADERBOARD MOVEMENT" points
  * at a label that exists in Settings, so the fix is one screen away. It stays
  * tappable: the underlying thing is real, only the alerting was turned off.
  */
@@ -326,21 +326,21 @@ const NotifRow = ({ n, onClick, mutedBy = null }) => (
  * movement" that goes on turning up in the centre teaches people their settings
  * are decorative, and nothing they set afterwards is believed.
  *
- * Rows with no `pref` are not preferences — they are things waiting on this
+ * Rows with no `pref` are not preferences, they are things waiting on this
  * person. A pending invitation and a session proposal are somebody else's action
  * blocked on an answer; muting those would lose the answer, not the noise.
  *
  * Muted rows are hidden, not destroyed. The count at the foot of the list opens
  * them, each labelled with the switch that is holding it back, because a screen
  * that says "1 muted" and offers no way to see what was muted asks someone to
- * take the app's word for it — and the honest answer might be the one thing
+ * take the app's word for it, and the honest answer might be the one thing
  * they were looking for.
  */
 export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo, onRespond, busy, prefs = {}, nudge = null, onSettings }) => {
   const [showMuted, setShowMuted] = useState(false);
   const inbox = (Array.isArray(matches) ? matches : []).filter(m => m.awaitingYou);
   const items = [];
-  /* A proposed session is a real thing waiting on this person — it belongs at
+  /* A proposed session is a real thing waiting on this person, it belongs at
      the top of the list, above the derived progress items. */
   const sessionsToAnswer = (Array.isArray(sessions) ? sessions : []).filter(s => s.awaitingYou);
   if (sessionsToAnswer.length > 0) {
@@ -348,7 +348,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
     items.push({
       icon: Calendar, c: C.amber, bg: C.amberTint, pref: "sessions",
       t: sessionsToAnswer.length === 1 ? `${first} proposed a session` : `${sessionsToAnswer.length} sessions need a time`,
-      d: "Pick one of the times they offered — that books it for both of you.",
+      d: "Pick one of the times they offered, that books it for both of you.",
       when: "New", to: "sessions",
     });
   }
@@ -363,7 +363,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
         t: `${nudge.from} noticed`, d: nudge.text, when: "Today", to: nudge.to || "exercises",
       });
     }
-    /* One line per mentor — the mentee may hold three, and "they accepted"
+    /* One line per mentor, the mentee may hold three, and "they accepted"
        naming only the first would drop the other two off the list entirely. */
     (u.mentors || []).forEach(m => items.push({ icon: Check, c: C.teal, bg: C.tealTint, pref: "notes", t: `${m.name.split(" ")[0]} accepted your request`, d: "You’re matched. Their Orbit is open to you now.", when: "Recent", to: "home" }));
     if (u.earned?.goal) items.push({ icon: Award, c: C.purple, bg: C.purpleTint, t: "Badge unlocked: Goal Setter", d: `Verified and shareable. ${BADGE_DEFS.length - 1} more to go.`, when: u.earned.goal, to: "badges" });
@@ -374,7 +374,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
   }
 
   /* A row with no `pref` is always shown; one with a `pref` obeys it. Defaulting
-     an unknown key to *shown* rather than hidden is deliberate — a preference
+     an unknown key to *shown* rather than hidden is deliberate, a preference
      that hasn't loaded yet must not silently swallow a notification. */
   const visible = items.filter((n) => !n.pref || prefs[n.pref] !== false);
   const mutedItems = items.filter((n) => n.pref && prefs[n.pref] === false);
@@ -422,7 +422,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
         )}
 
         {/* Says the switches are working rather than leaving someone to wonder
-            whether the app is quiet or broken — and opens what they hid. */}
+            whether the app is quiet or broken, and opens what they hid. */}
         {muted > 0 && (
           <div>
             <button
@@ -465,7 +465,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
   );
 };
 
-/* Fixed top-right invite alert. Stays put until Accept or Pass — no auto-dismiss,
+/* Fixed top-right invite alert. Stays put until Accept or Pass, no auto-dismiss,
    no X. Hidden only while the full Notifications overlay is already open. */
 export const InviteAlert = ({ role, invites = [], busy, onRespond }) => {
   const inbox = (Array.isArray(invites) ? invites : []).filter(m => m.awaitingYou);
@@ -543,7 +543,7 @@ export const InviteAlert = ({ role, invites = [], busy, onRespond }) => {
   );
 };
 
-/* The notification card that used to open this screen had four toggles —
+/* The notification card that used to open this screen had four toggles -
    streak reminders, mentee activity, session reminders, leaderboard movement.
    None of them persisted, and there is no notification pipeline for them to
    configure, so every switch promised mail that could never arrive. Gone until
@@ -559,9 +559,9 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
         <Card>
           <Label>Account</Label>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-            <Monogram name={user?.name || "—"} size={36} />
+            <Monogram name={user?.name || "-"} size={36} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>{user?.name || "—"}</div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{user?.name || "-"}</div>
               <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email || ""}</div>
             </div>
             <span style={{ fontFamily: F.mono, fontSize: 8.5, color: user?.emailVerified ? C.teal : C.amber, letterSpacing: 0.6 }}>
@@ -599,7 +599,7 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
         <Card onClick={() => window.open("/privacy.html", "_blank", "noopener")} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>Privacy policy</span><ChevronRight size={16} color={C.gray} />
         </Card>
-        {/* The org console, for whoever has one — and the way in for a mentor
+        {/* The org console, for whoever has one, and the way in for a mentor
             who doesn't. A mentee sees neither: organisations are created from
             the mentor side, and offering the link here would only dead-end. */}
         {(org || role === "mentor") && (
@@ -619,7 +619,7 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
             <ExternalLink size={15} color={C.gray} />
           </Card>
         )}
-        {/* Founders only — mentees never get this link (see adminConsole). */}
+        {/* Founders only, mentees never get this link (see adminConsole). */}
         {user?.adminConsole && (
           <Card onClick={() => window.open("/app/#/admin", "_blank", "noopener")}
             style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.amberTint}`, background: C.amberTint }}>
@@ -644,7 +644,7 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
 /**
  * Badge detail.
  *
- * Two states, and the unearned one is not a lesser version of the earned one —
+ * Two states, and the unearned one is not a lesser version of the earned one -
  * it is the goal gradient. A locked badge that says nothing about how to get it
  * is decoration; one that names the remaining distance is a reason to open the
  * app tomorrow. So an unearned badge shows the condition and the progress, and
@@ -730,7 +730,7 @@ export const MidwayUnlock = ({ onClose, toast }) => (
     <div style={{ fontSize: 14.5, marginTop: 8, lineHeight: 1.55, maxWidth: 250, color: "#DDD9F6" }}>Halfway through the Program, zero shortcuts. The cohort board can see you now.</div>
     <div style={{ fontFamily: F.mono, fontSize: 10.5, marginTop: 14, color: "#C9C3F2" }}>RYZ-2026-00734 · VERIFIED</div>
     <div style={{ width: "100%", maxWidth: 280, marginTop: 28, display: "flex", flexDirection: "column", gap: 10 }}>
-      <Btn kind="dark" onClick={() => shareToLinkedIn("Halfway through my Ryzn program — four milestones down, four to go.")}><Linkedin size={15} /> Share to LinkedIn</Btn>
+      <Btn kind="dark" onClick={() => shareToLinkedIn("Halfway through my Ryzn program, four milestones down, four to go.")}><Linkedin size={15} /> Share to LinkedIn</Btn>
       <button onClick={onClose} style={{ background: "none", border: "none", color: "#DDD9F6", fontFamily: F.sans, fontWeight: 600, fontSize: 14, cursor: "pointer", padding: 10 }}>Keep going</button>
     </div>
   </div>

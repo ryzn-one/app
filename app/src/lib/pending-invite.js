@@ -4,7 +4,7 @@
  * A code arrives in the URL hash (/app/#/join?code=…) and is spent by an
  * authenticated call to /api/invites/redeem. Between those two points sits
  * "Continue with Google", which leaves the app entirely and returns to /app/
- * with no hash — so a code held only in component state is gone by the time
+ * with no hash, so a code held only in component state is gone by the time
  * there is a session to claim it with. The invitation is then silently
  * dropped: the account lands with the default `mentee` role, the code stays
  * open for anyone else holding the link, and a company invite never seats
@@ -41,7 +41,7 @@ export function clearPendingInvite() {
  * Spend the stashed code, clearing it whichever way the answer goes.
  *
  * Never throws: by the time this runs the account already exists, and a failed
- * claim must not strand anyone on a dead screen. It clears on failure too —
+ * claim must not strand anyone on a dead screen. It clears on failure too -
  * `already_used`, `revoked` and `expired` do not become valid by being asked
  * again on every boot.
  */

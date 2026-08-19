@@ -7,14 +7,14 @@ import { copyFor } from "./lib/orbits.js";
 import { orbitIcon } from "./orbits.jsx";
 
 /**
- * Settings — one component, both roles, all three orbit kinds.
+ * Settings, one component, both roles, all three orbit kinds.
  *
  * Sections appear conditionally; nothing forks into a second screen. The two
  * rules here matter well beyond the UI:
  *
  * 1. **A `Locked` field is a trust signal, not a limitation.** In a company
  *    orbit, email and division come from the employer's directory, and saying so
- *    — visibly, with a padlock, on the field itself — tells an employee that
+ *   , visibly, with a padlock, on the field itself, tells an employee that
  *    Ryzn is reading their org chart rather than keeping a private second copy
  *    of it. The identical screen in the public orbit makes the same fields
  *    editable, because there nobody else owns them.
@@ -34,7 +34,7 @@ import { orbitIcon } from "./orbits.jsx";
  * Mirrors the server's defaults in api/profile.js, and is only ever a first
  * paint: the stored values arrive with the session and replace these. It exists
  * so a switch never renders in the off position for a preference that is
- * actually on — a settings screen that flickers is a settings screen people
+ * actually on, a settings screen that flickers is a settings screen people
  * stop trusting.
  */
 export const DEFAULT_PREFS = Object.freeze({
@@ -45,7 +45,7 @@ export const DEFAULT_PREFS = Object.freeze({
 
 /* Exported because the notification centre names the switch that muted a row.
    Deriving the name from the same list the switch is drawn from is the only way
-   the two can't drift — "muted by Leaderboard movement" has to match a label
+   the two can't drift, "muted by Leaderboard movement" has to match a label
    that actually exists in Settings, or it sends people looking for a switch
    that isn't there. */
 export const NOTIF_ROWS = (role) => [
@@ -55,7 +55,7 @@ export const NOTIF_ROWS = (role) => [
     : "When a mentor replies or comments on your writing."],
   ["sessions", "Session reminders", "Before a booked session, and when one is proposed."],
   ["posts", "New posts from people you follow", "Follows travel across orbits, so these do too."],
-  ["board", "Leaderboard movement", "When your position changes. Off by default — it's the noisiest one."],
+  ["board", "Leaderboard movement", "When your position changes. Off by default, it's the noisiest one."],
 ];
 
 /** The Settings label for a preference key, or the raw key if it has no switch. */
@@ -76,35 +76,35 @@ export function SettingsSheet({
 
   return (
     <Sheet title="Settings" onClose={onClose}>
-      {/* ————— profile ————— */}
+      {/* ----- profile ----- */}
       <SecLabel>Profile photo</SecLabel>
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Avatar src={user?.avatarUrl} name={user?.name} size={54} radius={16} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{user?.name || "—"}</div>
+            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{user?.name || "-"}</div>
             {isPrivate && (
               <div style={{ fontSize: 11.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
-                Your picture is yours to change — it isn't taken from your employer's directory.
+                Your picture is yours to change, it isn't taken from your employer's directory.
               </div>
             )}
           </div>
         </div>
       </Card>
 
-      {/* ————— identity ————— */}
+      {/* ----- identity ----- */}
       <SecLabel>Identity</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow label="Display name">
-          <span style={{ fontSize: 13, color: C.gray }}>{user?.name || "—"}</span>
+          <span style={{ fontSize: 13, color: C.gray }}>{user?.name || "-"}</span>
         </SettingRow>
         <SettingRow
           label="Email"
           sub={isPrivate ? "From your organisation's directory." : undefined}
         >
           {isPrivate
-            ? <Locked>{user?.email || "—"}</Locked>
-            : <span style={{ fontSize: 13, color: C.gray }}>{user?.email || "—"}</span>}
+            ? <Locked>{user?.email || "-"}</Locked>
+            : <span style={{ fontSize: 13, color: C.gray }}>{user?.email || "-"}</span>}
         </SettingRow>
         {isPrivate ? (
           <SettingRow label="Division" sub="Set by your organisation. It decides who you can match with." last>
@@ -119,7 +119,7 @@ export function SettingsSheet({
         )}
       </Card>
 
-      {/* ————— notifications ————— */}
+      {/* ----- notifications ----- */}
       <SecLabel>Notifications</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         {NOTIF_ROWS(role).map(([key, label, sub], i, arr) => (
@@ -132,7 +132,7 @@ export function SettingsSheet({
         These follow you. You set them once, not once per orbit.
       </p>
 
-      {/* ————— visibility ————— */}
+      {/* ----- visibility ----- */}
       <SecLabel>Visibility</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow
@@ -154,7 +154,7 @@ export function SettingsSheet({
         </SettingRow>
       </Card>
 
-      {/* ————— availability ————— */}
+      {/* ----- availability ----- */}
       <SecLabel>Availability</SecLabel>
       <Card>
         <Seg options={["Mornings", "Afternoons", "Flexible"]} value={prefs?.avail || "Flexible"} onChange={set("avail")} small />
@@ -182,7 +182,7 @@ export function SettingsSheet({
         )}
       </Card>
 
-      {/* ————— linked accounts ————— */}
+      {/* ----- linked accounts ----- */}
       <SecLabel>Linked accounts</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow label="LinkedIn" sub="Used for sharing a badge. Nothing is posted without you tapping share." last>
@@ -190,7 +190,7 @@ export function SettingsSheet({
         </SettingRow>
       </Card>
 
-      {/* ————— your orbits ————— */}
+      {/* ----- your orbits ----- */}
       <SecLabel>Your orbits</SecLabel>
       <Card style={{ padding: 0, overflow: "hidden" }}>
         {orbits.map((o, i) => {
@@ -232,10 +232,10 @@ export function SettingsSheet({
         })}
       </Card>
 
-      {/* ————— install ————— */}
+      {/* ----- install ----- */}
       <InstallSection />
 
-      {/* ————— account and privacy ————— */}
+      {/* ----- account and privacy ----- */}
       <SecLabel>Account and privacy</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow label="Export my data" sub="Everything we hold about you, as one JSON file.">

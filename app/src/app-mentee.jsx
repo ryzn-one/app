@@ -16,12 +16,12 @@ import { SavedShelf } from "./resources.jsx";
 import { fetchMessages, sendMessage, fetchImpactHistory } from "./lib/auth-client.js";
 import { countdown, fmtRange } from "./lib/calendar.js";
 
-/* ————————————————— APP: MENTEE ————————————————— */
+/* ----------------- APP: MENTEE ----------------- */
 
 /**
  * The Chat tab's open state: one row per mentor held in this orbit.
  *
- * Only reached once the track is finished — the locked half of this tab is a
+ * Only reached once the track is finished, the locked half of this tab is a
  * screen of its own (see unlock.jsx). The empty state here is the third case,
  * and it is a real one: chat can be unlocked while nobody is on the other end
  * of it yet.
@@ -33,7 +33,7 @@ export const MenteeChatList = ({ mentors = [], onOpenThread }) => (
     {mentors.length === 0 ? (
       <Card style={{ marginTop: 16, textAlign: "center", padding: "28px 20px" }}>
         <MessageCircle size={24} color={C.mute} />
-        <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700, marginTop: 10 }}>Chat is open — you just need someone to talk to.</div>
+        <div style={{ fontFamily: F.sans, fontSize: 16, fontWeight: 700, marginTop: 10 }}>Chat is open, you just need someone to talk to.</div>
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
           Find a mentor here and this fills up.
         </div>
@@ -61,15 +61,15 @@ const mentorsOf = (u) => u?.mentors || [];
 /**
  * A mentee's Home is the part of the app that belongs to them and to nobody
  * else: the streak, the exercise, the milestones, the standings. It is the same
- * screen whether they hold one mentor or three, which is the point — it used to
+ * screen whether they hold one mentor or three, which is the point, it used to
  * reshape itself around whichever mentor happened to accept first, and a second
  * mentor changed nothing about it because a second mentor had nowhere to go.
  *
- * The mentors live below it as Orbits — one tile each, each opening its own
+ * The mentors live below it as Orbits, one tile each, each opening its own
  * feed, program and thread. `feeds` is keyed by mentor id for exactly that
  * reason: there is no single feed to show here.
  */
-/* Home, in the order §6.1 sets out — and the order matters more than any single
+/* Home, in the order §6.1 sets out, and the order matters more than any single
    card on it. The unlock track sits above the daily rep and below only an
    at-risk nudge, because until Stage 1 is done it is the *only* thing this
    person needs to be looking at. Everything below it is for someone who already
@@ -83,7 +83,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
   const mentors = u.mentors || [];
   const pendingInvites = Array.isArray(invites) ? invites : [];
   /* Real bookings from /api/sessions. A time is only ever shown once both sides
-     have agreed on it — see api/sessions.js. */
+     have agreed on it, see api/sessions.js. */
   const needsAnswer = sessions.filter(s => s.awaitingYou);
   const nextSession = sessions
     .filter(s => s.status === "confirmed" && new Date(s.confirmedSlot.end).getTime() > Date.now())
@@ -123,7 +123,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
 
       {/* The at-risk nudge. First in the order, and it comes from a person.
           The detection may have happened in an HR console, but the sentence a
-          mentee reads never says so — "your programme administrator noticed" is
+          mentee reads never says so, "your programme administrator noticed" is
           the line that makes someone close the app, and the whole point of
           attributing it to their mentor is that it doesn't. */}
       {atRisk && (
@@ -135,7 +135,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
                 {(atRisk.mentorName || "Your mentor").split(" ")[0]} noticed you've been away
               </div>
               <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5, marginTop: 3 }}>
-                {atRisk.daysSince} days since your last paragraph. Pick it back up — one is enough to start again.
+                {atRisk.daysSince} days since your last paragraph. Pick it back up, one is enough to start again.
               </div>
               <Btn small style={{ marginTop: 11 }} onClick={() => go("exercises")}>
                 Write today's · +{todayEx.xp} XP
@@ -145,7 +145,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         </Card>
       )}
 
-      {/* The unlock track — first, and alone, until it's finished. It routes to
+      {/* The unlock track, first, and alone, until it's finished. It routes to
           whichever screen the current step lives on rather than owning the work
           itself: the track is a map, not a second place to do things. */}
       {stage && !stage.complete && (
@@ -184,7 +184,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <Label color={todayDone ? C.teal : "#B9B3E8"}>Today’s exercise · {todayEx.mins} min</Label>
-            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, marginTop: 6 }}>{todayDone ? `${todayEx.title} — done.` : todayEx.title}</div>
+            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, marginTop: 6 }}>{todayDone ? `${todayEx.title}, done.` : todayEx.title}</div>
             <div style={{ fontSize: 13, marginTop: 4, opacity: 0.75 }}>{todayDone ? `+${todayEx.xp} XP banked. Back tomorrow.` : u.fresh ? "One honest paragraph. Your mentor reads it." : "3 sentences. Your dream industry. No filler."}</div>
           </div>
           {todayDone ? <Check size={26} /> : <div style={{ background: C.purple, borderRadius: 12, padding: 10 }}><Zap size={18} color={C.white} /></div>}
@@ -197,7 +197,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
             <BadgeTile badge={nextBadge} i={nextIdx} size={56} />
             <div style={{ flex: 1 }}>
               <Label>Next milestone</Label>
-              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 3 }}>{nextBadge.name} — {nextBadge.unlocks.toLowerCase()}</div>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 3 }}>{nextBadge.name}, {nextBadge.unlocks.toLowerCase()}</div>
               {nextBadge.progress ? <>
                 <div style={{ marginTop: 8 }}><Bar pct={nextBadge.progress[0] / nextBadge.progress[1]} /></div>
                 <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 5 }}>{nextBadge.progressLabel}</div>
@@ -208,7 +208,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         </Card>
       )}
 
-      {/* ————— the orbits —————
+      {/* ----- the orbits -----
           One tile per mentor, in the order they came in, none of them ranked
           above the others. No mentor is a real state in an early cohort and
           renders as itself rather than borrowing a name. */}
@@ -223,7 +223,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
             <div style={{ width: 48, height: 48, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={20} color={C.gray} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>No mentor matched yet</div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Mentors are still being onboarded. Your exercises are open now — the work counts either way.</div>
+              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Mentors are still being onboarded. Your exercises are open now, the work counts either way.</div>
             </div>
             <ChevronRight size={16} color={C.gray} />
           </div>
@@ -280,7 +280,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
       )}
 
       {/* Sessions. Three honest states: a proposal waiting on you, a booked time,
-          or nothing yet — never an invented slot, which is what this card's
+          or nothing yet, never an invented slot, which is what this card's
           ancestor printed under the mentor's name. */}
       {(mentors.length > 0 || sessions.length > 0) && (
         <Card
@@ -302,7 +302,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
               </div>
               <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
                 {needsAnswer.length > 0
-                  ? "Pick a time that works — that books it"
+                  ? "Pick a time that works, that books it"
                   : nextSession ? `${fmtRange(nextSession.confirmedSlot)} · ${countdown(nextSession.confirmedSlot.start)}` : "Propose a few times to your mentor"}
               </div>
             </div>
@@ -436,8 +436,8 @@ export const MenteeBadges = ({ badges, openBadge, justEarnedId }) => (
   </div>
 );
 
-/* The cohort board. Every row here used to be invented — six anonymous handles
-   with XP totals, plus a school-vs-school table — sitting under the heading
+/* The cohort board. Every row here used to be invented, six anonymous handles
+   with XP totals, plus a school-vs-school table, sitting under the heading
    "Anonymised leaderboard" where a user would reasonably read them as peers.
    There is no XP ledger yet (see docs/PRODUCTION.md), so the only honest board
    is the caller's own standing. */
@@ -491,7 +491,7 @@ export const CohortScreen = ({ u, back }) => {
   );
 };
 
-/* Direct Connect — persisted via /api/messages. Fake mentor replies that used
+/* Direct Connect, persisted via /api/messages. Fake mentor replies that used
    to fire 1.4s after send are gone; both sides read the same thread. */
 export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
   const [msgs, setMsgs] = useState([]);
@@ -634,7 +634,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
           placeholder="e.g., Interned at Google as a Product Manager (Summer 2024)"
           emptyText="Add your experience" onSave={v => onUpdateProfile("experience", v)} />
       </Card>
-      {/* Every mentor, equal. The old version ranked them — one ACTIVE row and
+      {/* Every mentor, equal. The old version ranked them, one ACTIVE row and
           the rest tagged SUPPORT, each carrying a "Make active" button whose
           only real effect was to move the single working Orbit from one mentor
           to another. There is an Orbit per mentor now, so the only thing left
@@ -673,7 +673,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
         })()}
       </Card>
       {/* The roll-up. Each mentor authors their own program, so there is no one
-          timeline to draw — this is the count per mentor, and the phases
+          timeline to draw, this is the count per mentor, and the phases
           themselves live in that mentor's Orbit where the work is done. */}
       {mentorsOf(u).some(m => (programs[m.id]?.phases?.length || 0) > 0) && (
         <Card>
@@ -695,7 +695,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
           })}
         </Card>
       )}
-      {/* The reading list. Whatever your mentors promoted to Ryzn and you kept —
+      {/* The reading list. Whatever your mentors promoted to Ryzn and you kept -
           the other end of the Save button on their shelves, without which that
           button would teach you your taps don't matter. */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 2px 0" }}>

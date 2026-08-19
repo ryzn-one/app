@@ -11,7 +11,7 @@ import { Card, Label, Btn, Chip, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGl
 import { SwipeDeck, CardGrid, MentorDetailSheet, MenteeDetailSheet } from "./chatmatch.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 
-/* ————————————————— IN-APP ADD DECKS —————————————————
+/* ----------------- IN-APP ADD DECKS -----------------
 
    The deck is the clearest place the architecture is visible: the same screen,
    in three orbits, behaving differently because three policy values differ.
@@ -21,7 +21,7 @@ import { useIsDesktop } from "./useIsDesktop.js";
      levelGate  decides who is in the pool, and is *named* on the screen
      crossDiv   same
 
-   The last two are enforced server-side — this only explains them. A narrow deck
+   The last two are enforced server-side, this only explains them. A narrow deck
    with no explanation reads as "Ryzn has no mentors"; the same deck with the
    rule on it reads as "my employer set this", which is true and is not Ryzn's
    failure to fix.                                                              */
@@ -223,7 +223,7 @@ export const AddMenteeScreen = ({ candidates, addsUsed, onAdd, back, toast, onLo
     <div style={{ height: "100%", background: C.white, borderRadius: 20, border: `1px solid ${C.line}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 26 }}>
       <Users size={32} color={C.purple} />
       <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, marginTop: 12 }}>{loading ? "Loading matches…" : "That’s everyone for now."}</div>
-      <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{loading ? "One moment." : "Matching runs weekly — new mentees who fit your profile land here first."}</div>
+      <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{loading ? "One moment." : "Matching runs weekly, new mentees who fit your profile land here first."}</div>
       <Btn kind="ghost" style={{ marginTop: 16 }} onClick={back}>Back to cohort</Btn>
     </div>
   );

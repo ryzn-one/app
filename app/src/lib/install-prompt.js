@@ -1,12 +1,12 @@
-/* ————————————————— PWA INSTALL ————————————————— */
+/* ----------------- PWA INSTALL ----------------- */
 
-/* Ryzn is installable — manifest, icons and a fetch-handling worker are all in
- * place — but nothing ever said so. Installing meant knowing to dig through a
+/* Ryzn is installable, manifest, icons and a fetch-handling worker are all in
+ * place, but nothing ever said so. Installing meant knowing to dig through a
  * browser menu, which almost nobody does, so the home-screen app existed and
  * went unused.
  *
  * The offer is made on every browser, because "you can keep this on your home
- * screen" is true everywhere — only the gesture changes. This used to bail out
+ * screen" is true everywhere, only the gesture changes. This used to bail out
  * and show nothing wherever `beforeinstallprompt` was absent and the visitor
  * was not on iOS, which silently covered desktop Safari, Firefox and every
  * in-app webview. Six routes now, and none of them is silence:
@@ -17,13 +17,13 @@
  *                    so the banner teaches the gesture instead. Per browser,
  *                    because the share icon is not in the same place twice.
  *   safari-desktop   macOS Sonoma and later: File → Add to Dock.
- *   firefox-desktop  Firefox cannot install web apps at all — it dropped site
+ *   firefox-desktop  Firefox cannot install web apps at all, it dropped site
  *                    specific browsers and never shipped a replacement. The
  *                    only honest instruction is to open Ryzn somewhere that can.
  *   in-app           Slack, Instagram, LinkedIn and friends render in a webview
  *                    with no install anything. Step one is leaving the webview.
  *   menu             Everything else, including Firefox on Android, which does
- *                    have Install — just in the menu. Points there.
+ *                    have Install, just in the menu. Points there.
  */
 
 import { useCallback, useEffect, useReducer, useState } from "react";
@@ -37,12 +37,12 @@ export const SHOW_AFTER_MS = 9000;
 
 const ua = () => (typeof navigator === "undefined" ? "" : navigator.userAgent || "");
 
-/* Already installed — but only on signals that actually mean it. iOS uses the
+/* Already installed, but only on signals that actually mean it. iOS uses the
    legacy `navigator.standalone`; everything else reports a display mode.
 
    Two checks that used to live here are gone, because neither one says the app
    is on the home screen:
-     android-app:// referrer   set on any link opened from any Android app —
+     android-app:// referrer   set on any link opened from any Android app -
                                Slack, Gmail, WhatsApp. It records where the tap
                                came from, not how this page was launched.
      display-mode: minimal-ui  what Chrome Custom Tabs and in-app webviews
@@ -51,7 +51,7 @@ const ua = () => (typeof navigator === "undefined" ? "" : navigator.userAgent ||
 
    Both read true for someone simply following a shared link, and because the
    answer is latched into localStorage below, one such visit retired the banner
-   on that device permanently — on the marketing site and in the app alike. */
+   on that device permanently, on the marketing site and in the app alike. */
 export const isStandalone = () => {
   if (typeof window === "undefined") return false;
   const mq = (q) => window.matchMedia?.(q).matches === true;
@@ -88,7 +88,7 @@ const isSafariDesktop = () =>
   !/chrome|chromium|crios|edg|opr|brave/i.test(ua());
 
 /**
- * Which route to installing this browser actually offers. Never null — a
+ * Which route to installing this browser actually offers. Never null, a
  * browser we cannot place gets the menu route rather than silence.
  *
  * @param {boolean} hasPrompt whether a live `beforeinstallprompt` is in hand.
@@ -105,7 +105,7 @@ export function installRoute(hasPrompt) {
   }
   if (isSafariDesktop()) return "safari-desktop";
   /* Firefox on Android does install web apps, from the menu. Firefox on the
-     desktop does not, at all — so only the desktop gets sent elsewhere. */
+     desktop does not, at all, so only the desktop gets sent elsewhere. */
   if (isFirefox() && !isAndroid()) return "firefox-desktop";
   return "menu";
 }
@@ -133,7 +133,7 @@ export function routeGuide(route) {
         browser: "Edge",
         steps: ["Tap the ••• menu", "Choose “Add to Home Screen”", "Tap Add"],
       };
-    /* Firefox on iOS has no Add to Home Screen at all — the only working advice
+    /* Firefox on iOS has no Add to Home Screen at all, the only working advice
        is to switch browsers, so that is what it gets. */
     case "ios-firefox":
       return {
@@ -183,7 +183,7 @@ export const clearSnooze = () => {
 };
 
 /* Most browsers offer no way to ask whether the app is already on the home
-   screen, and `isStandalone` only answers for the window you are in — so
+   screen, and `isStandalone` only answers for the window you are in, so
    someone who installed Ryzn and later opens ryzn.one in a tab would be pitched
    the app they already have. Four signals settle it, and each one is recorded
    so it outlives the window that produced it:
@@ -192,14 +192,14 @@ export const clearSnooze = () => {
      getInstalledRelatedApps    Chrome and Edge only, and the reason the
                                 manifest points at itself.
      "I already have it"        the escape hatch for everywhere the above are
-                                unavailable — desktop Safari, and iOS, where the
+                                unavailable, desktop Safari, and iOS, where the
                                 installed app gets its own storage container and
                                 so cannot leave a note Safari will ever read.
 
    Versioned, because the old key was written off the two bogus signals in
    isStandalone above. Every device that ever opened a Ryzn link from an Android
    app is carrying a `ryzn:installed` that means nothing, and narrowing the
-   check alone would not dislodge it — the flag is already on disk. A new name
+   check alone would not dislodge it, the flag is already on disk. A new name
    ignores the old verdict and lets those devices be asked again. */
 const INSTALLED_KEY = "ryzn:installed:v2";
 const LEGACY_INSTALLED_KEY = "ryzn:installed";
@@ -225,7 +225,7 @@ const notify = () => subs.forEach((fn) => fn());
 if (typeof window !== "undefined") {
   try { window.localStorage.removeItem(LEGACY_INSTALLED_KEY); } catch { /* private mode */ }
 
-  /* Running standalone right now — the app is installed, and this is the fact
+  /* Running standalone right now, the app is installed, and this is the fact
      that has to outlive the window. */
   if (isStandalone()) { installed = true; rememberInstalled(); }
 
@@ -243,7 +243,7 @@ if (typeof window !== "undefined") {
     e.preventDefault();
     deferred = e;
     /* Chrome does not offer to install something already installed, so a live
-       event is proof the app is gone — clear the memory rather than let a stale
+       event is proof the app is gone, clear the memory rather than let a stale
        flag suppress an offer the browser itself is making. */
     installed = false;
     try { window.localStorage.removeItem(INSTALLED_KEY); } catch { /* private mode */ }
@@ -257,9 +257,9 @@ if (typeof window !== "undefined") {
     notify();
   });
 
-  /* "The install banner never showed up" has half a dozen honest answers — this
+  /* "The install banner never showed up" has half a dozen honest answers, this
      browser has no route, it is snoozed, it thinks you installed it already,
-     the delay has not elapsed — and none of them are visible from the outside.
+     the delay has not elapsed, and none of them are visible from the outside.
      Rather than guess, `__ryznInstall()` in the console says which one it is.
      `__ryznInstall.reset()` clears both flags to re-test. */
   window.__ryznInstall = () => {
@@ -287,13 +287,13 @@ if (typeof window !== "undefined") {
     installed = false;
     try { window.localStorage.removeItem(INSTALLED_KEY); } catch { /* private mode */ }
     notify();
-    return "cleared — reload to be offered again";
+    return "cleared, reload to be offered again";
   };
 }
 
 /**
  * @param {{ delay?: number, enabled?: boolean }} opts
- *   delay   ms to wait before `visible` flips true. 0 shows immediately —
+ *   delay   ms to wait before `visible` flips true. 0 shows immediately -
  *           used by the Settings row, which is asked for rather than offered.
  *   enabled false parks the hook (signed out, mid-onboarding, …).
  *
@@ -336,7 +336,7 @@ export function useInstallPrompt({ delay = SHOW_AFTER_MS, enabled = true } = {})
     try {
       event.prompt();
       const { outcome } = await event.userChoice;
-      /* Spent either way — Chrome will fire a fresh event if it decides to
+      /* Spent either way, Chrome will fire a fresh event if it decides to
          offer again, and reusing this one throws. */
       deferred = null;
       notify();

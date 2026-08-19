@@ -15,20 +15,20 @@ import { fetchPosts, fetchMenteeExercises } from "./lib/auth-client.js";
 import { ContentTabs, ContentTabBar } from "./feed.jsx";
 import { MentorShelf } from "./resources.jsx";
 
-/* ————————————————— JOURNEY: AI CHAT + UNLOCK + MATCHING ————————————————— */
+/* ----------------- JOURNEY: AI CHAT + UNLOCK + MATCHING ----------------- */
 
 /**
  * The one-time Ryzn AI setup.
  *
  * `firstName` is the name on the account, so the opening line greets the person
  * who actually signed in. `onComplete(answers)` hands the collected answers up
- * to be persisted — they used to die with the component, which is why a
+ * to be persisted, they used to die with the component, which is why a
  * returning user was asked the same six questions forever.
  */
 export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) => {
   /* Same script in every orbit, plus one sentence of context. Someone arriving
      from a company invite is told whose orbit they are in and what stays theirs
-     before the first question — the reassurance has to come before the answers,
+     before the first question, the reassurance has to come before the answers,
      not in a settings screen they may never open. */
   const script = useMemo(
     () => (role === "mentee" ? menteeScript(firstName, orbit) : mentorScript(firstName, orbit)),
@@ -101,7 +101,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
     const filledGoals = goals.filter(g => g.trim().length > 2);
     const text = step.type === "goals" ? filledGoals.map((g, i) => `${i + 1}. ${g}`).join("\n")
       : step.type === "write" ? writeText : sel.join(" · ");
-    // Single-select must be a string — submitting `sel` (an array) made
+    // Single-select must be a string, submitting `sel` (an array) made
     // track/industry land on profiles as ["University"] and crash any screen
     // that called `.toUpperCase()` on them.
     const value = step.type === "goals" ? filledGoals
@@ -119,9 +119,9 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
         setTyping(true);
         setTimeout(() => {
           setTyping(false);
-          // No count promised — the roster is however many mentors have actually
+          // No count promised, the roster is however many mentors have actually
           // onboarded, which on day one may be none.
-          setMsgs(m => [...m, { who: "ai", text: role === "mentee" ? "That’s everything I need. Finding your mentor matches now — and you’ve just earned your first badge." : "That’s everything. Matching mentees to your profile now — and your tier is confirmed." }]);
+          setMsgs(m => [...m, { who: "ai", text: role === "mentee" ? "That’s everything I need. Finding your mentor matches now, and you’ve just earned your first badge." : "That’s everything. Matching mentees to your profile now, and your tier is confirmed." }]);
           // `next`, not `answers`: the state update above hasn't flushed yet.
           setTimeout(() => onComplete(next), 1600);
         }, 1300);
@@ -176,7 +176,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 20, padding: "0 12px" }}>
                   <Search size={14} color={C.gray} />
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search names — or add your own"
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search names, or add your own"
                     style={{ flex: 1, border: "none", outline: "none", background: "transparent", padding: "10px 0", fontFamily: F.sans, fontSize: 13, minWidth: 0 }} />
                 </div>
                 {noExact && (
@@ -186,7 +186,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
             )}
           </div>
 
-          {/* only this region scrolls — CTA below stays put */}
+          {/* only this region scrolls, CTA below stays put */}
           <div className="app-scroll" style={{ overflowY: "auto", minHeight: 0, padding: "10px 16px 8px" }}>
             {(step.type === "single" || step.type === "multi") && <>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -202,7 +202,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
                   );
                 })}
                 {isInfluence && shown.length === 0 && (
-                  <div style={{ fontSize: 12.5, color: C.gray, padding: "6px 2px" }}>No matches for “{search}” — tap Add to include them anyway.</div>
+                  <div style={{ fontSize: 12.5, color: C.gray, padding: "6px 2px" }}>No matches for “{search}”, tap Add to include them anyway.</div>
                 )}
               </div>
               {step.custom && !isInfluence && (
@@ -259,8 +259,8 @@ export const UnlockScreen = ({ role, onNext, toast }) => (
     <div style={{ fontFamily: F.sans, fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>{role === "mentee" ? "Goal Setter." : "Scout."}</div>
     <div style={{ fontSize: 14.5, marginTop: 8, lineHeight: 1.55, maxWidth: 260, color: "#DDD9F6" }}>
       {role === "mentee"
-        ? "Three real goals, on the record. Your streak starts today — and your first badge is already verifiable."
-        : "You’re on the Roster. Your Impact Score is live — every mentee outcome grows it from here."}
+        ? "Three real goals, on the record. Your streak starts today, and your first badge is already verifiable."
+        : "You’re on the Roster. Your Impact Score is live, every mentee outcome grows it from here."}
     </div>
     <div style={{ fontFamily: F.mono, fontSize: 10.5, marginTop: 14, color: "#C9C3F2" }}>
       {role === "mentee" ? "RYZ-2026-00441 · VERIFIED" : "SCOUT → PATHFINDER AT 400 IMPACT"}
@@ -386,7 +386,7 @@ export const CardGrid = ({ deck, renderCard, stampRight, stampLeft, canRight, on
 };
 
 /* Sits above ModalShell's close button rather than beside it, so this header
-   gets the full width back — hence NoCloseGutter. Closing is `close` here. */
+   gets the full width back, hence NoCloseGutter. Closing is `close` here. */
 export const DetailShell = ({ title, right, close, footer, children }) => (
   <NoCloseGutter>
     <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column", borderRadius: 24, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
@@ -398,9 +398,9 @@ export const DetailShell = ({ title, right, close, footer, children }) => (
 );
 
 
-/* ————— Shared bits for the two decks —————
+/* ----- Shared bits for the two decks -----
    Every field below comes from /api/roster, which reads real accounts. A field
-   the person hasn't filled in renders as nothing, never as a placeholder — an
+   the person hasn't filled in renders as nothing, never as a placeholder, an
    empty profile is information, and inventing a bio to fill the space is the
    exact behaviour this screen is being cured of. */
 
@@ -437,7 +437,7 @@ export const EmptyRoster = ({ title, body, action }) => (
 );
 
 /**
- * `onAmplify(post, next)` is wired only by the mentor network — it's what turns
+ * `onAmplify(post, next)` is wired only by the mentor network, it's what turns
  * a peer's profile into somewhere you can pick posts out of, and its absence is
  * what keeps that control off the mentee-facing version of this same sheet.
  */
@@ -480,7 +480,7 @@ export const MentorDetailSheet = ({ m, close, footer, onAmplify, toast }) => {
           </div>
         </div>
         <div style={{ display: "flex", gap: 26, marginTop: 16 }}>
-          {[[m.impact ?? 0, "IMPACT"], [m.industry || "—", "INDUSTRY"]].map(([n, l]) => (
+          {[[m.impact ?? 0, "IMPACT"], [m.industry || "-", "INDUSTRY"]].map(([n, l]) => (
             <div key={l}><div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, color: "#B7AFF2" }}>{n}</div><div style={{ fontFamily: F.mono, fontSize: 8, color: "#8B8985", letterSpacing: 1 }}>{l}</div></div>
           ))}
         </div>
@@ -522,7 +522,7 @@ export const MentorDetailSheet = ({ m, close, footer, onAmplify, toast }) => {
         </Card>
       )}
       {/* Their shelf. `onAmplify` is only wired by the mentor network, so its
-          presence is the same signal here as it is on a post card — the viewer
+          presence is the same signal here as it is on a post card, the viewer
           is a peer, and a peer can pass a pick on to their own cohort. A mentee
           reading the same sheet gets the shelf without that control. */}
       <MentorShelf mentorId={m.id} mentorName={m.name} toast={toast} canRepromote={!!onAmplify} />
@@ -644,7 +644,7 @@ export const MenteeDetailSheet = ({ m, close, footer }) => {
   );
 };
 
-/* ————————————————— MENTEE: choosing a mentor ————————————————— */
+/* ----------------- MENTEE: choosing a mentor ----------------- */
 
 export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matches = [], onDecide, loading, error }) => {
   const isDesktop = useIsDesktop();
@@ -656,7 +656,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
 
   /* Decisions come back from the server, not local state. The roster already
      excludes anyone answered for, so the deck is whatever is genuinely left.
-     Guard array shape — a non-array here used to throw in render and take the
+     Guard array shape, a non-array here used to throw in render and take the
      whole shell down via the root boundary ("Something broke on our side"). */
   const safeRoster = Array.isArray(roster) ? roster : [];
   const safeMatches = Array.isArray(matches) ? matches : [];
@@ -699,7 +699,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   };
 
   /** Answering a mentor who asked first. Separate from `decide` because it acts
-      on a match id, not a roster person — and it must not reject unhandled. */
+      on a match id, not a roster person, and it must not reject unhandled. */
   const respond = async (match, action) => {
     if (busy) return;
     setBusy(true);
@@ -742,14 +742,14 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
       <div style={{ fontFamily: F.sans, fontSize: 21, fontWeight: 700, marginTop: 14 }}>That’s the deck.</div>
       <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
         {openReqs > 0
-          ? `${openReqs} request${openReqs === 1 ? "" : "s"} out. Mentors reply in their own time — you’ll get a notification.`
+          ? `${openReqs} request${openReqs === 1 ? "" : "s"} out. Mentors reply in their own time, you’ll get a notification.`
           : "Your pairings are saved to your account."}
       </div>
       <div style={{ width: "100%", marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
         {requested.map(m => (
           <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "9px 12px" }}>
             <Monogram name={m.person?.name} size={30} />
-            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person?.name || "—"}</span>
+            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person?.name || "-"}</span>
             {m.status === "accepted"
               ? <span style={{ fontFamily: F.mono, fontSize: 9, background: C.tealTint, color: C.teal, fontWeight: 700, padding: "4px 8px" }}>{m.seat === "active" ? "ACTIVE ✓" : "SUPPORT ✓"}</span>
               : m.awaitingYou
@@ -764,7 +764,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
       title={loading ? "Finding your matches…" : error ? "Couldn’t load the Roster." : "No mentors yet."}
       body={loading ? "One moment." : error
         ? "Something went wrong on our end. Try again in a moment."
-        : "The founding mentors are still being onboarded. You’ll get a notification the moment there’s someone to meet — your Day 1 exercises are open in the meantime."}
+        : "The founding mentors are still being onboarded. You’ll get a notification the moment there’s someone to meet, your Day 1 exercises are open in the meantime."}
       action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp(null)}>Start Day 1 without a mentor</Btn> : error ? <Btn style={{ marginTop: 18 }} kind="ghost" onClick={() => onEnterApp(null)}>Continue to Day 1</Btn> : null}
     />
   );
@@ -785,7 +785,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
             {activeF > 0 && <span style={{ position: "absolute", top: -6, right: -6, width: 17, height: 17, borderRadius: 9, background: C.purple, color: C.white, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeF}</span>}
           </button>
         </div>
-        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>SWIPE OR TAP — ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {Math.max(0, 3 - requested.length)} SEAT{3 - requested.length === 1 ? "" : "S"} FREE</div>
+        <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 7, letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>SWIPE OR TAP, ✓ REQUEST · ✕ PASS · {deck.length} LEFT · {Math.max(0, 3 - requested.length)} SEAT{3 - requested.length === 1 ? "" : "S"} FREE</div>
       </div>
       {inbox.length > 0 && (
         <div style={{ padding: "10px 20px 0" }}>
@@ -795,7 +795,7 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
               <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.purpleTint, borderRadius: 12, padding: "9px 12px" }}>
                 <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{m.person?.name || "-"}</div>
                   <div style={{ fontSize: 11.5, color: C.gray }}>Invited you to their cohort</div>
                 </div>
                 <Btn small kind="ghost" style={{ borderColor: C.line, color: C.gray }} disabled={busy} onClick={() => respond(m, "decline")}>Pass</Btn>
@@ -834,17 +834,17 @@ export const MatchesScreen = ({ xp, addXp, toast, onEnterApp, roster = [], match
   );
 };
 
-/* ————————————————— MENTOR: accepting mentees ————————————————— */
+/* ----------------- MENTOR: accepting mentees ----------------- */
 
 /**
- * The applications inbox — mentees who asked for you.
+ * The applications inbox, mentees who asked for you.
  *
  * Lifted out of RequestsScreen so the Mentees surface can give it a tab of its
  * own. It used to exist only as a strip above a swipe deck, which meant a
  * mentor who never opened the deck never saw that someone had applied. Same
  * markup, two callers, one behaviour.
  *
- * In an Apply orbit each row carries what the person wrote to qualify — that
+ * In an Apply orbit each row carries what the person wrote to qualify, that
  * answer is the entire reason this is a decision rather than a name to
  * rubber-stamp. Where the orbit is Open there is no answer, so the row falls
  * back to their first goal and reads as a request rather than an application.
@@ -863,7 +863,7 @@ export const RequestsInbox = ({ inbox = [], outbox = [], busy, canAccept = true,
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Monogram name={m.person?.name} size={30} bg={C.purple} color={C.white} />
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{m.person?.name || "—"}</div>
+                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13 }}>{m.person?.name || "-"}</div>
                   {!m.answer && m.person?.goals?.[0] && (
                     <div style={{ fontSize: 11.5, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>“{m.person.goals[0]}”</div>
                   )}
@@ -892,7 +892,7 @@ export const RequestsInbox = ({ inbox = [], outbox = [], busy, canAccept = true,
             {outbox.map(m => (
               <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, borderRadius: 12, padding: "10px 12px" }}>
                 <Monogram name={m.person?.name} size={30} />
-                <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person?.name || "—"}</span>
+                <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13 }}>{m.person?.name || "-"}</span>
                 <Chip c={C.amber} bg={C.amberTint}><Clock size={10} /> Pending</Chip>
               </div>
             ))}
@@ -909,14 +909,14 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
   const [showFilter, setShowFilter] = useState(false);
   const [detail, setDetail] = useState(null);
   const [busy, setBusy] = useState(false);
-  /* capacity can arrive as a bad number from a mangled profile — Array(NaN)
+  /* capacity can arrive as a bad number from a mangled profile, Array(NaN)
      throws RangeError and wiped the whole app via the root boundary. */
   const cap = (() => {
     const n = Number(capacity);
     return Number.isFinite(n) && n > 0 ? Math.min(20, Math.floor(n)) : 4;
   })();
 
-  /* Server state, not local. `inbox` is mentees who asked for you — those are
+  /* Server state, not local. `inbox` is mentees who asked for you, those are
      answered, not swiped, and they used to be invisible entirely because a
      mentee's request lived only in the mentee's own browser. */
   const safeRoster = Array.isArray(roster) ? roster : [];
@@ -950,7 +950,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
     }
   };
 
-  /** Answering a mentee who asked first — acts on a match id, not a roster row. */
+  /** Answering a mentee who asked first, acts on a match id, not a roster row. */
   const respond = async (match, action) => {
     if (busy) return;
     setBusy(true);
@@ -1000,7 +1000,7 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
         {[...accepted, ...outbox].map(m => (
           <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, background: m.status === "accepted" ? C.tealTint : C.surface, borderRadius: 12, padding: "9px 12px" }}>
             <Monogram name={m.person?.name} size={30} bg={m.status === "accepted" ? C.teal : undefined} color={m.status === "accepted" ? C.white : undefined} />
-            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13, color: m.status === "accepted" ? C.teal : C.ink }}>{m.person?.name || "—"}</span>
+            <span style={{ flex: 1, textAlign: "left", fontWeight: 600, fontSize: 13, color: m.status === "accepted" ? C.teal : C.ink }}>{m.person?.name || "-"}</span>
             {m.status === "accepted"
               ? <Check size={15} color={C.teal} strokeWidth={3} />
               : <span style={{ fontFamily: F.mono, fontSize: 9, background: C.amberTint, color: C.amber, fontWeight: 700, padding: "4px 8px" }}>PENDING</span>}
@@ -1013,14 +1013,14 @@ export const RequestsScreen = ({ xp, addXp, toast, onEnterApp, roster = [], matc
       title={loading ? "Matching mentees…" : error ? "Couldn’t load matches." : "No mentees yet."}
       body={loading ? "One moment." : error
         ? "Something went wrong on our end. Try again in a moment."
-        : "You’re early — mentee applications for this cohort are still open. We’ll notify you the moment someone matches your profile. Your dashboard is ready in the meantime."}
+        : "You’re early, mentee applications for this cohort are still open. We’ll notify you the moment someone matches your profile. Your dashboard is ready in the meantime."}
       action={!loading && !error ? <Btn style={{ marginTop: 18 }} onClick={() => onEnterApp([])}>Open my dashboard</Btn> : error ? <Btn style={{ marginTop: 18 }} kind="ghost" onClick={() => onEnterApp([])}>Open my dashboard</Btn> : null}
     />
   );
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Embedded, the Mentees shell owns the title and the back arrow — but the
+      {/* Embedded, the Mentees shell owns the title and the back arrow, but the
           seat bar stays, because "how many can I still take" is the number this
           deck is decided against and it belongs next to the deck. */}
       <div style={{ padding: embedded ? "2px 20px 10px" : "14px 20px 10px", background: C.white, borderBottom: embedded ? "none" : `1px solid ${C.line}` }}>

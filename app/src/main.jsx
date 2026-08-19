@@ -13,7 +13,7 @@ class ErrorBoundary extends React.Component {
     /* The fallback used to be text only, so the sole way out of any render
        error was for the user to work out that they had to refresh the browser
        themselves. Screens carry their own boundary now (SectionBoundary), so
-       reaching this one means the shell itself failed — offer the reload. */
+       reaching this one means the shell itself failed, offer the reload. */
     if (this.state.err) return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', system-ui, sans-serif", background: "#E9E8E4", padding: 24 }}>
         <div style={{ textAlign: "center", maxWidth: 340 }}>
@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-/* Routes — one origin, one bundle, three surfaces:
+/* Routes, one origin, one bundle, three surfaces:
      /app/          consumer app
      /app/#/teams   Ryzn for Teams (org console + seats)
      /app/#/admin   Ryzn founder console */
@@ -46,7 +46,7 @@ function Router() {
 }
 
 /* The worker lives at the origin root so its scope is "/", and it only exists
-   in the assembled build — the dev server serves /app/ alone, so registering
+   in the assembled build, the dev server serves /app/ alone, so registering
    there would 404 on every reload. */
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {

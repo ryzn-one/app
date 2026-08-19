@@ -5,13 +5,13 @@ import { rateLimit } from "../lib/ratelimit.js";
 import { sideOf, hasAcceptedPair } from "../lib/matches.js";
 
 /**
- * /api/sessions — the 1:1 booking handshake between a mentor and a mentee.
+ * /api/sessions, the 1:1 booking handshake between a mentor and a mentee.
  *
  *   GET                     every session the caller is part of
  *   POST                    propose a session (1–5 times) to someone you're paired with
  *   PATCH {id,action}       accept | decline | reschedule | cancel | complete
  *
- * One document per session, shared by both sides, exactly like `matches` — so a
+ * One document per session, shared by both sides, exactly like `matches`, so a
  * booked time is a single fact rather than two copies that drift. The Sessions
  * tab used to derive a card per mentee client-side and admit, in mono type, that
  * nothing could be booked. This is the backend that sentence was waiting for.
@@ -22,7 +22,7 @@ import { sideOf, hasAcceptedPair } from "../lib/matches.js";
  * calendar unilaterally.
  *
  *   proposed    times on the table, waiting on the other side
- *   confirmed   a slot is agreed — this is a real booking
+ *   confirmed   a slot is agreed, this is a real booking
  *   declined    the other side said no to all of them
  *   canceled    was live, called off by either side
  *   completed   the session happened (mentor logs it)
@@ -67,14 +67,14 @@ function shape(doc, side) {
     respondedAt: iso(doc.respondedAt),
     completedAt: iso(doc.completedAt),
     viewerSide: side,
-    person: { id: otherId, name: otherName || "—" },
+    person: { id: otherId, name: otherName || "-" },
     // Whose move it is. Drives the "needs your answer" pile without the client
     // re-deriving the rule.
     awaitingYou: doc.status === STATUS.PROPOSED && doc.proposedBy !== side,
   };
 }
 
-/** Trim, drop blanks, cap length — used for the agenda lines. */
+/** Trim, drop blanks, cap length, used for the agenda lines. */
 const cleanAgenda = (raw) =>
   (Array.isArray(raw) ? raw : [])
     .map((a) => String(a ?? "").trim().slice(0, 200))
@@ -133,7 +133,7 @@ async function nameOf(db, id) {
   return u?.name || null;
 }
 
-/* ————— GET ————— */
+/* ----- GET ----- */
 
 async function listSessions(request, user) {
   const db = await getDb();
@@ -147,11 +147,11 @@ async function listSessions(request, user) {
   return json({ side, sessions: rows.map((r) => shape(r, side)) });
 }
 
-/* ————— POST ————— */
+/* ----- POST ----- */
 
 async function createSession(request, user) {
   const rl = await rateLimit(`session-create:${user.id}`, { limit: 40 });
-  if (!rl.ok) return fail(429, "rate_limited", "Slow down — try again in a bit.");
+  if (!rl.ok) return fail(429, "rate_limited", "Slow down, try again in a bit.");
 
   let body;
   try {
@@ -185,8 +185,8 @@ async function createSession(request, user) {
   const doc = {
     mentorId,
     menteeId,
-    mentorName: mentorName || "—",
-    menteeName: menteeName || "—",
+    mentorName: mentorName || "-",
+    menteeName: menteeName || "-",
     title: cleanText(title, 120) || "Mentorship session",
     agenda: cleanAgenda(agenda),
     notes: cleanText(notes, 1000),
@@ -207,7 +207,7 @@ async function createSession(request, user) {
   return json({ session: shape({ ...doc, _id: insertedId }, side) }, 201);
 }
 
-/* ————— PATCH ————— */
+/* ----- PATCH ----- */
 
 async function patchSession(request, user) {
   let body;
@@ -239,20 +239,20 @@ async function patchSession(request, user) {
     return json({ session: shape(updated, side) });
   };
 
-  /* ACCEPT — only the side that didn't propose, and only on a live proposal. */
+  /* ACCEPT, only the side that didn't propose, and only on a live proposal. */
   if (action === "accept") {
     if (session.status !== STATUS.PROPOSED) {
       return fail(409, "not_pending", "This session isn't waiting on an answer.");
     }
     if (session.proposedBy === side) {
-      return fail(403, "proposer_cannot_accept", "You proposed these times — it's their turn to pick one.");
+      return fail(403, "proposer_cannot_accept", "You proposed these times, it's their turn to pick one.");
     }
     const slot = (session.slots || []).find((s) => s.id === body.slotId);
     if (!slot) return fail(400, "bad_slot", "Pick one of the proposed times.");
     return save({ status: STATUS.CONFIRMED, confirmedSlot: slot, respondedAt: now });
   }
 
-  /* DECLINE — none of the proposed times work and no counter-offer is coming. */
+  /* DECLINE, none of the proposed times work and no counter-offer is coming. */
   if (action === "decline") {
     if (session.status !== STATUS.PROPOSED) {
       return fail(409, "not_pending", "This session isn't waiting on an answer.");
@@ -263,7 +263,7 @@ async function patchSession(request, user) {
     return save({ status: STATUS.DECLINED, respondedAt: now });
   }
 
-  /* RESCHEDULE — a counter-offer. Either side, on anything still live. The turn
+  /* RESCHEDULE, a counter-offer. Either side, on anything still live. The turn
      flips to whoever didn't just propose, so the handshake still holds. */
   if (action === "reschedule") {
     if (![STATUS.PROPOSED, STATUS.CONFIRMED, STATUS.DECLINED].includes(session.status)) {
@@ -284,7 +284,7 @@ async function patchSession(request, user) {
     });
   }
 
-  /* CANCEL — either side, either state. */
+  /* CANCEL, either side, either state. */
   if (action === "cancel") {
     if (![STATUS.PROPOSED, STATUS.CONFIRMED].includes(session.status)) {
       return fail(409, "not_live", "This session is already closed.");
@@ -292,7 +292,7 @@ async function patchSession(request, user) {
     return save({ status: STATUS.CANCELED, canceledBy: side });
   }
 
-  /* COMPLETE — the mentor logs that it happened. Only after the booked time. */
+  /* COMPLETE, the mentor logs that it happened. Only after the booked time. */
   if (action === "complete") {
     if (side !== "mentor") return fail(403, "mentor_only", "Your mentor logs the session.");
     if (session.status !== STATUS.CONFIRMED) {
@@ -309,7 +309,7 @@ async function patchSession(request, user) {
     });
   }
 
-  /* DETAILS — title/agenda/location edits that don't move the time. */
+  /* DETAILS, title/agenda/location edits that don't move the time. */
   if (action === "update") {
     if (![STATUS.PROPOSED, STATUS.CONFIRMED].includes(session.status)) {
       return fail(409, "not_live", "This session is closed.");

@@ -8,7 +8,7 @@ import {
 import { orbitContext, orbitSeats, visibleInDeck, PUBLIC_ORBIT_ID } from "../lib/orbits.js";
 
 /**
- * /api/matches — the mentee↔mentor pairing that used to live in React state.
+ * /api/matches, the mentee↔mentor pairing that used to live in React state.
  *
  *   GET   ?orbitId=            the caller's matches, with the other party attached
  *   POST  {otherId, orbitId}   open a match, or accept one the other side opened
@@ -27,7 +27,7 @@ import { orbitContext, orbitSeats, visibleInDeck, PUBLIC_ORBIT_ID } from "../lib
  *              Note what "Open" does *not* mean here. The prototype adds a
  *              mentor instantly, because its mentors are fixtures. Ours are
  *              people, and a person appearing in someone's cohort without having
- *              agreed is the same lie the handshake exists to prevent — so Open
+ *              agreed is the same lie the handshake exists to prevent, so Open
  *              removes the qualifying step, not the consent. The mentee-facing
  *              difference is real and immediate ("Add mentor", no modal); the
  *              mentor still says yes.
@@ -36,16 +36,16 @@ import { orbitContext, orbitSeats, visibleInDeck, PUBLIC_ORBIT_ID } from "../lib
  *   crossDiv   nor one outside the mentee's division.
  *
  * The last two are also applied by /api/roster, which is what a deck renders
- * from — but a filtered list is a courtesy and this is the enforcement. A client
+ * from, but a filtered list is a courtesy and this is the enforcement. A client
  * posting a raw user id is exactly the case the deck's filter cannot cover.
  */
 
 /* A mentee's accepted mentors are peers. There used to be an `active` seat and
    two `support` seats, assigned by accept order, and only the active one got a
-   working product — the other two had no Orbit, no feed and no thread. Each
+   working product, the other two had no Orbit, no feed and no thread. Each
    mentor now gets their own Orbit, so which one arrived first decides nothing.
    `seat` is no longer written; old documents may still carry a stale value and
-   nothing reads it. MENTEE_SEATS survives as what it always really was — a
+   nothing reads it. MENTEE_SEATS survives as what it always really was, a
    count of how many mentors one mentee may hold at once. */
 
 async function getMatches(request, user) {
@@ -62,7 +62,7 @@ async function getMatches(request, user) {
   const [hydrated, use] = await Promise.all([hydrate(rows, user), usage(user, scope)]);
 
   /* A mentee's limit is the orbit's `cap`; a mentor's is their own stated cohort
-     size, which is not a policy field — an orbit sets how many mentors a person
+     size, which is not a policy field, an orbit sets how many mentors a person
      may hold, never how many people a mentor must take on. */
   const limit = sideOf(user) === "mentor"
     ? await capacityOf(user.id)
@@ -71,7 +71,7 @@ async function getMatches(request, user) {
   return json({
     role: sideOf(user),
     orbitId: scope,
-    // Every match the caller has, in every orbit — the client filters by
+    // Every match the caller has, in every orbit, the client filters by
     // `orbitId` for the current surface and still knows the rest exist.
     matches: hydrated,
     usage: { ...use, limit },
@@ -100,7 +100,7 @@ async function createMatch(request, user) {
   const side = sideOf(user);
   const pair = pairFor(user, otherId);
 
-  /* Which orbit's rules govern this request. Not a label on the document — it
+  /* Which orbit's rules govern this request. Not a label on the document, it
      is the thing that decides whether the request is allowed, what it must
      carry, and which seat count it spends. */
   const ctx = await orbitContext(db, user.id, orbitId);
@@ -118,7 +118,7 @@ async function createMatch(request, user) {
   if (otherSide === side) return fail(400, "bad_request", "Matches are between a mentee and a mentor.");
 
   /* Both people have to actually be in this orbit, and the two deck filters have
-     to hold for the pair — otherwise a raw POST is a way around the same rules
+     to hold for the pair, otherwise a raw POST is a way around the same rules
      the deck applies on the way in. The public orbit has no seats to read, so
      `visibleInDeck` sees two empty ones and both filters pass, which is correct:
      its policy sets neither gate. */
@@ -169,7 +169,7 @@ async function createMatch(request, user) {
       if (existing.requestedBy !== side) return acceptMatch(user, existing);
       return fail(409, "already_requested", "That request is already out.");
     }
-    // declined / ended — let them try again rather than blocking forever.
+    // declined / ended, let them try again rather than blocking forever.
   }
 
   const use = await usage(user, scope);
@@ -186,11 +186,11 @@ async function createMatch(request, user) {
   }
 
   /* Apply mode: the written answer is what the mentor approves on, so it is
-     required rather than optional. Open mode ignores anything sent — a rule
+     required rather than optional. Open mode ignores anything sent, a rule
      that is off must not quietly keep collecting what it would have needed. */
   const qualified = String(answer ?? "").trim().slice(0, 600);
   if (policy.matchMode === "Apply" && side === "mentee" && qualified.length < 10) {
-    return fail(400, "answer_required", "Tell them what you're hoping to work on — a sentence is enough.");
+    return fail(400, "answer_required", "Tell them what you're hoping to work on, a sentence is enough.");
   }
 
   const doc = {
@@ -228,7 +228,7 @@ async function acceptMatch(user, match) {
   /* Seats are re-checked against the orbit the pairing was formed in, not the
      one the accepter happens to be looking at. An application sent when a
      company orbit allowed three mentors must not slip through after HR cut the
-     cap to one — the rule that applies is the one in force where the pairing
+     cap to one, the rule that applies is the one in force where the pairing
      lives, read at the moment it completes. */
   const db = await getDb();
   const scope = orbitOfMatch(match);

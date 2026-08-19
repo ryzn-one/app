@@ -4,14 +4,14 @@ import { HeaderRow } from "./ui.jsx";
 import { RequestsScreen, RequestsInbox, EmptyRoster } from "./chatmatch.jsx";
 import { DiscoverPane } from "./discover.jsx";
 
-/* ————————————————— MENTEES —————————————————
+/* ----------------- MENTEES -----------------
 
    One surface for finding people, in three tabs.
 
    These three things all existed already and each had its own door: the ranked
    deck was an overlay, the directory was a card at the bottom of Cohort, and
    the applications inbox was a strip pinned above the deck. Same job, three
-   entrances, and the inbox — the only one with a decision waiting on it — was
+   entrances, and the inbox, the only one with a decision waiting on it, was
    the hardest of the three to reach.
 
      For you    we ranked them        the deck, by affinity overlap
@@ -68,7 +68,7 @@ export const MenteesScreen = ({
   const outbox = safeMatches.filter((m) => m.status === "pending" && !m.awaitingYou);
   const accepted = safeMatches.filter((m) => m.status === "accepted");
 
-  /* The inbox answers a match, the deck answers a roster row — two different
+  /* The inbox answers a match, the deck answers a roster row, two different
      ids, so the tab keeps its own handler rather than reusing the deck's. */
   const respond = async (match, action) => {
     if (busy) return;

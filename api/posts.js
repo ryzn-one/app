@@ -11,14 +11,14 @@ import { ensureHandle, RESERVED_HANDLES } from "../lib/handles.js";
 import { canAccessAdminConsole } from "../lib/admin.js";
 
 /**
- * /api/posts — mentor content, and the only thing that carries it to a mentee.
+ * /api/posts, mentor content, and the only thing that carries it to a mentee.
  *
  *   GET    /api/posts                own posts (mentor), plus what they amplified
  *   GET    /api/posts?mentorId=…     that mentor's cohort posts (mentee, paired only)
  *   GET    /api/posts?scope=following  public posts from the mentors you follow
  *   GET    /api/posts?id=…           one post (access-checked; for share deep links)
  *   GET    /api/posts?id=…&comments=1  comment thread for that post
- *   GET    /api/posts?share=<slug>   the public page — no session
+ *   GET    /api/posts?share=<slug>   the public page, no session
  *          (&handle=<handle> for /{handle}/{slug}; /p/:slug still works)
  *   POST   /api/posts                publish
  *   POST   /api/posts?upload=1       Vercel Blob upload token
@@ -30,7 +30,7 @@ import { canAccessAdminConsole } from "../lib/admin.js";
  *   DELETE /api/posts?id=…           soft delete (author only)
  *
  * Everything used to live in one React useState array. A mentor's post survived
- * until they refreshed, and no mentee ever saw one — OrbitScreen was handed the
+ * until they refreshed, and no mentee ever saw one, OrbitScreen was handed the
  * mentor's own local state, which is always empty for a mentee. That's the loop
  * this closes.
  *
@@ -67,14 +67,14 @@ const FILE_LABEL = {
 };
 
 /**
- * Media arrives from the browser after it uploads straight to Blob storage —
+ * Media arrives from the browser after it uploads straight to Blob storage -
  * `onUploadCompleted` never fires on localhost, so the create call can't wait
  * for it. That means the client is telling us the URL, and an unchecked client
  * could name any URL on the internet as its "upload". This is what makes that
  * claim safe: right host, and a path inside the author's own prefix.
  *
  * The prefix is read off the URL rather than the `pathname` the client sends
- * alongside it — those are two separate strings and only the URL is what the
+ * alongside it, those are two separate strings and only the URL is what the
  * browser will actually load, so checking the other one proves nothing.
  */
 function ownBlobUrl(value, userId) {
@@ -99,7 +99,7 @@ function cleanMedia(media, userId) {
     size: Number(media.size) || 0,
     durationSec: Number(media.durationSec) > 0 ? Math.round(Number(media.durationSec)) : null,
     /* A frame grabbed in the browser at upload time. Without it a shared video
-       link unfurls with no thumbnail — there's nothing server-side that can
+       link unfurls with no thumbnail, there's nothing server-side that can
        decode a 200 MB mp4 to produce one. */
     posterUrl: ownBlobUrl(media.posterUrl, userId),
   };
@@ -111,7 +111,7 @@ const asMins = (sec) =>
 
 const shape = (p) => ({
   id: String(p._id),
-  /* The public link's last segment — "healing-and-unlock-x7k2q". The client
+  /* The public link's last segment, "healing-and-unlock-x7k2q". The client
      builds ryzn.one/{handle}/{slug} from it; null only for a post whose
      backfill hasn't run. */
   slug: p.slug ?? null,
@@ -142,7 +142,7 @@ const shape = (p) => ({
  * Gives a post its share slug, in place.
  *
  * Posts published before public links existed have none, so this runs on read
- * rather than in a migration script — the slug appears the first time anyone
+ * rather than in a migration script, the slug appears the first time anyone
  * loads the post, and every read after that is a no-op. The unique index is the
  * authority: a duplicate code means try another rather than overwrite.
  */
@@ -153,7 +153,7 @@ async function assignSlug(db, doc) {
     try {
       res = await db.collection(collections.posts).updateOne({ _id: doc._id, slug: null }, { $set: { slug } });
     } catch (err) {
-      if (err?.code === 11000) continue; // that code is taken — reroll
+      if (err?.code === 11000) continue; // that code is taken, reroll
       throw err;
     }
     if (res.matchedCount) return (doc.slug = slug);
@@ -174,7 +174,7 @@ async function withSlugs(db, rows) {
 /**
  * Author, accepted mentee of the author, org peer, mentor peer, or a mentee
  * whose own mentor amplified it. Same gate for deep links, reactions, and
- * comments — a share link is not a back door around pairing.
+ * comments, a share link is not a back door around pairing.
  */
 async function canAccessPost(db, user, post) {
   if (!post || post.deletedAt) return false;
@@ -184,7 +184,7 @@ async function canAccessPost(db, user, post) {
 
   /* A public post already renders for a stranger at ryzn.one/{handle}/{slug}.
      Mentors are invite-only accounts, so reading and engaging with a peer's
-     public post in-app grants nothing the logged-out web page doesn't — and it
+     public post in-app grants nothing the logged-out web page doesn't, and it
      is what the mentor network is built on. Mentees stay out of this branch:
      for them a post still has to arrive through someone they're paired with. */
   if (sideOf(user) === "mentor") return true;
@@ -196,7 +196,7 @@ async function canAccessPost(db, user, post) {
   }
 
   /* Their own mentor put it in their Orbit. The pairing is still what carries
-     it — the amplification only says which post travelled. */
+     it, the amplification only says which post travelled. */
   const mentorIds = (await acceptedFor(user.id, "mentee")).map((m) => m.mentorId);
   if (await amplifiedByAny(db, post._id, mentorIds)) return true;
 
@@ -233,7 +233,7 @@ async function amplifiedFeed(db, mentorId, { mentorName = null } = {}) {
     .filter(Boolean)
     .map((p) => ({
       ...shape(p),
-      authorName: nameById.get(String(p.authorId)) || "—",
+      authorName: nameById.get(String(p.authorId)) || "-",
       // Never inherited: a pin belongs to the author's own feed, and the
       // greeting is the introduction to *that* mentor, not to this one.
       pinned: false,
@@ -258,7 +258,7 @@ const shapeComment = (c, nameById, viewerId) => ({
   id: String(c._id),
   postId: String(c.postId),
   authorId: c.authorId,
-  authorName: nameById.get(String(c.authorId)) || "—",
+  authorName: nameById.get(String(c.authorId)) || "-",
   text: c.text,
   reactions: c.reactions ?? 0,
   reacted: Array.isArray(c.likedBy) && viewerId
@@ -297,7 +297,7 @@ async function viewerState(db, userId, postIds) {
  *
  * `merge` folds in what the mentor amplified from their peers, which is what
  * makes "put this in my Orbit" mean anything to a mentee. The mentor's own view
- * keeps the two apart instead — their feed is the things they wrote, and what
+ * keeps the two apart instead, their feed is the things they wrote, and what
  * they relayed is a section they can take back down.
  */
 async function readFeed(db, { authorId, viewer, cohortOnly, merge = false, mentorName = null }) {
@@ -306,7 +306,7 @@ async function readFeed(db, { authorId, viewer, cohortOnly, merge = false, mento
   const rows = await db
     .collection(collections.posts)
     .find(filter)
-    // Pinned first — that's what the greeting video is, and it's meant to be
+    // Pinned first, that's what the greeting video is, and it's meant to be
     // the first thing a new mentee sees.
     .sort({ pinned: -1, createdAt: -1 })
     .limit(100)
@@ -319,7 +319,7 @@ async function readFeed(db, { authorId, viewer, cohortOnly, merge = false, mento
 
   if (!merge) return { posts: own, amplified: relayed, viewerState: state };
 
-  /* Pinned still wins outright — the greeting is meant to be first. Below that,
+  /* Pinned still wins outright, the greeting is meant to be first. Below that,
      a relayed post sorts by when it was relayed, so adding one puts it where
      the mentee will actually see it. */
   const at = (p) => new Date(p.amplifiedAt ?? p.createdAt).getTime() || 0;
@@ -335,14 +335,14 @@ async function handler(request, user) {
   const posts = db.collection(collections.posts);
   const isMentor = sideOf(user) === "mentor";
 
-  /* ————— read ————— */
+  /* ----- read ----- */
   if (request.method === "GET") {
     const mentorId = url.searchParams.get("mentorId");
     const scope = url.searchParams.get("scope");
     const postIdParam = url.searchParams.get("id");
 
     /* Console moderation view: every live post, whoever wrote it. Admin-only,
-       and capped rather than paged — this is a queue for finding the one post
+       and capped rather than paged, this is a queue for finding the one post
        that has to come down, not a feed anybody scrolls. */
     if (scope === "admin") {
       if (!canAccessAdminConsole(user)) return fail(403, "forbidden", "This view is for admins.");
@@ -358,7 +358,7 @@ async function handler(request, user) {
       return json({
         posts: rows.map((p) => {
           const a = byId.get(String(p.authorId));
-          return { ...shape(p), authorName: a?.name || "—", authorEmail: a?.email || null };
+          return { ...shape(p), authorName: a?.name || "-", authorEmail: a?.email || null };
         }),
       });
     }
@@ -379,7 +379,7 @@ async function handler(request, user) {
     }
 
     /* The org Orbit: everything the org's people have put on their profile, in
-       one feed. Deliberately `public` only — a cohort post is written for that
+       one feed. Deliberately `public` only, a cohort post is written for that
        mentor's mentees, and an org feed must not be a back door around the
        pairing check that carries it. Closed until the owner opens it. */
     if (scope === "org") {
@@ -402,26 +402,26 @@ async function handler(request, user) {
       const nameById = await namesFor(db, rows.map((r) => r.authorId));
       await withSlugs(db, rows);
       return json({
-        posts: rows.map((p) => ({ ...shape(p), authorName: nameById.get(String(p.authorId)) || "—" })),
+        posts: rows.map((p) => ({ ...shape(p), authorName: nameById.get(String(p.authorId)) || "-" })),
         viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
         orbit: { active: true, org: ctx.org.name, members: memberIds.length },
       });
     }
 
     /**
-     * The orbit feed — Discover.
+     * The orbit feed, Discover.
      *
      * One store, one filter. §4: `visible = post.byId ∈ orbitPool(orbit) ∪
      * viewer.follows`. There are no per-orbit copies of a post and there must
-     * never be: the cross-orbit reach property — a creator's post following
-     * their followers into every orbit those people are in — *is* the union
+     * never be: the cross-orbit reach property, a creator's post following
+     * their followers into every orbit those people are in, *is* the union
      * above, and duplicating rows would replace it with a fan-out job that gets
      * the counters wrong.
      *
      * The one thing that narrows it is `allowExternal`, the enterprise answer to
      * content leakage (§6.5): a company orbit whose admin switches it off shows
      * only its own members' posts, and the follows half of the union drops. On
-     * by default — the follow graph is the product — and always on in a circle,
+     * by default, the follow graph is the product, and always on in a circle,
      * which is nothing *but* external reach.
      */
     if (scope === "orbit") {
@@ -458,9 +458,9 @@ async function handler(request, user) {
       return json({
         posts: rows.map((p) => ({
           ...shape(p),
-          authorName: nameById.get(String(p.authorId)) || "—",
+          authorName: nameById.get(String(p.authorId)) || "-",
           // Whether this post reached the reader through the follow graph rather
-          // than through the orbit — the client labels those, because a post
+          // than through the orbit, the client labels those, because a post
           // from outside your company arriving in your company orbit should say
           // so rather than look like a colleague wrote it.
           viaFollow: followSet.has(String(p.authorId)),
@@ -472,7 +472,7 @@ async function handler(request, user) {
     }
 
     /* The mentor network feed: what the mentors you follow have made public.
-       Public only, for the same reason the org Orbit is — following someone is
+       Public only, for the same reason the org Orbit is, following someone is
        not the pairing that carries a cohort post. */
     if (scope === "following") {
       if (!isMentor) return fail(403, "mentors_only", "The mentor network is for mentors.");
@@ -492,7 +492,7 @@ async function handler(request, user) {
       return json({
         posts: rows.map((p) => ({
           ...shape(p),
-          authorName: nameById.get(String(p.authorId)) || "—",
+          authorName: nameById.get(String(p.authorId)) || "-",
           amplified: mine.has(String(p._id)),
         })),
         viewerState: await viewerState(db, user.id, rows.map((r) => r._id)),
@@ -542,7 +542,7 @@ async function handler(request, user) {
     return json(await readFeed(db, { authorId: user.id, viewer: user.id, cohortOnly: false }));
   }
 
-  /* ————— write ————— */
+  /* ----- write ----- */
   if (request.method === "POST") {
     if (!isMentor) return fail(403, "mentors_only", "Only mentors publish to a feed.");
 
@@ -608,11 +608,11 @@ async function handler(request, user) {
       try {
         ({ insertedId } = await posts.insertOne(doc));
       } catch (err) {
-        if (err?.code !== 11000) throw err; // slug collision — reroll the code
+        if (err?.code !== 11000) throw err; // slug collision, reroll the code
         delete doc._id; // insertOne stamped one on the way in; don't reuse it
       }
     }
-    if (!insertedId) return fail(503, "slug_conflict", "Couldn’t publish that — try again.");
+    if (!insertedId) return fail(503, "slug_conflict", "Couldn’t publish that, try again.");
 
     const impact = greeting ? IMPACT.greeting : IMPACT.post;
     await Promise.all([
@@ -632,7 +632,7 @@ async function handler(request, user) {
     return json({ post: shape({ ...doc, _id: insertedId }), impact }, 201);
   }
 
-  /* ————— view / react / comment / edit ————— */
+  /* ----- view / react / comment / edit ----- */
   if (request.method === "PATCH") {
     let body = {};
     try { body = await request.json(); } catch { return fail(400, "bad_request", "Expected a JSON body."); }
@@ -661,7 +661,7 @@ async function handler(request, user) {
       const { insertedId } = await db.collection(collections.postComments).insertOne(doc);
       await posts.updateOne({ _id }, { $inc: { comments: 1 } });
 
-      const nameById = new Map([[String(user.id), user.name || "—"]]);
+      const nameById = new Map([[String(user.id), user.name || "-"]]);
       return json({
         comment: shapeComment({ ...doc, _id: insertedId }, nameById, user.id),
         comments: (post.comments ?? 0) + 1,
@@ -694,7 +694,7 @@ async function handler(request, user) {
       });
     }
 
-    /* ————— carry a peer's post into your own Orbit ————— */
+    /* ----- carry a peer's post into your own Orbit ----- */
     if (body.action === "amplify" || body.action === "unamplify") {
       if (!isMentor) return fail(403, "mentors_only", "Only mentors have an Orbit to add to.");
       const on = body.action === "amplify";
@@ -706,7 +706,7 @@ async function handler(request, user) {
       }
 
       if (String(post.authorId) === String(user.id)) {
-        return fail(400, "own_post", "That's already your post — your cohort sees it.");
+        return fail(400, "own_post", "That's already your post, your cohort sees it.");
       }
       /* Public only. A cohort post was written for its author's mentees and the
          pairing is the only thing that carries it; relaying it into a different
@@ -715,7 +715,7 @@ async function handler(request, user) {
         return fail(403, "not_public", "Only a mentor's public posts can go into your Orbit.");
       }
 
-      // Upsert, not insert: a double tap is the same state, not an error — and
+      // Upsert, not insert: a double tap is the same state, not an error, and
       // this holds even where the unique index hasn't been created yet.
       const res = await amplified.updateOne(
         { mentorId: user.id, postId: _id },
@@ -736,7 +736,7 @@ async function handler(request, user) {
       }
       // Insert-then-increment: the unique index makes the second attempt fail,
       // so the counter only moves the first time. A duplicate is success, not
-      // an error — the caller already has the XP.
+      // an error, the caller already has the XP.
       try {
         await db.collection(collections.postEvents).insertOne({
           postId: _id, userId: user.id, type: body.action, createdAt: new Date(),
@@ -774,12 +774,12 @@ async function handler(request, user) {
     return json({ post: shape({ ...post, ...$set }) });
   }
 
-  /* ————— delete ————— */
+  /* ----- delete ----- */
   if (request.method === "DELETE") {
     let _id;
     try { _id = new ObjectId(String(url.searchParams.get("id"))); } catch { return fail(400, "bad_request", "Which post?"); }
     /* Authors delete their own; admins can take down anyone's. Moderation is
-       the one place the author-only rule has to yield — it is still a soft
+       the one place the author-only rule has to yield, it is still a soft
        delete, so the row survives for anyone auditing what was removed. */
     const moderator = canAccessAdminConsole(user);
     const res = await posts.updateOne(
@@ -790,7 +790,7 @@ async function handler(request, user) {
       return fail(404, "not_found", moderator ? "That post is already gone." : "That post is gone, or it isn't yours.");
     }
     /* Drop the pointers any peer had into it. amplifiedFeed re-checks
-       deletedAt on every read, so this is tidiness rather than the guard —
+       deletedAt on every read, so this is tidiness rather than the guard -
        it must not be able to fail the delete. */
     db.collection(collections.amplified).deleteMany({ postId: _id })
       .catch((err) => console.error("[api:posts] amplify cleanup:", err));
@@ -821,7 +821,7 @@ async function upload(request) {
         if (!user) throw new Error("Sign in to upload.");
         if (sideOf(user) !== "mentor") throw new Error("Only mentors upload content.");
 
-        /* This hook cannot rewrite the destination — it can only approve it —
+        /* This hook cannot rewrite the destination, it can only approve it -
            so the client proposes the path and we reject anything outside the
            caller's own folder. Without this check a mentor could write into
            another mentor's prefix and then claim the file as theirs. */
@@ -838,7 +838,7 @@ async function upload(request) {
         };
       },
       onUploadCompleted: async () => {
-        /* Never fires on localhost — there's no public URL to call back to.
+        /* Never fires on localhost, there's no public URL to call back to.
            Deliberately does nothing so the flow behaves the same either way;
            the post is created by the client's follow-up POST. */
       },
@@ -849,12 +849,12 @@ async function upload(request) {
   }
 }
 
-/* ————— the public page: /p/<slug> ————— */
+/* ----- the public page: /p/<slug> ----- */
 
 const html = (body, status, headers = {}) =>
   new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", ...headers } });
 
-/** Name, face, handle and headline of whoever wrote it — the byline on the public page. */
+/** Name, face, handle and headline of whoever wrote it, the byline on the public page. */
 async function publicAuthor(db, authorId) {
   const fallback = { name: "A Ryzn mentor", avatarUrl: null, headline: null, handle: null };
   if (!ObjectId.isValid(String(authorId))) return fallback;
@@ -883,13 +883,13 @@ async function publicAuthor(db, authorId) {
 }
 
 /**
- * No session, by design — this is the page a link lands on.
+ * No session, by design, this is the page a link lands on.
  *
  * Only `public` posts render. A cohort post is written for one mentor's mentees
  * and the pairing check is what carries it; a short link must not be a way
  * around that, so it gets the same locked 404 as a slug that doesn't exist.
  *
- * When `handle` is present (/{handle}/{slug}), the author's handle must match —
+ * When `handle` is present (/{handle}/{slug}), the author's handle must match -
  * otherwise a renamed or mistyped profile segment still 404s rather than
  * serving someone else's post under the wrong name.
  */
@@ -901,7 +901,7 @@ async function publicPost(request, code, handle) {
     if (wantHandle && RESERVED_HANDLES.has(wantHandle)) {
       return html(renderMissingPage({ origin, postId: null }), 404);
     }
-    // Old links pasted before slugs existed carry the raw id — still resolve those.
+    // Old links pasted before slugs existed carry the raw id, still resolve those.
     const by = /^[0-9a-f]{24}$/.test(raw) ? { _id: new ObjectId(raw) } : { slug: raw };
 
     const db = await getDb();
@@ -936,7 +936,7 @@ async function publicPost(request, code, handle) {
 
     return html(renderPostPage({ post: shape(post), author, origin }), 200, {
       /* 30s at the edge keeps a link that gets passed around from hitting Mongo
-         once per reader. The cost is that publicViews undercounts a burst — the
+         once per reader. The cost is that publicViews undercounts a burst, the
          right trade for a page whose whole job is to load fast for strangers. */
       "Cache-Control": "public, max-age=0, s-maxage=30, stale-while-revalidate=300",
     });

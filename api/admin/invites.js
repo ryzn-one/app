@@ -7,7 +7,7 @@ import { sendEmail, inviteEmail } from "../../lib/email.js";
 import { inviteUrl, nameFromEmail } from "../../lib/invite-url.js";
 
 /**
- * /api/admin/invites — the founder side of the mentor Roster.
+ * /api/admin/invites, the founder side of the mentor Roster.
  *
  *   GET                                          list codes, newest first
  *   POST  { count, expiresDays, note, role }     mint single-use codes
@@ -19,10 +19,10 @@ import { inviteUrl, nameFromEmail } from "../../lib/invite-url.js";
  * Revoke and delete are not the same tool. Revoke kills a code and keeps the
  * record of it; delete removes the row, and with it any trace of who was
  * invited and whether they came. Revoke is the one to reach for on a real
- * invitation — delete exists to clear test codes out of the ledger.
+ * invitation, delete exists to clear test codes out of the ledger.
  *
  * Redemption still happens only in api/invites/redeem.js. Nothing here promotes
- * anyone — minting a code and claiming it stay separate operations. An admin
+ * anyone, minting a code and claiming it stay separate operations. An admin
  * code is how a founder adds another founder without touching env vars: mint,
  * send, they sign in and paste it.
  *
@@ -51,7 +51,7 @@ const roleLabel = (role) => {
 async function deliver({ invites, code, to, name, founder, role = "mentor" }) {
   const seat = GRANTABLE.has(role) ? role : "mentor";
   const url = inviteUrl({ code, name, founder, role: roleLabel(seat) });
-  // Persist who this seat is for even if the send fails — Postmark and the
+  // Persist who this seat is for even if the send fails, Postmark and the
   // personalized link both need sentName later.
   await invites.updateOne(
     { code },
@@ -61,14 +61,14 @@ async function deliver({ invites, code, to, name, founder, role = "mentor" }) {
     const msg = inviteEmail({ name, url, founder, role: seat });
     const res = await sendEmail({ to, ...msg });
 
-    /* delivered:false means no provider token is configured — the mail was
+    /* delivered:false means no provider token is configured, the mail was
        written to the log, not sent. That is a failed send and has to be
        recorded as one. Stamping sentAt here regardless (as this did) left a
        row indistinguishable from a real delivery: the console showed a sent
        date, `npm run invites:status` agreed, and nobody had the invitation.
        A misconfigured mailer must not be able to look like a delivered one. */
     if (!res.delivered) {
-      const sendError = "No email provider configured — the invitation was logged, not sent.";
+      const sendError = "No email provider configured, the invitation was logged, not sent.";
       await invites.updateOne({ code }, { $set: { lastSendError: sendError } });
       return { sent: false, url, sendError };
     }
@@ -114,7 +114,7 @@ async function list(db) {
       createdAt: i.createdAt,
       expiresAt: i.expiresAt || null,
       redeemedAt: i.redeemedAt || null,
-      claimedBy: who ? { name: who.name || "—", email: who.email } : null,
+      claimedBy: who ? { name: who.name || "-", email: who.email } : null,
       sentTo: i.sentTo || null,
       sentName: i.sentName || null,
       sentAt: i.sentAt || null,
@@ -149,7 +149,7 @@ async function handler(request, admin) {
     // fat-fingered "50" can't scatter founder access across an inbox.
     const cap = role === "admin" ? 5 : MAX_MINT;
     // Addressing one person means minting exactly one code for them, whatever
-    // count says — a batch would email the same person five separate seats.
+    // count says, a batch would email the same person five separate seats.
     const count = to ? 1 : Math.min(Math.max(Number(body.count) || 1, 1), cap);
     const days = Number(body.expiresDays) > 0 ? Number(body.expiresDays) : 90;
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -158,11 +158,11 @@ async function handler(request, admin) {
 
     const docs = Array.from({ length: count }, () => ({
       code: newInviteCode(),
-      role,               // read back by api/invites/redeem.js — the only thing
+      role,               // read back by api/invites/redeem.js, the only thing
       createdAt: new Date(),  // that decides which role a claim grants
       createdBy: admin.email,
       expiresAt,
-      redeemedBy: null,   // explicit null, not absent — the atomic claim filter
+      redeemedBy: null,   // explicit null, not absent, the atomic claim filter
       redeemedAt: null,   // in api/invites/redeem.js matches on null
       revokedAt: null,
       note,
@@ -204,7 +204,7 @@ async function handler(request, admin) {
       // Falls back to whoever it went to last, so "Resend" on an existing row
       // needs no retyping.
       const to = String(body.to || iv.sentTo || "").trim().toLowerCase();
-      if (!to) return fail(400, "bad_request", "No address on file for that code — enter one.");
+      if (!to) return fail(400, "bad_request", "No address on file for that code, enter one.");
       if (!EMAIL_RE.test(to)) return fail(400, "bad_request", "That doesn't look like an email address.");
 
       const name = String(body.name || "").trim() || iv.sentName || nameFromEmail(to);
@@ -214,7 +214,7 @@ async function handler(request, admin) {
       return json({ ok: true, code, to, ...out });
     }
 
-    // Guarded on redeemedBy: null — a claimed code cannot be withdrawn, the
+    // Guarded on redeemedBy: null, a claimed code cannot be withdrawn, the
     // mentor already has the role.
     const res = await invites.updateOne(
       { code, redeemedBy: null },
@@ -232,7 +232,7 @@ async function handler(request, admin) {
     if (!code) return fail(400, "bad_request", "Which code?");
 
     /* Deleting a claimed code is allowed but destroys the record of how that
-       person got in — the account keeps its role either way, since the role
+       person got in, the account keeps its role either way, since the role
        lives on the user document, not here. Returned so the console can say
        what it just erased rather than a bare ok. */
     const gone = await invites.findOneAndDelete({ code });

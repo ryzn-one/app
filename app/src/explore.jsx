@@ -8,9 +8,9 @@ import {
 import { exploreRoster } from "./lib/auth-client.js";
 import { MapBrowse } from "./map.jsx";
 
-/* ————————————————— EXPLORE —————————————————
+/* ----------------- EXPLORE -----------------
    The browsable directory. The swipe decks decide one person at a time and drop
-   anyone you've already answered for; this is the other half — search the whole
+   anyone you've already answered for; this is the other half, search the whole
    roster, including the people already in your cohort, and act on any row.
 
    Asymmetric by construction: /api/roster only ever returns the opposite side,
@@ -37,7 +37,7 @@ function StateChip({ state }) {
   );
 }
 
-/* Exported because Discover renders the same row under its map — one row
+/* Exported because Discover renders the same row under its map, one row
    component, so a person looks identical however you arrived at them. */
 export function PersonRow({ p, wanted, onOpen }) {
   const track = labelOf(p.track);
@@ -69,7 +69,7 @@ export function PersonRow({ p, wanted, onOpen }) {
 
 /**
  * `onRequest(person)` opens a new pairing, `onRespond(matchId, action)` answers
- * one that already exists. Both hit /api/matches — Explore owns no match logic
+ * one that already exists. Both hit /api/matches, Explore owns no match logic
  * of its own, it just knows which of the two applies from `matchState`.
  */
 export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequest, capacityNote, openAccepted }) => {
@@ -83,8 +83,8 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState(wanted === "mentor" ? { tier: "Any", industry: "Any" } : { track: "Any" });
   /* The same map the mentor side browses its mentees on. A mentee looking for a
-     mentor is asking a geographic question at least as often — "who does this
-     near me" — so the two screens get the same control rather than one of them
+     mentor is asking a geographic question at least as often, "who does this
+     near me", so the two screens get the same control rather than one of them
      getting a search box and the other a map. */
   const [view, setView] = useState("Map");
   const [regionId, setRegionId] = useState(null);
@@ -108,7 +108,7 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
 
   /* Filters stay client-side on purpose: the industry options are built from
      the loaded roster, so filtering server-side would shrink the option list to
-     only what already matched — the filter would erase its own options. */
+     only what already matched, the filter would erase its own options. */
   const sections = useMemo(() => wanted === "mentor"
     ? [
         { key: "tier", label: "Tier", options: ["Any", "Scout", "Pathfinder", "Architect", "Legend"] },
@@ -148,7 +148,7 @@ export const ExploreScreen = ({ role, back, toast, onRequest, onRespond, canRequ
       );
     }
     if (p.matchState === "pending_you") return <Btn disabled>Request sent · waiting on {first}</Btn>;
-    // A declined pair can ask again — api/matches.js allows it deliberately.
+    // A declined pair can ask again, api/matches.js allows it deliberately.
     return (
       <Btn disabled={busy || !canRequest} onClick={() => act(p, () => onRequest(p))}>
         {!canRequest ? capacityNote : p.matchState === "declined" ? `Ask ${first} anyway` : wanted === "mentor" ? `Request ${first}` : `Invite ${first} to your cohort`}

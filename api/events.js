@@ -7,7 +7,7 @@ import { isAdmin } from "../lib/admin.js";
 import { acceptedFor } from "../lib/matches.js";
 
 /**
- * /api/events — Mentor Meets scheduling
+ * /api/events, Mentor Meets scheduling
  *
  *   GET               visible events for the caller + their own response/votes
  *   GET ?hostId=me    the caller's own hosted events
@@ -50,7 +50,7 @@ async function getEvents(request, user) {
 
   let filter = { status: EVENT_STATUS.OPEN };
 
-  // ?hostId=me — show caller's own hosted events only
+  // ?hostId=me, show caller's own hosted events only
   if (hostIdParam === "me") {
     filter.hostId = user.id;
   } else {
@@ -125,7 +125,7 @@ async function getEvents(request, user) {
 
 async function createEvent(request, user) {
   const rl = await rateLimit(`event-create:${user.id}`, { limit: 20 });
-  if (!rl.ok) return fail(429, "rate_limited", "Slow down — try again in a bit.");
+  if (!rl.ok) return fail(429, "rate_limited", "Slow down, try again in a bit.");
 
   let body;
   try {

@@ -4,7 +4,7 @@ import { C, F } from "./theme.js";
 import { Card, Label, Btn, Chip, Bar, Seg, firstNameOf } from "./ui.jsx";
 
 /**
- * Studio — a mentor's own surface, and the payoff for filling it in.
+ * Studio, a mentor's own surface, and the payoff for filling it in.
  *
  * §6.2's order is deliberate and is the order below: stats → profile strength →
  * greeting → composer → content. Strength sits second because it is the thing
@@ -38,13 +38,13 @@ export function StudioStats({ inOrbit, followers, views, reactions }) {
 /**
  * Profile strength.
  *
- * Four items, computed from what is actually on the record — never a stored
+ * Four items, computed from what is actually on the record, never a stored
  * percentage, which would be a number that can disagree with the profile it
  * describes. Each incomplete item is a link to the thing that completes it, and
  * the reward rides on the row rather than arriving in a toast afterwards.
  *
  * It disappears at 100%. A permanent "you're done" bar is a permanent reminder
- * of a task, and the actual payoff — the Public view — is one tap away instead.
+ * of a task, and the actual payoff, the Public view, is one tap away instead.
  */
 export function ProfileStrength({ u, hasGreeting, postCount, onGo }) {
   const items = [
@@ -106,8 +106,8 @@ export function ProfileStrength({ u, hasGreeting, postCount, onGo }) {
  * Pin and Delete live behind it rather than beside the benign actions, and this
  * is the interaction rule the pre-merge Studio broke worst: Delete was a
  * full-width button of equal weight to Publish. A destructive action gets less
- * prominence than a safe one, and its confirm carries the consequence —
- * "Mentees lose access" — rather than asking "are you sure" about an unnamed
+ * prominence than a safe one, and its confirm carries the consequence -
+ * "Mentees lose access", rather than asking "are you sure" about an unnamed
  * thing.
  */
 export function PostOverflow({ post, onPin, onDelete }) {
@@ -137,7 +137,7 @@ export function PostOverflow({ post, onPin, onDelete }) {
       </button>
       {open && (
         <>
-          {/* Tapping anywhere else closes it — a menu that only closes via its
+          {/* Tapping anywhere else closes it, a menu that only closes via its
               own button strands people on phones. */}
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 30 }} />
           <div style={{
@@ -163,7 +163,7 @@ export function PostOverflow({ post, onPin, onDelete }) {
 /**
  * Studio · Public view.
  *
- * The same components, read-only, seen the way a stranger sees them — which is
+ * The same components, read-only, seen the way a stranger sees them, which is
  * why it is a segment of the Studio rather than a separate screen. A mentor who
  * cannot check what their profile looks like from outside will keep writing for
  * an audience they are imagining.
@@ -178,7 +178,7 @@ export function StudioEmpty() {
     <Card style={{ textAlign: "center", padding: "28px 22px" }}>
       <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700 }}>Nothing here yet.</div>
       <p style={{ fontSize: 13, color: C.gray, lineHeight: 1.55, marginTop: 7 }}>
-        Your first post lands in every mentee's Orbit — no message required, no meeting needed.
+        Your first post lands in every mentee's Orbit, no message required, no meeting needed.
         A paragraph about the thing you learned this week is enough.
       </p>
     </Card>

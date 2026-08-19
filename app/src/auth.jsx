@@ -12,7 +12,7 @@ import { authClient, signIn, signUp, messageFor, validateInvite, redeemInvite } 
 import { stashPendingInvite, clearPendingInvite } from "./lib/pending-invite.js";
 import { useTurnstile } from "./lib/turnstile.js";
 
-/* ————————————————— JOURNEY: AUTH —————————————————
+/* ----------------- JOURNEY: AUTH -----------------
    Every screen below makes real Better Auth calls against /api/auth/*. There is
    no prototype mode and no prefilled credentials: a form that arrived already
    filled with someone else's name is how a signed-in user ended up being
@@ -29,7 +29,7 @@ export const Splash = ({ onEnter, isDesktop }) => (
     <div className="splash-in" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 68, height: 68, borderRadius: 20, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.22)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 18px 40px rgba(20,10,60,.35)", marginBottom: 22 }}>
         {/* The launch screen is the app's biggest logo moment, and it was
-            showing the single diamond — the atom we use for bullets and tiers,
+            showing the single diamond, the atom we use for bullets and tiers,
             not the mark. Anyone opening the installed app saw the wrong logo. */}
         <BrandMark color="white" size={34} />
       </div>
@@ -57,11 +57,11 @@ export const RoleSelect = ({ onPick }) => (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <div style={{ color: C.purple, fontSize: 34, fontWeight: 700, letterSpacing: -1 }}>RYZN</div>
       <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 18, lineHeight: 1.2 }}>Who’s rising today?</div>
-      <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>Pick a path — mentees and mentors get two different experiences from here on.</div>
+      <div style={{ fontSize: 15, color: C.gray, marginTop: 10, lineHeight: 1.55 }}>Pick a path, mentees and mentors get two different experiences from here on.</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 26 }}>
         {[
           { role: "mentee", title: "I’m a mentee", sub: "Get matched with a vetted mentor and a 12-week program.", icon: Zap, color: C.purple, tint: C.purpleTint },
-          { role: "mentor", title: "I’m a mentor", sub: "Join the Roster — invitation only, build public Impact.", icon: Award, color: C.teal, tint: C.tealTint },
+          { role: "mentor", title: "I’m a mentor", sub: "Join the Roster, invitation only, build public Impact.", icon: Award, color: C.teal, tint: C.tealTint },
         ].map(({ role, title, sub, icon: Icon, color, tint }) => (
           <button key={role} onClick={() => onPick(role)} style={{
             display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer",
@@ -94,7 +94,7 @@ export const Welcome = ({ role, go }) => (
           ? "We found the people who already did. A hand-picked roster, a 12-week program, and proof you can put on a resume."
           : "20 founding mentors. A public Impact Score, a real talent pipeline, and a movement worth your name. Invitation only."}
       </div>
-      {/* Structural facts about how the program is built — not performance
+      {/* Structural facts about how the program is built, not performance
           claims. The numbers that used to sit here ("avg XP / cohort",
           "$56K lifetime earnings lift", "92% graduation rate") described
           outcomes the platform has not produced yet. */}
@@ -122,7 +122,7 @@ export const GoogleMark = () => (
   <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
 );
 
-/** `initialInvite` arrives from /app/#/join?code=… — a mentor who clicked
+/** `initialInvite` arrives from /app/#/join?code=…, a mentor who clicked
     through from the invitation email, so the code is already confirmed and
     shouldn't have to be retyped. It still gets re-validated below, and the
     claim itself is atomic and server-side. */
@@ -178,10 +178,10 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
       );
       if (error) throw error;
 
-      /* Claim the invitation — mentee codes included. This ran for mentors
+      /* Claim the invitation, mentee codes included. This ran for mentors
          only, on the reasoning that a mentee needs no promotion: `mentee` is
          already the default role, so the sign-up looked like it worked. What
-         it skipped was everything else the claim does — spending the code so
+         it skipped was everything else the claim does, spending the code so
          it stops working for the next person who gets the link, recording who
          accepted, and seating a company invite in the org that sent it. */
       const code = inv.trim();
@@ -262,7 +262,7 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
   );
 };
 
-/** Ryzn for Teams lives at #/teams in this same bundle — the Router in main.jsx
+/** Ryzn for Teams lives at #/teams in this same bundle, the Router in main.jsx
     picks it up off the hash, so this is a plain hash change, not a page load. */
 export const TeamsCrossSell = ({ style }) => (
   <div style={{ textAlign: "center", margin: "18px 0 26px", ...style }}>
@@ -304,7 +304,7 @@ export const Login = ({ go, onDone, role }) => {
       <button onClick={() => go("welcome")} style={{ background: "none", border: "none", cursor: "pointer", padding: "22px 0 0", alignSelf: "flex-start" }}><ArrowLeft size={20} color={C.ink} /></button>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 20 }}>
         <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.2 }}>Welcome back.</div>
-        {/* Was "Day 34 of your streak is waiting." — a specific claim about a
+        {/* Was "Day 34 of your streak is waiting.", a specific claim about a
             person the sign-in screen has not identified yet. */}
         <div style={{ fontSize: 14.5, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>{role === "mentee" ? "Pick up where you left off." : "Your cohort kept moving. Catch up inside."}</div>
         <div style={{ marginTop: 10 }}>
@@ -328,7 +328,7 @@ export const Login = ({ go, onDone, role }) => {
   );
 };
 
-// 4 digits is 10,000 combinations — too weak to guard an account reset,
+// 4 digits is 10,000 combinations, too weak to guard an account reset,
 // especially on a platform where most accounts belong to minors.
 const OTP_LEN = 6;
 
@@ -380,7 +380,7 @@ export const Forgot = ({ go }) => {
       {step === "email" && <>
         <div style={{ width: 48, height: 48, background: C.purpleTint, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 16 }}><KeyRound size={20} color={C.purple} /></div>
         <div style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, letterSpacing: -0.6, marginTop: 14 }}>Reset your password</div>
-        <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5, lineHeight: 1.5 }}>Enter your email. We’ll send a {OTP_LEN}-digit code — it expires in 10 minutes.</div>
+        <div style={{ fontSize: 13.5, color: C.gray, marginTop: 5, lineHeight: 1.5 }}>Enter your email. We’ll send a {OTP_LEN}-digit code, it expires in 10 minutes.</div>
         <Field label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
         <FormError>{err}</FormError>
         <Btn style={{ marginTop: 18 }} disabled={busy} onClick={sendCode}><Mail size={15} /> {busy ? "Sending…" : "Send reset code"}</Btn>

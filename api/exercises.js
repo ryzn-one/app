@@ -6,14 +6,14 @@ import { orbitContext, PUBLIC_ORBIT_ID } from "../lib/orbits.js";
 import { recordStep } from "../lib/stage.js";
 
 /**
- * /api/exercises — daily mentee writing, with XP/streak that survive a refresh.
+ * /api/exercises, daily mentee writing, with XP/streak that survive a refresh.
  *
  *   GET  /api/exercises                 mentee: today + recent own submissions
  *   GET  /api/exercises?menteeId=…      mentor: that mentee's submissions (paired)
  *   POST /api/exercises { text }        mentee: submit today's paragraph
  *
  * The home card promised "Your mentor reads it." Nothing stored the paragraph
- * before — submitToday only flipped React state. This is the store.
+ * before, submitToday only flipped React state. This is the store.
  */
 
 const MAX_TEXT = 4000;
@@ -86,14 +86,14 @@ async function handler(request, user) {
     if (side !== "mentee") return fail(403, "forbidden", "Only mentees submit daily exercises.");
 
     const rl = await rateLimit(`exercise-submit:${user.id}`, { limit: 20, windowMs: 60 * 60 * 1000 });
-    if (!rl.ok) return fail(429, "rate_limited", "Slow down — try again in a bit.");
+    if (!rl.ok) return fail(429, "rate_limited", "Slow down, try again in a bit.");
 
     let body;
     try { body = await request.json(); } catch { return fail(400, "bad_request", "Expected JSON."); }
 
     const text = String(body?.text || "").trim();
     if (text.length < MIN_TEXT) {
-      return fail(400, "too_short", `Write at least ${MIN_TEXT} characters — one honest paragraph.`);
+      return fail(400, "too_short", `Write at least ${MIN_TEXT} characters, one honest paragraph.`);
     }
     if (text.length > MAX_TEXT) return fail(400, "too_long", "That paragraph is too long.");
 
@@ -159,7 +159,7 @@ async function handler(request, user) {
     ]);
 
     /* The paragraph completes Stage 1 *in the orbit it was written in*. The
-       profile flag above stays — /api/me and older screens still read it — but
+       profile flag above stays, /api/me and older screens still read it, but
        it is no longer the answer to "has this person finished the track", because
        that question now has a different answer per orbit. Someone six weeks into
        their company programme is still on step one in a circle they joined

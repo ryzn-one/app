@@ -6,7 +6,7 @@ import { BrandIcon, Btn, Card, SecLabel, SettingRow } from "./ui.jsx";
 import { t, spring, T_BASE } from "./motion.js";
 import { useInstallPrompt } from "./lib/install-prompt.js";
 
-/* ————————————————— INSTALL BANNER —————————————————
+/* ----------------- INSTALL BANNER -----------------
 
    The offer to put Ryzn on the home screen. It rides above the tab bar so it
    never covers navigation, it snoozes for two weeks on a "Not now", and it is
@@ -19,7 +19,7 @@ import { useInstallPrompt } from "./lib/install-prompt.js";
 
 const SNOOZE_LABEL = "Not now";
 
-/* The way out for anyone the detection cannot reach — desktop Safari, and iOS,
+/* The way out for anyone the detection cannot reach, desktop Safari, and iOS,
    where the installed app gets its own storage container and can never leave a
    note the browser will read. Without it, "always offer" would mean "nag people
    who already did it", which is how banners get ignored. */
@@ -51,19 +51,19 @@ const subtitleFor = (route, guide) => {
     case "prompt":
       return "Full screen, no address bar, one tap from anywhere.";
     case "in-app":
-      return "Open Ryzn in your browser first — this one can’t install apps.";
+      return "Open Ryzn in your browser first, this one can’t install apps.";
     case "firefox-desktop":
       return "Firefox can’t install web apps. Chrome, Edge and Safari can.";
     case "safari-desktop":
-      return "Add Ryzn to your Dock — full screen, no address bar.";
+      return "Add Ryzn to your Dock, full screen, no address bar.";
     default:
-      return `Add Ryzn from ${guide.browser} — full screen, no address bar.`;
+      return `Add Ryzn from ${guide.browser}, full screen, no address bar.`;
   }
 };
 
 /**
  * @param {{ enabled?: boolean, liftAbove?: number }} props
- *   enabled    false while signed out or mid-onboarding — nothing to install into yet.
+ *   enabled    false while signed out or mid-onboarding, nothing to install into yet.
  *   liftAbove  px of chrome at the bottom of the screen to clear (the tab bar).
  */
 export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
@@ -83,7 +83,7 @@ export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
       {visible && (
         <motion.div
           key="install-banner"
-          /* x lives in the animation, not in style — Motion writes `transform`
+          /* x lives in the animation, not in style, Motion writes `transform`
              itself, so an inline translateX(-50%) would be overwritten and the
              banner would sit off-centre. Same trick as the toast. */
           initial={{ opacity: 0, y: 24, x: "-50%" }}
@@ -176,7 +176,7 @@ export const InstallBanner = ({ enabled = true, liftAbove = 0 }) => {
 
           {/* Only where we could not have known. On Chrome and Edge
               getInstalledRelatedApps already answered, and a live prompt event
-              means the app is definitively not installed — offering this there
+              means the app is definitively not installed, offering this there
               would just be a way to hide the banner by lying to it. */}
           {manual && (
             <button
@@ -219,7 +219,7 @@ export const InstallSection = () => {
           label="Install the app"
           sub={manual
             ? `Add Ryzn to your home screen from ${guide.browser}.`
-            : "Add Ryzn to your home screen — full screen, no address bar."}
+            : "Add Ryzn to your home screen, full screen, no address bar."}
           last
         >
           <div style={{ textAlign: "right" }}>

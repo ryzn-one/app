@@ -13,7 +13,7 @@ import { logoSrc, Brand } from "./branding.js";
 import { spring, t, modalPop, backdrop, T_FAST, T_SLOW } from "./motion.js";
 import { useIsDesktop } from "./useIsDesktop.js";
 
-/* ————— Brand marks (from public/branding/ryzn-brand-kit) ————— */
+/* ----- Brand marks (from public/branding/ryzn-brand-kit) ----- */
 export const BrandLogo = ({
   variant = "horizontal",
   color = "purple",
@@ -56,7 +56,7 @@ export const BrandIcon = ({ size = 48, light = false, alt = "Ryzn", style, ...re
   />
 );
 
-/* ————— Primitives ————— */
+/* ----- Primitives ----- */
 export const Card = ({ style, children, onClick, className, ...rest }) => {
   const reduced = useReducedMotion();
   const base = { background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style };
@@ -96,7 +96,7 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
       }}>{children}</motion.button>
   );
 };
-/* ————— Policy-facing primitives —————
+/* ----- Policy-facing primitives -----
 
    These four were each written twice, once in the consumer app and once in
    Teams, which is exactly the divergence v2 exists to end. A chip that means
@@ -145,7 +145,7 @@ export const Toggle = ({ on, onChange, disabled, label }) => (
  *
  * `locked` is why this is a primitive rather than a map over buttons: a gated
  * tab renders *present and padlocked*, never hidden. Hiding it removes the goal
- * gradient — the mentee can't want a thing they can't see — and the padlock is
+ * gradient, the mentee can't want a thing they can't see, and the padlock is
  * the single most load-bearing piece of the retention loop.
  *
  * `tabs` is [[id, label, Icon]]; a tab id present in `locked` is rendered with
@@ -178,7 +178,7 @@ export const TabBar = ({ tabs, tab, setTab, locked = {} }) => (
   </nav>
 );
 
-/* ————— Settings chrome —————
+/* ----- Settings chrome -----
    One sheet component serves both roles and all three orbit kinds; the sections
    inside it appear conditionally. See §6.4. */
 
@@ -226,19 +226,19 @@ export const Locked = ({ children }) => (
 );
 
 /* Name helpers. Every screen greets people by first name and stamps initials on
-   cards, and every one of those was a bare `name.split(" ")` — one null name
+   cards, and every one of those was a bare `name.split(" ")`, one null name
    anywhere threw during render. A missing name is a real state (Google sign-in
    can return one), so it degrades to a dash rather than taking a screen down. */
-export const firstNameOf = (name) => String(name ?? "").trim().split(/\s+/)[0] || "—";
+export const firstNameOf = (name) => String(name ?? "").trim().split(/\s+/)[0] || "-";
 export const initialsOf = (name) =>
-  (String(name ?? "").trim() || "—").split(/\s+/).map(w => w[0]).slice(0, 2).join("");
+  (String(name ?? "").trim() || "-").split(/\s+/).map(w => w[0]).slice(0, 2).join("");
 
 /* Single-select onboarding answers used to land on the profile as string[]
    (chat submits `sel`). Callers that did `track.toUpperCase()` then threw
    during render and took the screen down via SectionBoundary. Coerce first. */
 export const labelOf = (v) => String(Array.isArray(v) ? (v[0] ?? "") : (v ?? "")).trim();
 
-/* An account with no name on it is a real state — Google sign-in can return
+/* An account with no name on it is a real state, Google sign-in can return
    one, and so can a user bootstrapped from the CLI. This used to be
    `name.split(" ")`, so a single null name anywhere on a screen threw inside
    render and the app-wide boundary replaced the whole app with "Something
@@ -249,7 +249,7 @@ export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, r
   </div>
 );
 
-/* A picture where there is one, initials where there isn't — every place a
+/* A picture where there is one, initials where there isn't, every place a
    person appears takes the same prop and neither case is a special case at the
    call site. Most accounts have no photo, so the monogram is the normal state,
    not a fallback for an error. A broken URL (a blob deleted out from under us)
@@ -326,7 +326,7 @@ export const QR = ({ seed, size = 120, dark = C.ink, light = C.white }) => {
   const n = 21;
   const cells = useMemo(() => {
     // Two of the eight badge definitions carry no `code`, so an undefined seed
-    // reaches here the moment either is earned and tapped — `for…of` on
+    // reaches here the moment either is earned and tapped, `for…of` on
     // undefined threw and took the whole app down with it.
     let h = 0; for (const ch of String(seed ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     let s = h || 7; const out = [];
@@ -379,7 +379,7 @@ export const BadgeTile = ({ badge, i, size = 72, onClick, justEarned }) => {
     </div>
   );
 };
-/* Compact trend line for a corner of a card — cumulative values in, a line
+/* Compact trend line for a corner of a card, cumulative values in, a line
    (and, below two points, just a dashed placeholder) out. No fabricated
    points: a mentor with one post gets a two-point line, not a fake curve. */
 export const Sparkline = ({ points = [], width = 84, height = 36, color = C.purple }) => {
@@ -429,7 +429,7 @@ export const Heatmap = ({ weeks = 6 }) => {
 /* How much room a floating close button is taking out of the top-right corner,
    measured in from the right edge. Screens render the same JSX on phone and on
    desktop, so a header's `right` slot has no way of knowing that ModalShell has
-   parked an X on top of it — this context is how the shell says so. Layers that
+   parked an X on top of it, this context is how the shell says so. Layers that
    cover the shell's chrome (DetailShell) reset it with <NoCloseGutter>. */
 const CloseGutter = createContext(0);
 export const NoCloseGutter = ({ children }) => (
@@ -455,7 +455,7 @@ const CLOSE_SIZE = 32, CLOSE_INSET = 14, CLOSE_CLEARANCE = 10;
 const MODAL_CLOSE_GUTTER = CLOSE_INSET + CLOSE_SIZE + CLOSE_CLEARANCE;
 
 /* The card's height is normally `auto` so a short modal hugs its content. That
-   makes every `height: 100%` inside it resolve to `auto` as well — a percentage
+   makes every `height: 100%` inside it resolve to `auto` as well, a percentage
    height needs a *definite* containing block, and `min-height`/`max-height`
    alone do not make one. A screen that lays itself out as a full-height flex
    column (a header, then something with `flex: 1`) therefore collapses to its
@@ -467,13 +467,13 @@ const MODAL_TALL = "min(78vh, 760px)";
 
 export const ModalShell = ({ children, onClose, fill = false }) => {
   const reduced = useReducedMotion();
-  /* Portaled to <body> — this modal is opened from screens nested inside a
+  /* Portaled to <body>, this modal is opened from screens nested inside a
      Framer Motion page-transition wrapper (fadeSlide/sheet animate `y`),
      which leaves a CSS transform on that ancestor even at rest. A transform
      anywhere up the tree makes its box the containing block for our
      `position: fixed` overlay instead of the real viewport, so the backdrop
      and modal were sized to the page content's box and got clipped by the
-     nearest `overflow: hidden` — cutting off the Save/Cancel row on mobile.
+     nearest `overflow: hidden`, cutting off the Save/Cancel row on mobile.
      Rendering into `document.body` escapes that ancestor chain entirely. */
   return createPortal(
     <motion.div onClick={onClose} variants={backdrop} initial="initial" animate="animate" exit="exit"
@@ -684,7 +684,7 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
         );
       })}
       {/* Mentors: Teams is a separate hash route (#/teams), so it sits under the
-          in-app tabs as its own door — create org, roster, Activate Orbit. */}
+          in-app tabs as its own door, create org, roster, Activate Orbit. */}
       {role === "mentor" && (
         <motion.button type="button" onClick={goTeams} whileTap={reduced ? undefined : { scale: 0.98 }} transition={spring(reduced)}
           title="Ryzn for Teams"
@@ -702,9 +702,9 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
       )}
     </div>
     <div style={{ padding: 14, borderTop: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
-      <Monogram name={name || "—"} size={36} />
+      <Monogram name={name || "-"} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "—"}</div>
+        <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name || "-"}</div>
         <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, letterSpacing: 0.6, textTransform: "uppercase" }}>{role}</div>
       </div>
       {adminConsole && (
@@ -721,7 +721,7 @@ export const Sidebar = ({ nav, tab, overlay, onSelect, role, name, adminConsole,
 /* Containment for a screen that throws while rendering.
 
    There was one boundary, at the root, so any error in any panel replaced the
-   entire app — sidebar, tab bar and all — with "Something broke. Refresh to
+   entire app, sidebar, tab bar and all, with "Something broke. Refresh to
    rise again." and no way out but a manual browser refresh. Wrapping each
    screen keeps the failure in the panel that caused it: the nav still works,
    and moving to another tab (a changed `resetKey`) clears it without a reload. */
@@ -755,8 +755,8 @@ export const TypingDots = () => (
   </div>
 );
 
-/* ————— Program timeline —————
-   A mentor's authored phases, LinkedIn-timeline-styled (a vertical rail —
+/* ----- Program timeline -----
+   A mentor's authored phases, LinkedIn-timeline-styled (a vertical rail -
    visual inspiration only, no external LinkedIn integration). One component
    for three places: the Studio builder (editable), the mentor's own public
    preview (read-only, no one mentee's progress to show), and a mentee's own
@@ -798,7 +798,7 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
   };
 
   /* Reported up so the modal's backdrop click and X button can share the
-     same "discard changes?" gate as the in-form Cancel button — an
+     same "discard changes?" gate as the in-form Cancel button, an
      untouched form (or one restored to its original values) closes silently. */
   const dirty = title.trim() !== (initial.title || "")
     || description.trim() !== (initial.description || "")
@@ -847,13 +847,13 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
 
 /**
  * `completedIds`: null when there's no single mentee to track progress for
- * (Studio builder, mentor's own public preview) — phases render numbered
+ * (Studio builder, mentor's own public preview), phases render numbered
  * instead of checked. An array (possibly empty) means real progress: checks,
  * a highlighted "current" phase, and reward pills only for phases actually
  * completed.
  *
  * `onSave`/`onDelete`/`onMove` receive one phase (or index) at a time; the
- * caller reconstructs the full array and persists it — this component never
+ * caller reconstructs the full array and persists it, this component never
  * calls the save API itself.
  */
 export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, emptyText, autoOpenNew = false }) => {
@@ -862,7 +862,7 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
   const dirtyRef = useRef(false);
 
   /* Auto-opening the form the instant this screen mounts drops a mobile
-     mentor straight into a modal with zero context — they haven't even read
+     mentor straight into a modal with zero context, they haven't even read
      what a "phase" is yet. Desktop has the whole page as context already;
      mobile gets a beat to look around first. */
   useEffect(() => {
@@ -884,7 +884,7 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
     <>
       {phases.length === 0 && editable && emptyText !== "" && (
         <div className="fade-up" style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, padding: "2px 0 16px" }}>
-          {emptyText || "No phases yet — add the first step of your program."}
+          {emptyText || "No phases yet, add the first step of your program."}
         </div>
       )}
       {phases.map((p, i) => {
