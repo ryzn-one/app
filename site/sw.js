@@ -25,7 +25,7 @@
  *                      visitors for a whole cache generation.
  */
 
-const VERSION = "v2";
+const VERSION = "v3";
 const PRECACHE = `ryzn-precache-${VERSION}`;
 const RUNTIME = `ryzn-runtime-${VERSION}`;
 
@@ -44,6 +44,15 @@ const PRECACHE_URLS = [
   "/branding/ryzn-brand-kit/icon/png/ryzn-app-icon-192.png",
   "/branding/ryzn-brand-kit/icon/png/ryzn-app-icon-512.png",
   "/branding/ryzn-brand-kit/icon/png/ryzn-maskable-512.png",
+  /* The founder console installs as its own app off /app/#/admin, so its
+     manifest and ink icons have to survive offline the same way. */
+  "/console.webmanifest",
+  "/branding/ryzn-brand-kit/icon/console.ico",
+  "/branding/ryzn-brand-kit/icon/png/console-favicon-32.png",
+  "/branding/ryzn-brand-kit/icon/png/ryzn-console-icon-180.png",
+  "/branding/ryzn-brand-kit/icon/png/ryzn-console-icon-192.png",
+  "/branding/ryzn-brand-kit/icon/png/ryzn-console-icon-512.png",
+  "/branding/ryzn-brand-kit/icon/png/ryzn-console-maskable-512.png",
   "/branding/ryzn-brand-kit/fonts/SpaceGrotesk.ttf",
   "/branding/ryzn-brand-kit/fonts/SpaceMono-Regular.ttf",
 ];

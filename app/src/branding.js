@@ -40,6 +40,17 @@ export const Brand = {
       192: brandAsset("icon/png/ryzn-app-icon-192.png"),
       512: brandAsset("icon/png/ryzn-app-icon-512.png"),
     },
+    /* The founder console's colourway: same mark, ink field, so an installed
+       console is never mistaken for the app mentees get. */
+    console: {
+      svg: brandAsset("icon/svg/ryzn-console-icon.svg"),
+      maskable: brandAsset("icon/svg/ryzn-console-icon-maskable.svg"),
+      png: {
+        180: brandAsset("icon/png/ryzn-console-icon-180.png"),
+        192: brandAsset("icon/png/ryzn-console-icon-192.png"),
+        512: brandAsset("icon/png/ryzn-console-icon-512.png"),
+      },
+    },
   },
   motif: {
     diamonds: brandAsset("motifs/ryzn-diamond-pattern.svg"),

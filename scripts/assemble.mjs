@@ -23,6 +23,11 @@ copyFileSync(join(root, "site", "terms.html"), join(dist, "terms.html"));
    marketing site and from /app/ produce the same app with the same icon.
    Its absence is why Chrome was drawing a generated "R" tile. */
 copyFileSync(join(root, "site", "manifest.webmanifest"), join(dist, "manifest.webmanifest"));
+/* The founder console is a route in the same document, so it needs a manifest
+   of its own or the browser has nothing describing an install started from
+   /app/#/admin and invents a name and a letter tile for it. Root-level for the
+   same reason as above: one URL per manifest, whichever page you install from. */
+copyFileSync(join(root, "site", "console.webmanifest"), join(dist, "console.webmanifest"));
 /* The worker has to sit at the origin root: a worker's scope cannot rise above
    the path it is served from, and this one controls both / and /app/. */
 copyFileSync(join(root, "site", "sw.js"), join(dist, "sw.js"));
@@ -40,6 +45,9 @@ writeFileSync(
   readFileSync(appShell, "utf8").replace("/app/manifest.webmanifest", "/manifest.webmanifest")
 );
 rmSync(join(dist, "app", "manifest.webmanifest"), { force: true });
+/* app/public/console.webmanifest exists so the dev server has a copy to serve;
+   the build takes the root one, same as the consumer manifest. */
+rmSync(join(dist, "app", "console.webmanifest"), { force: true });
 
 const brandingSrc = join(root, "site", "branding");
 if (existsSync(brandingSrc)) {

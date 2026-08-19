@@ -4,6 +4,7 @@ import "./index.css";
 import RyznComplete from "./RyznApp.jsx";
 import RyznTeams from "./teams/RyznTeams.jsx";
 import RyznAdmin from "./admin/RyznAdmin.jsx";
+import { applySurfaceChrome } from "./surface-chrome.js";
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { err: null }; }
@@ -41,6 +42,10 @@ function Router() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+  /* The surfaces share a document, so they would otherwise share the tab icon,
+     the title and the manifest — which is why installing the console produced
+     a second, browser-drawn home-screen tile instead of a console icon. */
+  useEffect(() => { applySurfaceChrome(hash); }, [hash]);
   if (hash.startsWith("#/admin")) return <RyznAdmin />;
   return hash.startsWith("#/teams") ? <RyznTeams /> : <RyznComplete />;
 }
