@@ -217,7 +217,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
   const showLabels = !view || view.w <= 520;
 
   return (
-    <div ref={boxRef} style={{ position: "relative", background: C.ink, overflow: "hidden", touchAction: "none", cursor: "grab", ...style }}
+    <div ref={boxRef} style={{ position: "relative", background: C.white, overflow: "hidden", touchAction: "none", cursor: "grab", ...style }}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove}
       onPointerUp={endPointer} onPointerCancel={(e) => endPointer(e, false)}
       onDoubleClick={(e) => {
@@ -230,11 +230,11 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
         aria-label="People by region. Select a region to filter the list.">
 
         {/* Ocean. Tapping it clears the selection — see endPointer. */}
-        <rect x={-W} y={-H} width={W * 3} height={H * 3} fill={C.ink} pointerEvents="none" />
+        <rect x={-W} y={-H} width={W * 3} height={H * 3} fill={C.white} pointerEvents="none" />
 
         {/* Land. Every country is its own path, so the borders are real borders
             rather than a silhouette of the continents. */}
-        <g fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.3)"
+        <g fill="rgba(26,26,26,.08)" stroke="rgba(26,26,26,.18)"
           strokeWidth={0.7 * u} strokeLinejoin="round" pointerEvents="none">
           {WORLD_PATHS.map((d, i) => <path key={i} d={d} />)}
         </g>
@@ -254,7 +254,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
               {on && <circle cx={p.x} cy={p.y} r={(p.r + 7) * u} fill="none" stroke={C.lilac} strokeWidth={1.5 * u} />}
               <circle cx={p.x} cy={p.y} r={p.r * u} fill={C.purple} opacity={0.82} />
               <circle cx={p.x} cy={p.y} r={p.r * u} fill="none"
-                stroke={on ? C.lilac : "rgba(183,175,242,.6)"} strokeWidth={(on ? 2 : 1) * u} />
+                stroke={on ? C.deep : "rgba(91,79,207,.5)"} strokeWidth={(on ? 2 : 1) * u} />
               <text x={p.x} y={p.y + 3.6 * u} textAnchor="middle"
                 fontFamily={F.mono} fontSize={10.5 * u} fontWeight={700} fill={C.white} pointerEvents="none">
                 {p.count}
@@ -262,7 +262,7 @@ export const RegionMap = ({ buckets = [], selectedId, onSelect, style }) => {
               {(showLabels || on) && (
                 <text x={p.x} y={p.y + (p.r + 13) * u} textAnchor="middle"
                   fontFamily={F.mono} fontSize={9.5 * u} letterSpacing={0.6 * u}
-                  fill={on ? C.lilac : "rgba(255,255,255,.7)"} pointerEvents="none">
+                  fill={on ? C.deep : C.gray} pointerEvents="none">
                   {p.name.toUpperCase()}
                 </text>
               )}
@@ -287,9 +287,9 @@ const MapBtn = ({ children, label, onClick }) => (
     onPointerDown={(e) => e.stopPropagation()}
     style={{
       width: 32, height: 32, borderRadius: 9, cursor: "pointer",
-      background: "rgba(26,26,26,.72)", border: "1px solid rgba(255,255,255,.18)",
-      color: C.white, display: "flex", alignItems: "center", justifyContent: "center",
-      backdropFilter: "blur(6px)",
+      background: C.white, border: `1px solid ${C.line}`,
+      color: C.ink, display: "flex", alignItems: "center", justifyContent: "center",
+      boxShadow: "0 2px 8px rgba(26,26,26,.12)",
     }}>
     {children}
   </button>
