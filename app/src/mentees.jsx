@@ -92,7 +92,7 @@ export const MenteesScreen = ({
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <HeaderRow title="Mentees" onBack={back} />
-      <div style={{ padding: "0 20px 10px", flexShrink: 0 }}>
+      <div style={{ padding: "0 14px 10px", flexShrink: 0 }}>
         <TabRow tabs={tabs} value={tab} onChange={setTab} />
       </div>
 

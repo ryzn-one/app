@@ -391,7 +391,7 @@ export const DetailShell = ({ title, right, close, footer, children }) => (
   <NoCloseGutter>
     <div style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 50, display: "flex", flexDirection: "column", borderRadius: 24, overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" }}>
       <HeaderRow title={title} onBack={close} right={right} />
-      <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 20px 16px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>{children}</div>
+      <div className="app-scroll" style={{ flex: 1, overflowY: "auto", padding: "0 14px 16px", display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>{children}</div>
       <div style={{ padding: "10px 20px calc(16px + env(safe-area-inset-bottom, 0px))", background: C.white, borderTop: `1px solid ${C.line}`, flexShrink: 0 }}>{footer}</div>
     </div>
   </NoCloseGutter>

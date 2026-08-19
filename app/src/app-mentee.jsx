@@ -6,9 +6,9 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
-import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
 /* ProgramTimeline moved to OrbitScreen with the programs themselves. */
-import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { UnlockTrackCard } from "./unlock.jsx";
@@ -27,7 +27,7 @@ import { countdown, fmtRange } from "./lib/calendar.js";
  * of it yet.
  */
 export const MenteeChatList = ({ mentors = [], onOpenThread }) => (
-  <div style={{ padding: "18px 20px 20px" }}>
+  <div style={{ padding: "14px 14px 14px" }}>
     <Label color={C.purple}>Direct Connect</Label>
     <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>Your threads.</div>
     {mentors.length === 0 ? (
@@ -89,17 +89,14 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
     .filter(s => s.status === "confirmed" && new Date(s.confirmedSlot.end).getTime() > Date.now())
     .sort((a, b) => new Date(a.confirmedSlot.start) - new Date(b.confirmedSlot.start))[0];
   return (
-    <div style={{ padding: "18px 20px 20px" }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div>
-          <Label>Founding cohort</Label>
-          <div style={{ fontFamily: F.sans, fontSize: 30, fontWeight: 700, letterSpacing: -0.8, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
-          <div style={{ color: C.gray, fontSize: 14, marginTop: 2 }}>{u.fresh ? "Day 1. It starts now." : `Week ${u.week} of the Program. Keep moving.`}</div>
-        </div>
-        <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer", position: "relative" }}>
-          <Bell size={18} color={C.ink} />
-          {pendingInvites.length > 0 && <div style={{ position: "absolute", top: 8, right: 8, width: 7, height: 7, borderRadius: 4, background: C.coral }} />}
-        </button>
+    <div style={{ padding: "14px 14px 14px" }}>
+      {/* The greeting, in the reference's two lines: where you are in small
+          mono, then your name at 22. The bell that used to sit beside it moved
+          to the top bar, where it is reachable from every tab rather than only
+          from Home. */}
+      <div style={{ padding: "2px 2px 0" }}>
+        <div style={S.mono(7.5, C.mute)}>{u.fresh ? "FOUNDING COHORT · DAY 1" : `FOUNDING COHORT · WEEK ${u.week} OF 12`}</div>
+        <div style={S.h(22)}>{firstName ? `Morning, ${firstName}.` : "Welcome."}</div>
       </div>
 
       {pendingInvites.length > 0 && (
@@ -163,47 +160,40 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         </div>
       )}
 
-      <Card data-tour="mentee-home-progress" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 18 }}>
-        <Ring pct={u.fresh ? 0.03 : u.week / 12}>
-          <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700 }}>{u.fresh ? "3%" : `${Math.round((u.week / 12) * 100)}%`}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray }}>{u.fresh ? "DAY 1/84" : `WK ${u.week}/12`}</div>
-        </Ring>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Flame size={22} color={C.coral} fill={C.coral} />
-            <span style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700 }}>{u.streak}</span>
-            <span style={{ color: C.gray, fontSize: 13, fontWeight: 600 }}>day streak</span>
+      {/* Today's rep. One ring, one sentence, one button — the reference's
+          card. The two it replaces (a week-percentage ring beside a streak
+          counter, then a black slab repeating the same exercise) between them
+          took a third of the screen to say a thing this says in a line, and the
+          streak and XP they carried now live in the top bar on every tab. */}
+      <Card data-tour="mentee-home-progress" style={{ marginTop: 12 }}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <Ring pct={todayDone ? 1 : 0.15} color={C.teal} size={72} stroke={7}>
+            <Flame size={16} color={todayDone ? C.teal : C.mute} />
+          </Ring>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={S.sb(14)}>{todayDone ? "Today is banked." : "Today’s rep is waiting"}</div>
+            <div style={S.b(12, C.gray)}>{todayDone ? "Come back tomorrow to keep the flame." : `${todayEx.mins} minutes protects your streak.`}</div>
+            <div style={{ ...S.mono(7, C.mute), marginTop: 6 }}>
+              {Number(u.xp || 0).toLocaleString()} XP · {u.fresh ? "DAY 1" : `WEEK ${u.week} OF 12`}{u.rank ? ` · #${u.rank} IN COHORT` : ""}
+            </div>
           </div>
-          <div style={{ fontFamily: F.mono, fontSize: 11, color: C.gray, marginTop: 8 }}>{Number(u.xp || 0).toLocaleString()} XP{u.rank ? ` · #${u.rank} in cohort` : ""}</div>
-          <div style={{ marginTop: 8 }}><Bar pct={u.streak / 100} color={C.teal} /></div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{u.streak}/100 → 100-DAY STREAK</div>
-        </div>
-      </Card>
-
-      <Card onClick={() => go("exercises")} style={{ marginTop: 12, background: todayDone ? C.tealTint : C.ink, border: "none", color: todayDone ? C.teal : C.white }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <Label color={todayDone ? C.teal : "#B9B3E8"}>Today’s exercise · {todayEx.mins} min</Label>
-            <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, marginTop: 6 }}>{todayDone ? `${todayEx.title}, done.` : todayEx.title}</div>
-            <div style={{ fontSize: 13, marginTop: 4, opacity: 0.75 }}>{todayDone ? `+${todayEx.xp} XP banked. Back tomorrow.` : u.fresh ? "One honest paragraph. Your mentor reads it." : "3 sentences. Your dream industry. No filler."}</div>
-          </div>
-          {todayDone ? <Check size={26} /> : <div style={{ background: C.purple, borderRadius: 12, padding: 10 }}><Zap size={18} color={C.white} /></div>}
+          {!todayDone && <Btn small onClick={() => go("exercises")}>Do it</Btn>}
         </div>
       </Card>
 
       {nextBadge && (
-        <Card onClick={() => go("badges")} style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            <BadgeTile badge={nextBadge} i={nextIdx} size={56} />
-            <div style={{ flex: 1 }}>
-              <Label>Next milestone</Label>
-              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 3 }}>{nextBadge.name}, {nextBadge.unlocks.toLowerCase()}</div>
+        <Card onClick={() => go("badges")} style={{ marginTop: 11 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <BadgeTile badge={nextBadge} i={nextIdx} size={48} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={S.mono(7, C.mute)}>NEXT MILESTONE</div>
+              <div style={{ ...S.sb(13), marginTop: 2 }}>{nextBadge.name}, {nextBadge.unlocks.toLowerCase()}</div>
               {nextBadge.progress ? <>
                 <div style={{ marginTop: 8 }}><Bar pct={nextBadge.progress[0] / nextBadge.progress[1]} /></div>
-                <div style={{ fontFamily: F.mono, fontSize: 10, color: C.gray, marginTop: 5 }}>{nextBadge.progressLabel}</div>
+                <div style={{ ...S.mono(7, C.mute), marginTop: 5 }}>{nextBadge.progressLabel}</div>
               </> : null}
             </div>
-            <ChevronRight size={18} color={C.gray} />
+            <ChevronRight size={16} color={C.mute} />
           </div>
         </Card>
       )}
@@ -329,41 +319,56 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
         </div>
       </Card>
 
-      <Card onClick={() => openOverlay("cohort")} style={{ marginTop: 12, background: C.purpleTint, border: "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Users size={20} color={C.deep} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.deep }}>Cohort standings</div>
-            <div style={{ fontSize: 12, color: C.deep, opacity: 0.7 }}>{u.rank ? `You’re #${u.rank}.` : "Rankings open once the cohort is running."}</div>
-          </div>
-          <ChevronRight size={18} color={C.deep} />
+      {/* The board, in the reference's row shape — rank, name, XP — with the
+          one row that is actually knowable. There is no cross-cohort XP ledger
+          yet, so the rest of the table stays absent rather than invented. */}
+      <Card onClick={() => openOverlay("cohort")} style={{ marginTop: 11 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
+          <div style={S.sb(13)}>Leaderboard</div>
+          <Chip>{policy?.boardScope || "Cohort"}</Chip>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", background: C.purpleTint, borderRadius: 8 }}>
+          <span style={{ ...S.mono(9, u.rank === 1 ? C.amber : C.mute), width: 18 }}>{u.rank ? `#${u.rank}` : "—"}</span>
+          <span style={{ ...S.sb(12.5), flex: 1 }}>You</span>
+          <span style={S.mono(9, C.purple)}>{Number(u.xp || 0).toLocaleString()} XP</span>
+        </div>
+        <div style={{ ...S.b(11, C.mute), marginTop: 8 }}>
+          {u.rank ? "Tap for your full standing." : "Rankings open once enough of the cohort is active."}
         </div>
       </Card>
     </div>
   );
 };
 
-export const MenteeExercises = ({ u, todayDone, onSubmit, submitting }) => {
+/**
+ * Grow.
+ *
+ * Three things, in the reference's order: today's rep, the consistency grid
+ * that shows the streak is real, and the badge wall. The last two used to live
+ * behind separate overlays reachable only from Home and Profile, so the tab
+ * whose whole job is "keep showing up" showed no evidence of having shown up.
+ */
+export const MenteeExercises = ({ u, todayDone, onSubmit, submitting, badges = [], openBadge, justEarnedId }) => {
   const [text, setText] = useState("");
   const [err, setErr] = useState(null);
   const list = EXERCISE_TRACK;
   return (
     <div>
-      <HeaderRow title="Exercises" right={<Label>WEEK {u.week || 1}</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <HeaderRow title="Grow" right={<Chip c={C.gray} bg="#F1F0EC">WEEK {u.week || 1}</Chip>} />
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
         {list.map((ex, i) => {
           if (ex.state === "open" && !todayDone) return (
-            <Card key={i} style={{ border: `1.5px solid ${C.purple}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <Label color={C.purple}>{ex.day} · {ex.mins} min</Label>
-                {ex.milestone && <Label color={C.amber}>Milestone 3/3</Label>}
+            <Card key={i} style={{ border: `1px solid ${C.line}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={S.mono(8, C.teal)}>TODAY’S EXERCISE</div>
+                {ex.milestone && <div style={S.mono(8, C.amber)}>MILESTONE 3/3</div>}
               </div>
-              <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, marginTop: 6 }}>{ex.title}</div>
-              <div style={{ fontSize: 13.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>{ex.prompt}</div>
+              <div style={{ ...S.h(15), margin: "6px 0 4px" }}>{ex.title}</div>
+              <div style={S.b(12, C.gray)}>{ex.prompt} · {ex.mins} min</div>
               <textarea value={text} onChange={e => { setText(e.target.value); setErr(null); }} placeholder="I’m here because…" rows={4}
-                style={{ width: "100%", marginTop: 12, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 14, resize: "none", background: C.surface, boxSizing: "border-box", outline: "none" }} />
-              {err && <div style={{ fontSize: 12.5, color: C.coral, marginTop: 8, lineHeight: 1.4 }}>{err}</div>}
-              <Btn data-tour="mentee-exercises-submit" style={{ marginTop: 12 }} disabled={submitting} onClick={async () => {
+                style={{ width: "100%", marginTop: 12, borderRadius: 12, border: `1px solid ${C.line}`, padding: 12, fontFamily: F.sans, fontSize: 13.5, resize: "none", background: C.white, boxSizing: "border-box", outline: "none" }} />
+              {err && <div style={{ ...S.b(12, C.coral), marginTop: 8 }}>{err}</div>}
+              <Btn kind="purple" data-tour="mentee-exercises-submit" style={{ marginTop: 12 }} disabled={submitting} onClick={async () => {
                 try {
                   setErr(null);
                   await onSubmit(text);
@@ -371,31 +376,72 @@ export const MenteeExercises = ({ u, todayDone, onSubmit, submitting }) => {
                 } catch (e) {
                   setErr(e.message || "Couldn’t save that. Try again.");
                 }
-              }}>{submitting ? "Saving…" : `Submit · +${ex.xp} XP`}</Btn>
+              }}>{submitting ? "Saving…" : `Submit today’s rep · +${ex.xp} XP`}</Btn>
             </Card>
           );
           const done = ex.state === "open" && todayDone;
           const upcoming = ex.state === "upcoming";
+          if (done) return (
+            <Card key={i} style={{ background: C.tealTint, border: "1px solid #CDEBDE" }}>
+              <div style={S.mono(8, C.teal)}>TODAY’S EXERCISE</div>
+              <div style={{ ...S.h(15), margin: "6px 0 4px" }}>{ex.title}</div>
+              {u.todayExercise?.text && <div style={{ ...S.b(12.5, C.ink), fontStyle: "italic" }}>“{u.todayExercise.text}”</div>}
+              <Btn kind="ghost" style={{ marginTop: 12 }} disabled><Check size={14} /> Submitted · +{ex.xp} XP</Btn>
+            </Card>
+          );
           return (
-            <Card key={i} style={{ opacity: upcoming ? 0.85 : 1, background: upcoming ? "#EFEEEA" : C.white }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: done ? C.tealTint : "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {done ? <Check size={17} color={C.teal} strokeWidth={3} /> : upcoming ? <Lock size={14} color="#A5A39D" /> : <Zap size={15} color="#A5A39D" />}
+            <Card key={i} style={{ opacity: upcoming ? 0.85 : 1, background: upcoming ? "#F4F3EF" : C.white }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                <div style={{ width: 26, height: 26, borderRadius: 9, background: "#EFEEE9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {upcoming ? <Lock size={13} color={C.mute} /> : <Zap size={13} color={C.mute} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: F.mono, fontSize: 9.5, color: "#A5A39D" }}>{ex.day.toUpperCase()}</div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{ex.title}</div>
-                  {upcoming && <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>Unlocks at 7 AM. One a day keeps the streak alive.</div>}
-                  {done && u.todayExercise?.text && (
-                    <div style={{ fontSize: 13, color: C.ink, marginTop: 8, lineHeight: 1.5, fontStyle: "italic" }}>“{u.todayExercise.text}”</div>
-                  )}
+                  <div style={S.mono(7, C.mute)}>{ex.day.toUpperCase()}</div>
+                  <div style={S.sb(13)}>{ex.title}</div>
+                  {upcoming && <div style={S.b(11.5, C.gray)}>Unlocks at 7 AM. One a day keeps the streak alive.</div>}
                 </div>
-                {done ? <span style={{ fontFamily: F.mono, fontSize: 11, color: C.teal, fontWeight: 700 }}>+{ex.xp} XP</span>
-                  : <span style={{ fontFamily: F.mono, fontSize: 10, color: "#A5A39D" }}>+{ex.xp} XP</span>}
+                <div style={S.mono(9, C.mute)}>+{ex.xp} XP</div>
               </div>
             </Card>
           );
         })}
+
+        {/* The streak, drawn. A number on Home is a claim; six weeks of squares
+            is the evidence for it, and it is what makes a broken streak feel
+            like something lost rather than a counter resetting. */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={S.sb(13)}>Consistency</div>
+            <Chip c={C.teal} bg={C.tealTint}><Flame size={9} /> {u.streak || 0}-DAY STREAK</Chip>
+          </div>
+          <Heatmap />
+        </Card>
+
+        {/* The badge wall, on the tab that earns them. */}
+        {badges.length > 0 && (
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+              <span style={S.sb(13)}>Badges</span>
+              <span style={S.mono(7, C.mute)}>TAP ONE · VERIFIED FOREVER</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9 }}>
+              {badges.map((b, i) => {
+                const earned = !!b.earned, color = TIER_COLOR[b.tier] || C.purple;
+                return (
+                  <div key={b.id} onClick={() => openBadge?.(b, i)} className={justEarnedId === b.id ? "badge-pop" : ""}
+                    style={{
+                      cursor: openBadge ? "pointer" : "default", borderRadius: 14, padding: "12px 6px",
+                      border: `1px solid ${earned ? color + "55" : C.line}`, background: earned ? "#FDFDFB" : "#F4F3EF",
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: earned ? 1 : 0.5,
+                    }}>
+                    <BadgeGlyph i={i} color={earned ? color : "#C9C6C0"} />
+                    <div style={{ ...S.sb(10.5), textAlign: "center" }}>{b.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -404,7 +450,7 @@ export const MenteeExercises = ({ u, todayDone, onSubmit, submitting }) => {
 export const MenteeBadges = ({ badges, openBadge, justEarnedId }) => (
   <div>
     <HeaderRow title="Milestones" right={<Label>{badges.filter(b => b.earned).length} OF 8 EARNED</Label>} />
-    <div style={{ padding: "0 20px 20px" }}>
+    <div style={{ padding: "0 14px 14px" }}>
       {badges.map((b, i) => {
         const earned = !!b.earned, color = TIER_COLOR[b.tier];
         return (
@@ -459,7 +505,7 @@ export const CohortScreen = ({ u, back }) => {
   return (
   <div>
     <HeaderRow title="Cohort" onBack={back} right={<Label>FOUNDING</Label>} />
-    <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: 18, right: 18 }}>
           <Sparkline points={impactPoints} color="#B7AFF2" />
@@ -559,24 +605,26 @@ export const DMScreen = ({ name, sub, back, otherId, placeholder }) => {
             <div style={{ fontSize: 13, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>No messages yet. Say the first thing.</div>
           </div>
         )}
+        {/* Your own messages are ink, not brand purple. Purple is the app's
+            action colour — every button, every active tab — and using it for
+            "you said this" made a thread read like a column of buttons. */}
         {msgs.map((m) => (
           <div key={m.id} className="msg-in" style={{
             alignSelf: m.who === "them" ? "flex-start" : "flex-end", maxWidth: "80%",
-            background: m.who === "them" ? C.white : C.purple, color: m.who === "them" ? C.ink : C.white,
+            background: m.who === "them" ? C.white : C.ink, color: m.who === "them" ? C.ink : C.white,
             border: m.who === "them" ? `1px solid ${C.line}` : "none",
-            borderRadius: m.who === "them" ? "14px 14px 14px 4px" : "14px 14px 4px 14px",
-            padding: "11px 14px", fontSize: 14, lineHeight: 1.5,
+            borderRadius: 14, padding: "9px 12px", ...S.b(13, m.who === "them" ? C.ink : C.white),
           }}>{m.text}</div>
         ))}
       </div>
       {error && msgs.length > 0 && (
         <div style={{ padding: "0 14px 6px", fontSize: 12, color: C.coral }}>{error}</div>
       )}
-      <div style={{ display: "flex", gap: 8, padding: "10px 14px 16px", borderTop: `1px solid ${C.line}`, background: C.white }}>
+      <div style={{ display: "flex", gap: 8, padding: "10px 12px", paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))", borderTop: `1px solid ${C.line}`, background: C.white }}>
         <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder={placeholder}
           disabled={busy || !otherId}
-          style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 20, padding: "11px 16px", fontFamily: F.sans, fontSize: 14, outline: "none", background: C.surface, minWidth: 0 }} />
-        <button onClick={send} disabled={busy || !otherId} style={{ width: 42, height: 42, borderRadius: 21, border: "none", background: C.purple, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: busy ? 0.6 : 1 }}><Send size={16} /></button>
+          style={{ flex: 1, border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 13px", fontFamily: F.sans, fontSize: 13, outline: "none", background: C.white, minWidth: 0 }} />
+        <Btn small kind="purple" onClick={send} disabled={busy || !otherId}><Send size={14} /></Btn>
       </div>
     </div>
   );
@@ -586,7 +634,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
   <div>
     <HeaderRow title="Profile" right={
       <button data-tour="mentee-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
-    <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
       <div data-tour="mentee-profile-hero">
         <ProfileHeader name={name} headline={u?.headline} avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl}
           userId={userId} editable onSaveImage={onUpdateProfile}>
@@ -604,14 +652,28 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
           ))}
         </Card>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {[[Number(u?.xp || 0).toLocaleString(), "total XP", C.purple], [`${u?.streak || 0}`, "day streak", C.coral], [`${u?.week || 1}/12`, "program wk", C.teal]].map(([n, l, c]) => (
-          <Card key={l} style={{ padding: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: F.sans, fontSize: 19, fontWeight: 700, color: c }}>{n}</div>
-            <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 }}>{l}</div>
-          </Card>
-        ))}
-      </div>
+      {/* One identity, every orbit. The dark card is the reference's, and it is
+          dark on purpose: XP, streak, badges and tier belong to the person, not
+          to any orbit they are standing in, so they get their own surface
+          instead of three pale tiles that read as page furniture. */}
+      <Card style={{ background: C.ink, border: "none" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <Avatar src={u?.avatarUrl} name={name} size={52} radius={16} bg="#2A2A2A" color={C.lilac} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={S.h(16, C.white)}>{name || "Your profile"}</div>
+            <div style={S.mono(7.5, C.lilac)}>ONE IDENTITY · EVERY ORBIT</div>
+          </div>
+          <Chip c={TIER_COLOR[u?.tier] || C.amber} bg="#2A2A2A">{u?.tier || "Scout"}</Chip>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          {[["XP", Number(u?.xp || 0).toLocaleString()], ["Streak", u?.streak || 0], ["Badges", badges.filter(b => b.earned).length], ["Week", `${u?.week || 1}/12`]].map(([l, v]) => (
+            <div key={l} style={{ flex: 1, background: "#242424", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+              <div style={S.h(16, C.white)}>{v}</div>
+              <div style={S.mono(7, C.mute)}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
       <Card>
         <Label>Badge wall</Label>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>

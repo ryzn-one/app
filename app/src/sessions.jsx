@@ -546,7 +546,7 @@ export const SessionsScreen = ({
         onBack={back}
         right={<Label>{booked} BOOKED{needsYou.length ? ` · ${needsYou.length} TO ANSWER` : ""}</Label>}
       />
-      <div data-tour="mentor-sessions-list" style={{ padding: "0 20px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div data-tour="mentor-sessions-list" style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
 
         {loading && sessions.length === 0 && (
           <div style={{ padding: 20, textAlign: "center", color: C.gray, fontSize: 13 }}>Loading sessions…</div>

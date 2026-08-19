@@ -99,8 +99,8 @@ input::placeholder, textarea::placeholder { color: #A5A39D; }
 }
 .app-scroll::-webkit-scrollbar { display: none; }
 
-.sheet-up { animation: sheetUp .32s cubic-bezier(.22,1,.36,1); }
-@keyframes sheetUp { from { transform: translateY(28px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet-up { animation: sheetUp .28s ease; }
+@keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .fade-up { animation: fadeUp .4s cubic-bezier(.22,1,.36,1) both; }
 @keyframes fadeUp { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -108,8 +108,8 @@ input::placeholder, textarea::placeholder { color: #A5A39D; }
 .badge-pop { animation: badgePop .55s cubic-bezier(.2,1.4,.4,1); }
 @keyframes badgePop { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
 
-.msg-in { animation: msgIn .28s cubic-bezier(.22,1,.36,1); }
-@keyframes msgIn { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.msg-in { animation: msgIn .25s ease; }
+@keyframes msgIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .dot { animation: bounce 1s infinite; display: inline-block; }
 @keyframes bounce { 0%,60%,100% { transform: none; } 30% { transform: translateY(-4px); } }

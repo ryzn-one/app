@@ -7,8 +7,8 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Newspaper, UserPlus, UserCheck, Compass
 } from "lucide-react";
-import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary, firstNameOf } from "./ui.jsx";
+import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { Card, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary, TopBar, BarBtn, firstNameOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS, EXERCISE_TRACK } from "./data.js";
 import { fetchMe, fetchRoster, fetchMatches, requestMatch, respondToMatch, saveOnboarding, signOut, fetchPosts, createPost, postAction, updatePost, deletePost, amplifyPost, unamplifyPost, submitExercise, fetchProgram, saveProgram, fetchEvents, createEvent, eventAction, updateProfile, fetchSessions, createSession, sessionAction, followMentor, unfollowMentor } from "./lib/auth-client.js";
@@ -27,10 +27,10 @@ import { ExploreScreen } from "./explore.jsx";
 import { MenteesScreen } from "./mentees.jsx";
 import { NetworkScreen } from "./network.jsx";
 import { MeetsScreen, NotifsScreen, InviteAlert, SettingsScreen, BadgeModal, MidwayUnlock } from "./app-shared.jsx";
-import { MentorFeed, OrbitScreen } from "./feed.jsx";
+import { MentorFeed, OrbitScreen, MenteeDiscover } from "./feed.jsx";
 import { TEAMS_NAV, TEAMS_TABS, TeamsHome, TeamsMentors, TeamsCohort, TeamsRoster, TeamsChat } from "./teams/TeamsApp.jsx";
 import { useOrbits } from "./lib/orbits.js";
-import { OrbitSwitcher, JoinCircle } from "./orbits.jsx";
+import { OrbitSwitcher, JoinCircle, orbitIcon } from "./orbits.jsx";
 import { fetchCircle, joinCircle } from "./lib/auth-client.js";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { InstallBanner } from "./install.jsx";
@@ -222,6 +222,9 @@ export default function RyznComplete() {
      above stays what its name says, the signed-in mentor's own posts. */
   const [feeds, setFeeds] = useState({});
   const [highlightPostId, setHighlightPostId] = useState(null);
+  /* Which of Discover's three segments is showing. Held at the shell so that
+     leaving Discover and coming back lands where you left it. */
+  const [discoverView, setDiscoverView] = useState("feed");
   /* A circle link waiting to be accepted: `{ slug, circle, joined, error }`.
      Held in state rather than routed to, because it opens over whatever the
      person was already doing and leaves them there if they decline. */
@@ -582,7 +585,9 @@ export default function RyznComplete() {
             || (user.mentors || [])[0];
           if (owner) setOverlay({ orbit: owner.id });
         } else if (String(post.authorId) === String(session?.user?.id)) {
-          setTab("feed");
+          /* Your own posts live in Studio now, not the Feed tab — Feed is the
+             Brief and the composer. */
+          setTab("impact");
           setOverlay(null);
         } else {
           setOverlay({
@@ -1545,8 +1550,29 @@ export default function RyznComplete() {
     if (role === "mentee") {
       switch (tab) {
         case "home": return <MenteeHome u={user} name={session?.user?.name} badges={badges} go={setTab} openOverlay={setOverlay} openOrbit={(id) => setOverlay({ orbit: id })} todayDone={todayDone} stage1={stage1} mentorSeats={mentorsHeld} toast={toast} feeds={feeds} watched={watched} invites={matches.filter(m => m.awaitingYou)} sessions={sessions} stage={orbit?.stage} policy={policy} orbit={orbit} atRisk={session?.atRisk} />;
-        case "grow": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise} />;
-        case "discover": return <ExploreScreen role={role} wanted="mentor" onOpen={(p) => setOverlay({ mentorProfile: p })} />;
+        case "grow": return <MenteeExercises u={user} todayDone={todayDone} onSubmit={submitToday} submitting={submittingExercise}
+          badges={badges} openBadge={(b, i) => setBadgeModal({ b, i })} justEarnedId={justEarnedId} />;
+        /* Feed | Match | My mentor, not the Explore map. Discover is where a
+           mentee reads what their mentors published; the map and the full
+           roster search live one tap inside the Match segment. */
+        case "discover": return (
+          <MenteeDiscover
+            view={discoverView} setView={setDiscoverView}
+            mentors={user.mentors || []} feeds={feeds}
+            watched={watched} onWatch={watchContent}
+            reacted={reacted} onReact={reactToPost}
+            onAuthor={openAuthorProfile} toast={toast}
+            go={setTab} openOrbit={(id) => setOverlay({ orbit: id })}
+            openDm={(m) => setOverlay({ dmPeer: m })} chatLocked={chatLocked}
+            seats={policy?.cap ?? 3}
+            renderMatch={() => (
+              <AddMentorScreen candidates={roster} used={mentorsHeld} onAdd={addMentor}
+                toast={toast} onLoad={loadRoster} loading={rosterLoading}
+                back={() => setDiscoverView("feed")}
+                policy={policy} orbit={orbit} />
+            )}
+          />
+        );
         /* Locked is a screen, not a missing route. */
         case "chat": return chatLocked
           ? <ChatLocked stage={orbit?.stage} mentor={(user.mentors || [])[0]} go={setTab} />
@@ -1558,7 +1584,11 @@ export default function RyznComplete() {
     switch (tab) {
       case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId}
           followers={session?.followers ?? 0} onPin={pinPost} onDelete={removePost} go={setTab} />;
-      case "cohort": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org} />;
+      case "cohort": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org}
+        renderMentors={() => (
+          <NetworkScreen toast={toast} cohortSize={(user.cohort || []).length}
+            onAmplifyChange={loadFeed} orbitId={activeOrbitId} />
+        )} />;
       case "sessions": return (
         <SessionsScreen
           role={role} people={sessionPeople} sessions={sessions}
@@ -1567,7 +1597,8 @@ export default function RyznComplete() {
         />
       );
       case "chat": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "impact": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
+      case "impact": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast}
+        onVisibility={setPostVisibility} highlightPostId={highlightPostId} />;
       default: return null;
     }
   };
@@ -1582,6 +1613,13 @@ export default function RyznComplete() {
   const menteeNav = [["home", Home, "Home"], ["grow", Zap, "Grow"], ["discover", Compass, "Discover"], ["chat", MessageCircle, "Chat"], ["profile", User, "Profile"]];
   const mentorNav = [["feed", FileText, "Feed"], ["cohort", Users, "Cohort"], ["sessions", Calendar, "Sessions"], ["chat", MessageCircle, "Chat"], ["impact", User, "Profile"]];
   const nav = mode === "teams" ? TEAMS_NAV[role] : (role === "mentee" ? menteeNav : mentorNav);
+
+  /* The orbit pill in the TopBar. `icon` is derived from the kind here rather
+     than shipped by the API, so one lookup serves the pill, the dropdown and
+     the desktop switcher. With no orbits resolved yet the bar still renders —
+     it carries the streak, the bell and Settings, none of which need one. */
+  const topOrbits = (orbits.orbits || []).map(o => ({ ...o, icon: orbitIcon(o.kind) }));
+  const topOrbit = topOrbits.find(o => o.id === orbits.orbitId) || topOrbits[0] || null;
   const isDesktop = useIsDesktop();
   const reduced = useReducedMotion();
 
@@ -1679,17 +1717,34 @@ export default function RyznComplete() {
           </div>
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-            {/* The switcher only earns a permanent line of a phone screen once
-                there is somewhere to switch to. One orbit is not a choice. */}
-            {orbits.orbits.length > 1 && !fullScreenOverlay && (
-              <div style={{
-                flexShrink: 0, display: "flex", justifyContent: "center", padding: "8px 14px 6px",
-                paddingTop: "calc(8px + env(safe-area-inset-top, 0px))", background: C.white, borderBottom: `1px solid ${C.line}`,
-              }}>
-                <OrbitSwitcher orbits={orbits.orbits} orbitId={orbits.orbitId} onSwitch={switchOrbit} />
-              </div>
+            {/* The top bar. Which orbit you're standing in, then the numbers
+                that make progress legible from any tab, then the bell and your
+                own face. Previously only the orbit pill existed, and only when
+                there were two orbits to switch between, so on four of the five
+                tabs a mentee could not see their own streak or XP at all. */}
+            {!fullScreenOverlay && (
+              <TopBar
+                orbit={topOrbit}
+                orbits={topOrbits}
+                onSwitchOrbit={switchOrbit}
+                right={<>
+                  {role === "mentee" ? (<>
+                    <Chip c={C.coral} bg={C.coralTint}><Flame size={10} /> {user.streak ?? 0}</Chip>
+                    <Chip c={C.deep} bg={C.purpleTint}>{Number(user.xp || 0).toLocaleString()} XP</Chip>
+                  </>) : (
+                    <Chip c={C.deep} bg={C.purpleTint}><Sparkles size={10} /> {user.impact ?? 0} IMPACT</Chip>
+                  )}
+                  <BarBtn title="Notifications" onClick={() => setOverlay("notifs")} dot={matches.some(m => m.awaitingYou)}>
+                    <Bell size={15} color={C.ink} />
+                  </BarBtn>
+                  <button onClick={() => setOverlay("settings")} title="Settings"
+                    style={{ border: "none", background: "transparent", padding: 0, cursor: "pointer", lineHeight: 0, flexShrink: 0 }}>
+                    <Avatar src={user.avatarUrl} name={session?.user?.name} size={32} radius={11} />
+                  </button>
+                </>}
+              />
             )}
-            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingTop: orbits.orbits.length > 1 && !fullScreenOverlay ? 0 : "env(safe-area-inset-top, 0px)" }}>
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden", paddingTop: !fullScreenOverlay ? 0 : "env(safe-area-inset-top, 0px)" }}>
               <div className="app-scroll" style={{
                 height: "100%", boxSizing: "border-box", overflowY: fullScreenOverlay ? "hidden" : "auto",
                 paddingBottom: fullScreenOverlay ? 0 : 20,
@@ -1720,19 +1775,9 @@ export default function RyznComplete() {
                   return (
                     <motion.button key={id} onClick={() => { setOverlay(null); setTab(id); }} whileTap={reduced ? undefined : { scale: 0.9 }} transition={spring(reduced)}
                       style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0", position: "relative" }}>
-                      {active && (
-                        <motion.div layoutId="mobile-nav-active" transition={spring(reduced)}
-                          style={{ position: "absolute", top: 0, width: 22, height: 2.5, borderRadius: 2, background: C.purple }} />
-                      )}
-                      <span style={{ position: "relative", lineHeight: 0 }}>
-                        <Icon size={20} color={active ? C.purple : "#A5A39D"} strokeWidth={active ? 2.4 : 2} />
-                        {locked && (
-                          <span style={{ position: "absolute", right: -7, top: -5, background: C.ink, borderRadius: 5, padding: 2, display: "flex" }}>
-                            <Lock size={8} color={C.white} />
-                          </span>
-                        )}
-                      </span>
-                      <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.6, color: active ? C.purple : "#A5A39D", fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
+                      <Icon size={20} color={active ? C.purple : C.mute} strokeWidth={active ? 2.4 : 2} />
+                      {locked && <Lock size={9} color={C.coral} style={{ position: "absolute", top: 2, right: "26%" }} />}
+                      <span style={{ fontFamily: F.mono, fontSize: 8, letterSpacing: 0.6, color: active ? C.purple : C.mute, fontWeight: active ? 700 : 400 }}>{label.toUpperCase()}</span>
                     </motion.button>
                   );
                 })}

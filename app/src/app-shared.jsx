@@ -193,7 +193,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
   return (
     <div>
       <HeaderRow title="Mentor Meets" right={<Label color={C.coral}>QUARTERLY</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Featured quarterly event or placeholder */}
         <Card style={{ background: C.coral, border: "none", color: C.white, padding: 20 }}>
           <Label color="#F6D3C4">Next event</Label>
@@ -384,7 +384,7 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
   return (
     <div>
       <HeaderRow title="Notifications" onBack={back} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
         {inbox.map(m => {
           const first = (m.person?.name || "Someone").split(" ")[0];
           return (
@@ -552,7 +552,7 @@ export const SettingsScreen = ({ back, role, toast, onLogout, user, org, onRedoT
   return (
     <div>
       <HeaderRow title="Settings" onBack={back} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
         {/* The account you're actually signed in as. This screen previously
             reported LinkedIn as "CONNECTED · BADGE SHARING ON" for every user,
             with no LinkedIn integration behind it. */}

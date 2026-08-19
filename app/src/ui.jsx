@@ -8,7 +8,7 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Pencil, Trash2, Building2
 } from "lucide-react";
-import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { logoSrc, Brand } from "./branding.js";
 import { spring, t, modalPop, backdrop, T_FAST, T_SLOW } from "./motion.js";
 import { useIsDesktop } from "./useIsDesktop.js";
@@ -59,7 +59,10 @@ export const BrandIcon = ({ size = 48, light = false, alt = "Ryzn", style, ...re
 /* ----- Primitives ----- */
 export const Card = ({ style, children, onClick, className, ...rest }) => {
   const reduced = useReducedMotion();
-  const base = { background: C.white, borderRadius: 18, border: `1px solid ${C.line}`, padding: 16, cursor: onClick ? "pointer" : "default", ...style };
+  /* 16/14, not 18/16. The whole reference is built on a 14px card gutter; a
+     16px one adds ~4% to every card on a 384px-wide phone and is why the app's
+     screens felt roomier and less dense than the design. */
+  const base = { background: C.white, borderRadius: 16, border: `1px solid ${C.line}`, padding: 14, cursor: onClick ? "pointer" : "default", ...style };
   if (!onClick) return <div className={className} style={base} {...rest}>{children}</div>;
   return (
     <motion.div className={className} onClick={onClick} whileTap={reduced ? undefined : { scale: 0.985 }}
@@ -76,23 +79,43 @@ export const FormError = ({ children }) => children ? (
 export const Label = ({ children, color = C.gray, style }) => (
   <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 1.2, textTransform: "uppercase", color, ...style }}>{children}</div>
 );
+/**
+ * The button.
+ *
+ * Five looks, under both the app's names and the reference's, because the two
+ * halves of this codebase spell the same button differently and renaming 84
+ * call sites to fix a colour is how a design pass stalls:
+ *
+ *   solid  = dark    (ink)      purple = primary (brand)
+ *   tint   = soft    (lilac)    ghost  (hairline)     danger (coral)
+ *
+ * Geometry is the reference's: 11/16 at 13.5, 7/12 at 12, radius 12. The old
+ * 14/18 at 15 made every CTA a third taller than the design it came from.
+ */
+const BTN_KINDS = {
+  solid: { background: C.ink, color: C.white, border: "none" },
+  dark: { background: C.ink, color: C.white, border: "none" },
+  purple: { background: C.purple, color: C.white, border: "none" },
+  primary: { background: C.purple, color: C.white, border: "none" },
+  ghost: { background: "transparent", color: C.ink, border: `1px solid ${C.line}` },
+  tint: { background: C.purpleTint, color: C.deep, border: "none" },
+  soft: { background: C.purpleTint, color: C.deep, border: "none" },
+  danger: { background: C.coralTint, color: C.coral, border: "none" },
+};
 export const Btn = ({ children, kind = "primary", onClick, style, small, disabled, ...rest }) => {
-  const kinds = {
-    primary: { background: disabled ? "#C9C6E8" : C.purple, color: C.white },
-    dark: { background: C.ink, color: C.white },
-    ghost: { background: "transparent", color: C.ink, border: `1.5px solid ${C.ink}` },
-    soft: { background: C.purpleTint, color: C.purple },
-  };
   const reduced = useReducedMotion();
   return (
     <motion.button {...rest} onClick={disabled ? undefined : onClick}
       whileTap={disabled || reduced ? undefined : { scale: 0.97 }}
       transition={spring(reduced)}
       style={{
-        fontFamily: F.sans, fontWeight: 600, border: "none", borderRadius: 12,
+        fontFamily: F.sans, fontWeight: 600, borderRadius: 12,
         cursor: disabled ? "default" : "pointer", display: "inline-flex", alignItems: "center",
-        justifyContent: "center", gap: 8, padding: small ? "9px 14px" : "14px 18px",
-        fontSize: small ? 13 : 15, width: small ? "auto" : "100%", ...kinds[kind], ...style,
+        justifyContent: "center", gap: 6, padding: small ? "7px 12px" : "11px 16px",
+        fontSize: small ? 12 : 13.5, width: small ? "auto" : "100%",
+        ...(BTN_KINDS[kind] || BTN_KINDS.primary),
+        opacity: disabled ? 0.45 : 1,
+        ...style,
       }}>{children}</motion.button>
   );
 };
@@ -103,27 +126,43 @@ export const Btn = ({ children, kind = "primary", onClick, style, small, disable
    "this is the rule here" has to look identical on a phone and in a console, or
    the two stop reading as one product. No business logic lives in any of them.  */
 
-/** Mono uppercase micro-label: tier, status, policy state, counts. */
+/** Mono uppercase micro-label: tier, status, policy state, counts. A full pill,
+    not a 7px-radius rectangle, which is the shape everything else on a card
+    (avatars aside) is cut to. */
 export const Chip = ({ children, c = C.purple, bg = C.purpleTint, style }) => (
   <span style={{
-    fontFamily: F.mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase",
-    color: c, background: bg, padding: "4px 8px", borderRadius: 7, display: "inline-flex",
-    alignItems: "center", gap: 5, whiteSpace: "nowrap", ...style,
+    fontFamily: F.mono, fontSize: 8.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase",
+    color: c, background: bg, padding: "3px 9px", borderRadius: 999, display: "inline-flex",
+    alignItems: "center", gap: 4, whiteSpace: "nowrap", ...style,
   }}>{children}</span>
 );
 
-/** Segmented control. Drives Discover (3), Studio (2), Explore (2). */
-export const Seg = ({ options, value, onChange, small, style }) => (
-  <div style={{ display: "flex", background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 3, gap: 3, ...style }}>
-    {options.map((o) => (
-      <button key={o} onClick={() => onChange(o)} aria-pressed={value === o} style={{
-        flex: 1, border: "none", borderRadius: 9, cursor: "pointer", padding: small ? "6px 8px" : "8px 10px",
-        fontFamily: F.sans, fontWeight: 700, fontSize: small ? 11.5 : 12.5,
-        background: value === o ? C.white : "transparent",
-        color: value === o ? C.ink : C.gray,
-        boxShadow: value === o ? "0 1px 3px rgba(26,26,26,.08)" : "none",
-      }}>{o}</button>
-    ))}
+/**
+ * Segmented control. Drives Discover (3), Studio (2), Explore (2).
+ *
+ * Hugs its content rather than stretching edge to edge: the reference's segment
+ * is a compact chip parked at the top-left of a screen, and a full-bleed bar
+ * reads as a tab strip, which is a different control with a different promise.
+ * Pass `style={{ display: "flex" }}` where a caller really does want the width.
+ *
+ * `options` takes plain strings or `[value, label]` pairs, Teams passes pairs
+ * and used to render "mentorsMentors" into the button.
+ */
+export const Seg = ({ options = [], value, onChange, small, style }) => (
+  <div style={{ display: "inline-flex", background: "#EFEEE9", borderRadius: 10, padding: 3, gap: 2, ...style }}>
+    {options.map((o) => {
+      const [val, label] = Array.isArray(o) ? o : [o, o];
+      const on = value === val;
+      return (
+        <button key={val} onClick={() => onChange(val)} aria-pressed={on} style={{
+          border: "none", borderRadius: 8, cursor: "pointer", padding: small ? "5px 10px" : "7px 13px",
+          fontFamily: F.sans, fontWeight: 600, fontSize: small ? 11 : 12,
+          background: on ? C.white : "transparent",
+          color: on ? C.ink : C.gray,
+          boxShadow: on ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+        }}>{label}</button>
+      );
+    })}
   </div>
 );
 
@@ -132,11 +171,11 @@ export const Toggle = ({ on, onChange, disabled, label }) => (
   <button role="switch" aria-checked={!!on} aria-label={label} disabled={disabled}
     onClick={disabled ? undefined : () => onChange(!on)}
     style={{
-      width: 44, height: 26, borderRadius: 13, border: "none", padding: 3, flexShrink: 0,
+      width: 38, height: 22, borderRadius: 999, border: "none", flexShrink: 0, position: "relative",
       background: on ? C.purple : "#D8D6D0", cursor: disabled ? "default" : "pointer",
-      opacity: disabled ? 0.5 : 1, display: "flex", justifyContent: on ? "flex-end" : "flex-start",
+      opacity: disabled ? 0.5 : 1, transition: "background .15s",
     }}>
-    <span style={{ width: 20, height: 20, borderRadius: 10, background: C.white, display: "block" }} />
+    <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: "50%", background: C.white, display: "block", transition: "left .15s" }} />
   </button>
 );
 
@@ -153,62 +192,156 @@ export const Toggle = ({ on, onChange, disabled, label }) => (
  * destination that explains the unlock condition, not a dead end.
  */
 export const TabBar = ({ tabs, tab, setTab, locked = {} }) => (
-  <nav style={{ display: "flex", borderTop: `1px solid ${C.line}`, background: C.white, flexShrink: 0 }}>
+  <nav className="mobile-tab-bar" style={{ borderTop: `1px solid ${C.line}` }}>
     {tabs.map(([id, label, Icon]) => {
       const on = tab === id;
       const isLocked = !!locked[id];
       return (
         <button key={id} onClick={() => setTab(id)} aria-current={on ? "page" : undefined}
           style={{
-            flex: 1, border: "none", background: "transparent", cursor: "pointer",
-            padding: "9px 2px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            flex: 1, border: "none", background: "none", cursor: "pointer",
+            padding: "6px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+            position: "relative",
           }}>
-          <span style={{ position: "relative", display: "block", lineHeight: 0 }}>
-            <Icon size={19} color={on ? C.purple : isLocked ? C.mute : C.gray} />
-            {isLocked && (
-              <span style={{ position: "absolute", right: -6, top: -4, background: C.ink, borderRadius: 5, padding: 2, display: "flex" }}>
-                <Lock size={8} color={C.white} />
-              </span>
-            )}
-          </span>
-          <span style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.5, textTransform: "uppercase", color: on ? C.purple : isLocked ? C.mute : C.gray }}>{label}</span>
+          <Icon size={20} color={on ? C.purple : C.mute} strokeWidth={on ? 2.4 : 2} />
+          {isLocked && <Lock size={9} color={C.coral} style={{ position: "absolute", top: 2, right: "26%" }} />}
+          <span style={{
+            fontFamily: F.mono, fontSize: 8, letterSpacing: 0.6, textTransform: "uppercase",
+            color: on ? C.purple : C.mute, fontWeight: on ? 700 : 400,
+          }}>{label}</span>
         </button>
       );
     })}
   </nav>
 );
 
+/* ----- the top bar -----
+   The strip the reference puts above every tab: which orbit you are standing
+   in on the left, then the counters that make progress legible without opening
+   a screen (streak, XP or Impact), the bell, and your own face as the way into
+   Settings. The app had none of this — the orbit switcher was a separate line
+   that appeared only with two orbits, and streak/XP were buried inside Home,
+   so four of the five tabs showed no progress at all. */
+export const TopBar = ({ orbit, orbits = [], onSwitchOrbit, right }) => {
+  const [open, setOpen] = useState(false);
+  const many = orbits.length > 1;
+  const Icon = orbit?.icon;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8, padding: "10px 12px 8px",
+      paddingTop: "calc(10px + env(safe-area-inset-top, 0px))",
+      background: C.surface, borderBottom: `1px solid ${C.line}`, position: "relative", flexShrink: 0,
+    }}>
+      {orbit && (
+        <div style={{ position: "relative", minWidth: 0 }}>
+          <button onClick={() => many && setOpen(v => !v)} style={{
+            display: "flex", alignItems: "center", gap: 7, border: `1px solid ${C.line}`,
+            background: C.white, borderRadius: 999, padding: "6px 11px", cursor: many ? "pointer" : "default",
+            maxWidth: 190,
+          }}>
+            {Icon && <Icon size={13} color={orbit.accent || C.purple} style={{ flexShrink: 0 }} />}
+            <span style={{ textAlign: "left", minWidth: 0 }}>
+              <span style={{ display: "block", fontFamily: F.sans, fontWeight: 700, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orbit.name}</span>
+              <span style={{ display: "block", ...S.mono(5.5, C.mute) }}>{orbit.tag}</span>
+            </span>
+            {many && <ChevronDown size={12} color={C.mute} style={{ marginLeft: 2, flexShrink: 0 }} />}
+          </button>
+          {open && many && (
+            <div className="sheet-up" style={{
+              position: "absolute", top: "calc(100% + 8px)", left: 0, background: C.white,
+              border: `1px solid ${C.line}`, borderRadius: 14, boxShadow: "0 8px 24px rgba(26,26,26,.12)",
+              zIndex: 101, minWidth: 220,
+            }}>
+              {orbits.map((o, i) => (
+                <button key={o.id} onClick={() => { onSwitchOrbit?.(o.id); setOpen(false); }} style={{
+                  display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "12px 14px",
+                  border: "none", background: "none", cursor: "pointer", textAlign: "left",
+                  borderBottom: i < orbits.length - 1 ? `1px solid ${C.line}` : "none",
+                }}>
+                  {o.icon && <o.icon size={13} color={o.accent || C.purple} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={S.sb(12.5)}>{o.name}</div>
+                    <div style={S.mono(7.5, C.mute)}>{o.tag}</div>
+                  </div>
+                  {o.id === orbit.id && <div style={{ width: 6, height: 6, borderRadius: 3, background: C.teal, flexShrink: 0 }} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {open && many && <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 100 }} />}
+      <span style={{ flex: 1 }} />
+      {right}
+    </div>
+  );
+};
+
+/** A round icon button sized for the TopBar's right slot, with an unread dot. */
+export const BarBtn = ({ onClick, children, dot, title }) => (
+  <button onClick={onClick} title={title} style={{
+    position: "relative", border: `1px solid ${C.line}`, background: C.white, borderRadius: 999,
+    minWidth: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center",
+    justifyContent: "center", padding: "0 8px", gap: 5, flexShrink: 0,
+  }}>
+    {children}
+    {dot && <span style={{ position: "absolute", top: 6, right: 7, width: 7, height: 7, borderRadius: 4, background: C.coral, border: `1.5px solid ${C.white}` }} />}
+  </button>
+);
+
 /* ----- Settings chrome -----
    One sheet component serves both roles and all three orbit kinds; the sections
    inside it appear conditionally. See §6.4. */
 
-export const Sheet = ({ title, onClose, children, footer }) => (
-  <div className="app-scroll" style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 60, display: "flex", flexDirection: "column" }}>
-    <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", background: C.white, borderBottom: `1px solid ${C.line}`, flexShrink: 0 }}>
-      <button onClick={onClose} aria-label="Close" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4, display: "flex" }}>
-        <X size={18} color={C.ink} />
+/* A pushed full-screen layer. Ink header with a back chevron, not a white one
+   with an X: the reference uses the dark bar to say "this is on top of the app"
+   in a way an X on white never did, and the same chrome carries Settings,
+   Notifications and every other sheet. */
+export const Sheet = ({ title, onClose, children, footer, dark = true }) => (
+  <div className="sheet-up" style={{ position: "absolute", inset: 0, background: C.surface, zIndex: 60, display: "flex", flexDirection: "column" }}>
+    <header style={{
+      display: "flex", alignItems: "center", gap: 10, padding: "13px 14px",
+      paddingTop: "calc(13px + env(safe-area-inset-top, 0px))",
+      background: dark ? C.ink : C.white, borderBottom: dark ? "none" : `1px solid ${C.line}`, flexShrink: 0,
+    }}>
+      <button onClick={onClose} aria-label="Close" style={{
+        border: "none", background: dark ? "rgba(255,255,255,.15)" : "#EFEEE9", borderRadius: 9,
+        width: 30, height: 30, cursor: "pointer", color: dark ? C.white : C.ink,
+        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      }}>
+        <ChevronLeft size={16} />
       </button>
-      <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 16 }}>{title}</span>
+      <span style={S.h(15, dark ? C.white : C.ink)}>{title}</span>
     </header>
-    <div className="app-scroll sheet-up" style={{ flex: 1, overflowY: "auto", padding: 16 }}>{children}</div>
+    <div className="app-scroll" style={{
+      flex: 1, overflowY: "auto", padding: 14,
+      paddingBottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
+      display: "flex", flexDirection: "column", gap: 11,
+    }}>{children}</div>
     {footer}
   </div>
 );
 
-export const SecLabel = ({ children }) => (
-  <div style={{ fontFamily: F.mono, fontSize: 9, letterSpacing: 1.1, textTransform: "uppercase", color: C.purple, margin: "18px 2px 8px" }}>{children}</div>
+/* Sits inside a Card in most screens, so it carries only its own bottom margin.
+   Used as a standalone row in a gapped column (Settings), pass
+   `style={{ marginTop: 8, marginBottom: -2 }}` so it groups with the card
+   below it rather than floating between two. */
+export const SecLabel = ({ children, style }) => (
+  <div style={{ ...S.mono(8, C.purple), marginBottom: 9, ...style }}>{children}</div>
 );
 
 /** A settings row: label, optional sub-line, control on the right. */
 export const SettingRow = ({ label, sub, children, last }) => (
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "12px 0", borderBottom: last ? "none" : `1px solid ${C.line}` }}>
-    <span style={{ minWidth: 0 }}>
-      <span style={{ display: "block", fontFamily: F.sans, fontSize: 13.5, fontWeight: 600, color: C.ink }}>{label}</span>
-      {sub && <span style={{ display: "block", fontSize: 11.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>{sub}</span>}
-    </span>
-    <span style={{ flexShrink: 0 }}>{children}</span>
+  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: last ? "none" : `1px solid ${C.line}` }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={S.sb(12.5)}>{label}</div>
+      {sub && <div style={S.b(11, C.gray)}>{sub}</div>}
+    </div>
+    {children}
   </div>
 );
+/** The reference's name for the same row. */
+export const Row = SettingRow;
 
 /**
  * A value that comes from somewhere else and cannot be edited here.
@@ -219,9 +352,9 @@ export const SettingRow = ({ label, sub, children, last }) => (
  * keeping a second copy of it. The identical screen in the public orbit makes
  * the same fields editable.
  */
-export const Locked = ({ children }) => (
-  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: C.gray }}>
-    {children} <Lock size={10} color={C.mute} />
+export const Locked = ({ v, children }) => (
+  <span style={{ ...S.b(12, C.gray), display: "inline-flex", alignItems: "center", gap: 5 }}>
+    {v ?? children} <Lock size={10} color={C.mute} />
   </span>
 );
 
@@ -243,8 +376,8 @@ export const labelOf = (v) => String(Array.isArray(v) ? (v[0] ?? "") : (v ?? "")
    `name.split(" ")`, so a single null name anywhere on a screen threw inside
    render and the app-wide boundary replaced the whole app with "Something
    broke". Falling back to a dash is the same thing every caller already did. */
-export const Monogram = ({ name, size = 44, bg = C.purpleTint, color = C.deep, radius = 12 }) => (
-  <div style={{ width: size, height: size, borderRadius: radius, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.36, flexShrink: 0 }}>
+export const Monogram = ({ name, size = 40, bg = C.purpleTint, color = C.deep, radius = 12 }) => (
+  <div style={{ width: size, height: size, borderRadius: radius, background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.sans, fontWeight: 700, fontSize: size * 0.34, flexShrink: 0 }}>
     {initialsOf(name)}
   </div>
 );
@@ -303,23 +436,25 @@ export const XPPill = ({ xp, unit = "XP" }) => (
     <Zap size={11} color="#B7AFF2" /> {xp} {unit}
   </span>
 );
-export const Ring = ({ pct, size = 96, stroke = 9, color = C.purple, track = "#E2E0F5", children }) => {
+export const Ring = ({ pct, size = 84, stroke = 8, color = C.purple, track = "#E9E7F5", children }) => {
   const r = (size - stroke) / 2, circ = 2 * Math.PI * r;
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: "stroke-dashoffset .9s ease" }} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.min(1, pct || 0))}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: "stroke-dashoffset .5s ease" }} />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>{children}</div>
     </div>
   );
 };
+/* `pct` is a fraction (0…1), which is what every call site already passes.
+   Rounded ends and a rounded track, so it reads as the same family as Ring. */
 export const Bar = ({ pct, color = C.purple, h = 6 }) => (
-  <div style={{ height: h, background: "#E6E5E1", overflow: "hidden" }}>
-    <div style={{ width: `${Math.min(100, pct * 100)}%`, height: "100%", background: color, transition: "width .6s ease" }} />
+  <div style={{ height: h, background: "#EFEEE9", borderRadius: h, overflow: "hidden" }}>
+    <div style={{ width: `${Math.min(100, (pct || 0) * 100)}%`, height: "100%", background: color, borderRadius: h, transition: "width .4s ease" }} />
   </div>
 );
 export const QR = ({ seed, size = 120, dark = C.ink, light = C.white }) => {
@@ -353,15 +488,18 @@ export const QR = ({ seed, size = 120, dark = C.ink, light = C.white }) => {
     </svg>
   );
 };
-export const BadgeGlyph = ({ i, color, size = 30 }) => {
+/* The reference's six glyphs, in its order, then the two extra the app needs
+   for badges 7 and 8. Order is load-bearing: a badge is identified by its shape
+   as much as its name, so reshuffling these renames every badge people hold. */
+export const BadgeGlyph = ({ i, color, size = 26 }) => {
   const s = size, g = [
-    <polygon points={`${s / 2},2 ${s - 2},${s - 2} 2,${s - 2}`} fill={color} />,
-    <rect x={s * 0.18} y={s * 0.18} width={s * 0.64} height={s * 0.64} fill={color} />,
-    <circle cx={s / 2} cy={s / 2} r={s * 0.34} fill={color} />,
     <polygon points={`${s / 2},2 ${s - 2},${s / 2} ${s / 2},${s - 2} 2,${s / 2}`} fill={color} />,
-    <g fill={color}><rect x={s * 0.16} y={s * 0.6} width={s * 0.18} height={s * 0.28} /><rect x={s * 0.42} y={s * 0.36} width={s * 0.18} height={s * 0.52} /><rect x={s * 0.68} y={s * 0.12} width={s * 0.18} height={s * 0.76} /></g>,
-    <polygon points={`2,${s - 2} ${s / 2},2 ${s - 2},${s - 2} ${s / 2},${s * 0.62}`} fill={color} />,
-    <g fill={color}><circle cx={s * 0.32} cy={s * 0.32} r={s * 0.16} /><circle cx={s * 0.68} cy={s * 0.68} r={s * 0.16} /><rect x={s * 0.28} y={s * 0.28} width={s * 0.44} height={s * 0.08} transform={`rotate(45 ${s / 2} ${s / 2})`} /></g>,
+    <circle cx={s / 2} cy={s / 2} r={s / 2 - 2} fill={color} />,
+    <rect x={3} y={3} width={s - 6} height={s - 6} rx={5} fill={color} />,
+    <polygon points={`${s / 2},2 ${s - 2},${s - 2} 2,${s - 2}`} fill={color} />,
+    <polygon points={`${s / 2},2 ${s * 0.93},${s * 0.35} ${s * 0.78},${s * 0.9} ${s * 0.22},${s * 0.9} ${s * 0.07},${s * 0.35}`} fill={color} />,
+    <rect x={s * 0.18} y={s * 0.18} width={s * 0.64} height={s * 0.64} rx={4} fill={color} transform={`rotate(45 ${s / 2} ${s / 2})`} />,
+    <g fill={color}><rect x={s * 0.16} y={s * 0.6} width={s * 0.18} height={s * 0.28} rx={2} /><rect x={s * 0.42} y={s * 0.36} width={s * 0.18} height={s * 0.52} rx={2} /><rect x={s * 0.68} y={s * 0.12} width={s * 0.18} height={s * 0.76} rx={2} /></g>,
     <polygon points={`${s / 2},4 ${s * 0.62},${s * 0.38} ${s - 4},${s * 0.38} ${s * 0.68},${s * 0.58} ${s * 0.78},${s - 4} ${s / 2},${s * 0.74} ${s * 0.22},${s - 4} ${s * 0.32},${s * 0.58} 4,${s * 0.38} ${s * 0.38},${s * 0.38}`} fill={color} />,
   ];
   return <svg width={size} height={size}>{g[i % g.length]}</svg>;
@@ -412,17 +550,20 @@ export const Sparkline = ({ points = [], width = 84, height = 36, color = C.purp
     </svg>
   );
 };
-export const Heatmap = ({ weeks = 6 }) => {
+/* Weeks run left to right, days top to bottom, the way every contribution grid
+   people already read does. It used to be a 7-wide grid filled row-major, so
+   six weeks rendered as six rows of days and the column-per-week reading
+   (which is the only reason a heatmap beats a bar) was simply absent. */
+export const Heatmap = ({ weeks = 6, seed = 42 }) => {
   const cells = useMemo(() => {
-    const out = []; let s = 42;
-    for (let i = 0; i < weeks * 7; i++) { s = (s * 1103515245 + 12345) >>> 0; out.push(weeks === 1 && i > 1 ? 0 : (s >>> 14) % 4); }
-    if (weeks === 1) { out[0] = 3; out[1] = 2; }
+    const out = []; let s = seed;
+    for (let i = 0; i < weeks * 7; i++) { s = (s * 16807) % 2147483647; out.push(s % 4); }
     return out;
-  }, [weeks]);
+  }, [weeks, seed]);
   const shades = ["#ECEBE7", "#C8C3EE", "#8F86DE", C.purple];
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-      {cells.map((v, i) => <div key={i} style={{ aspectRatio: "1", background: shades[v], borderRadius: 3 }} />)}
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${weeks}, 1fr)`, gridAutoFlow: "column", gridTemplateRows: "repeat(7, 1fr)", gap: 3 }}>
+      {cells.map((v, i) => <div key={i} style={{ width: 11, height: 11, borderRadius: 3, background: shades[v] }} />)}
     </div>
   );
 };
@@ -439,10 +580,14 @@ export const NoCloseGutter = ({ children }) => (
 export const HeaderRow = ({ title, onBack, right }) => {
   const gutter = useContext(CloseGutter);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 14, paddingBottom: 10, paddingLeft: 20, paddingRight: Math.max(20, gutter) }}>
-      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, margin: -4 }}><ChevronLeft size={22} color={C.ink} /></button>}
+    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 14, paddingBottom: 10, paddingLeft: 16, paddingRight: Math.max(16, gutter) }}>
+      {onBack && (
+        <button onClick={onBack} style={{ border: "none", background: "#EFEEE9", borderRadius: 10, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <ChevronLeft size={16} color={C.ink} />
+        </button>
+      )}
       {/* minWidth:0 lets a long title wrap instead of shoving `right` under the X. */}
-      <div style={{ fontFamily: F.sans, fontSize: 20, fontWeight: 700, letterSpacing: -0.4, flex: 1, minWidth: 0 }}>{title}</div>
+      <div style={{ ...S.h(17), flex: 1, minWidth: 0 }}>{title}</div>
       {right}
     </div>
   );

@@ -77,7 +77,7 @@ export function SettingsSheet({
   return (
     <Sheet title="Settings" onClose={onClose}>
       {/* ----- profile ----- */}
-      <SecLabel>Profile photo</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Profile photo</SecLabel>
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Avatar src={user?.avatarUrl} name={user?.name} size={54} radius={16} />
@@ -93,7 +93,7 @@ export function SettingsSheet({
       </Card>
 
       {/* ----- identity ----- */}
-      <SecLabel>Identity</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Identity</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow label="Display name">
           <span style={{ fontSize: 13, color: C.gray }}>{user?.name || "-"}</span>
@@ -120,7 +120,7 @@ export function SettingsSheet({
       </Card>
 
       {/* ----- notifications ----- */}
-      <SecLabel>Notifications</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Notifications</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         {NOTIF_ROWS(role).map(([key, label, sub], i, arr) => (
           <SettingRow key={key} label={label} sub={sub} last={i === arr.length - 1}>
@@ -133,7 +133,7 @@ export function SettingsSheet({
       </p>
 
       {/* ----- visibility ----- */}
-      <SecLabel>Visibility</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Visibility</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow
           label={isPrivate ? "Badges visible to your manager" : "Badges on your public profile"}
@@ -155,7 +155,7 @@ export function SettingsSheet({
       </Card>
 
       {/* ----- availability ----- */}
-      <SecLabel>Availability</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Availability</SecLabel>
       <Card>
         <Seg options={["Mornings", "Afternoons", "Flexible"]} value={prefs?.avail || "Flexible"} onChange={set("avail")} small />
         {isMentor && (
@@ -183,7 +183,7 @@ export function SettingsSheet({
       </Card>
 
       {/* ----- linked accounts ----- */}
-      <SecLabel>Linked accounts</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Linked accounts</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow label="LinkedIn" sub="Used for sharing a badge. Nothing is posted without you tapping share." last>
           <Chip c={C.gray} bg={C.surface}><Linkedin size={10} /> Share only</Chip>
@@ -191,7 +191,7 @@ export function SettingsSheet({
       </Card>
 
       {/* ----- your orbits ----- */}
-      <SecLabel>Your orbits</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Your orbits</SecLabel>
       <Card style={{ padding: 0, overflow: "hidden" }}>
         {orbits.map((o, i) => {
           const Icon = orbitIcon(o.kind);
@@ -236,7 +236,7 @@ export function SettingsSheet({
       <InstallSection />
 
       {/* ----- account and privacy ----- */}
-      <SecLabel>Account and privacy</SecLabel>
+      <SecLabel style={{ marginTop: 8, marginBottom: -2 }}>Account and privacy</SecLabel>
       <Card style={{ paddingTop: 4, paddingBottom: 4 }}>
         <SettingRow label="Export my data" sub="Everything we hold about you, as one JSON file.">
           <Btn kind="ghost" small onClick={onExport}><Download size={13} /> Export</Btn>

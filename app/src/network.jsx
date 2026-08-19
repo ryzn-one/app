@@ -192,7 +192,7 @@ export const NetworkScreen = ({ back, toast, cohortSize = 0, onAmplifyChange, or
       <HeaderRow title="Mentor network" onBack={back}
         right={followingCount > 0 ? <Label color={C.purple}>FOLLOWING {followingCount}</Label> : null} />
 
-      <div style={{ padding: "0 20px 10px" }}>
+      <div style={{ padding: "0 14px 10px" }}>
         {/* Two numbers that are the same everywhere, and one that isn't. */}
         {guild && (
           <div style={{ display: "grid", gridTemplateColumns: guild.here != null ? "1fr 1fr 1fr" : "1fr 1fr", gap: 8, marginBottom: 10 }}>

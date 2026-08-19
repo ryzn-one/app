@@ -6,12 +6,13 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2, Repeat2
 } from "lucide-react";
-import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
-import { KIND_META, ContentTabs, ContentTabBar, relTime } from "./feed.jsx";
+import { KIND_META, ContentTabs, ContentTabBar, PostCard, relTime } from "./feed.jsx";
+import { PostOverflow } from "./studio.jsx";
 import { MyShelf, MentorShelf } from "./resources.jsx";
 import { TagRow } from "./chatmatch.jsx";
 import { fetchMenteeExercises, fetchProgram, setPhaseComplete, fetchImpactHistory } from "./lib/auth-client.js";
@@ -53,7 +54,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
   return (
     <div>
       <HeaderRow title="Design your course" onBack={back} />
-      <div style={{ padding: "0 20px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ padding: "0 14px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
         <Card className="fade-up" style={{ background: C.ink, border: "none", color: C.white, padding: 22 }}>
           <Label color="#9C93E8">Your mentorship course</Label>
           <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 6, lineHeight: 1.25 }}>
@@ -114,10 +115,22 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
 
 /* ----------------- APP: MENTOR ----------------- */
 
-export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
+/**
+ * Cohort.
+ *
+ * One search box over two segments: the people you mentor, and the mentors you
+ * stand beside. The Roster was a row buried at the bottom of this screen that
+ * opened a modal, so the half of the tab that is about your peers was invisible
+ * until you scrolled past your own cohort and found a chevron.
+ */
+export const MentorDash = ({ u, name, openOverlay, addsLeft, org, renderMentors }) => {
   const isDesktop = useIsDesktop();
+  const [view, setView] = useState("mentees");
+  const [q, setQ] = useState("");
   const firstName = (name || "").split(" ")[0];
   const cohortCount = (u.cohort || []).length;
+  const cohort = (u.cohort || []).filter(m =>
+    !q || m.name?.toLowerCase().includes(q.toLowerCase()) || (m.headline || "").toLowerCase().includes(q.toLowerCase()));
 
   /* Trend line for the hero card, real points from the xp_events ledger,
      not a fabricated curve. Fetched here rather than lifted to root state,
@@ -137,18 +150,42 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
   }, []);
 
   return (
-  <div style={{ padding: "18px 20px 20px" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-      <div>
-        <Label>Founding cohort</Label>
-        <div style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginTop: 4 }}>{firstName ? `${firstName}.` : "Welcome."}</div>
+  <div style={{ padding: "14px 14px 14px" }}>
+    {/* The bell moved to the top bar, where every tab can reach it. */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "2px 2px 0" }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={S.mono(7.5, C.mute)}>FOUNDING COHORT · MENTOR</div>
+        <div style={S.h(22)}>{firstName ? `${firstName}.` : "Welcome."}</div>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => { window.location.hash = "#/teams"; }} style={{ background: C.purpleTint, border: `1px solid ${C.purple}`, borderRadius: 12, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: C.purple }}><Building2 size={14} color={C.purple} /> GENIE AI</button>
-        <button onClick={() => openOverlay("notifs")} style={{ background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, padding: 10, cursor: "pointer" }}><Bell size={18} color={C.ink} /></button>
-      </div>
+      <Btn small kind="tint" style={{ flexShrink: 0 }} onClick={() => { window.location.hash = "#/teams"; }}>
+        <Building2 size={13} /> Genie AI
+      </Btn>
     </div>
-    <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 16, background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
+
+    {/* One box searching both segments, the way the reference does it — you
+        look for a person, not for which list they happen to be on. */}
+    <div style={{ display: "flex", alignItems: "center", gap: 9, background: C.white, border: `1px solid ${C.line}`, borderRadius: 14, padding: "11px 13px", marginTop: 12 }}>
+      <Search size={15} color={C.mute} />
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search mentees, mentors, posts"
+        style={{ flex: 1, border: "none", outline: "none", fontFamily: F.sans, fontSize: 13, background: "transparent", minWidth: 0 }} />
+      {q && <button onClick={() => setQ("")} style={{ border: "none", background: "none", cursor: "pointer", padding: 0, display: "flex" }}><X size={14} color={C.mute} /></button>}
+    </div>
+    <div style={{ marginTop: 11 }}>
+      <Seg small options={[["mentees", "Mentees"], ["mentors", "Mentors"]]} value={view} onChange={setView} />
+    </div>
+
+    {view === "mentors" ? (
+      <div style={{ marginTop: 11 }}>
+        {renderMentors ? renderMentors(q) : (
+          <Card onClick={() => openOverlay("network")} style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 10, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Repeat2 size={14} color={C.teal} /></div>
+            <div style={{ flex: 1, ...S.sb(13) }}>Mentor network</div>
+            <ChevronRight size={15} color={C.mute} />
+          </Card>
+        )}
+      </div>
+    ) : (<>
+    <Card data-tour="mentor-home-impact" onClick={() => openOverlay("board")} style={{ marginTop: 11, background: C.ink, border: "none", color: C.white, position: "relative", overflow: "hidden" }}>
       {/* Dynamic impact graph, pinned to the corner, real cumulative Impact
           points from the xp_events ledger, not a decorative fake curve. */}
       <div style={{ position: "absolute", top: 18, right: 18 }}>
@@ -170,60 +207,58 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org }) => {
         <ChevronRight size={11} color="#8B8985" style={{ marginLeft: -1 }} />
       </div>
     </Card>
-    <div onClick={() => openOverlay("mentees")} style={{ marginTop: 14, padding: "12px 14px", background: C.white, border: `1px solid ${C.line}`, borderRadius: 12, display: "flex", alignItems: "center", gap: 11, cursor: "pointer" }}>
-      <div style={{ width: 30, height: 30, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <Search size={14} color={C.purple} />
-      </div>
-      <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: C.gray }}>Find mentees</div>
-    </div>
-    {/* The status legend only means something once there are dots on screen to
-        decode. With an empty cohort it was three lines of colour theory above
-        nothing. */}
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "18px 2px 10px" }}>
-      <Label>Your cohort · {(u.cohort || []).length} mentee{(u.cohort || []).length === 1 ? "" : "s"}</Label>
-      {(u.cohort || []).length > 0 && (
+    {/* Seats and the joining rule, one line, the way the reference states it. */}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "14px 2px 0" }}>
+      <div style={S.mono(8, C.gray)}>{cohortCount}/{u.capacity ?? "—"} SEATS</div>
+      {cohortCount > 0 && (
         <div style={{ display: "flex", gap: 10 }}>
-          {Object.values(STATUS).map(s => <span key={s.label} style={{ fontFamily: F.mono, fontSize: 8.5, color: s.c, display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, background: s.c, display: "inline-block" }} />{s.label.toUpperCase()}</span>)}
+          {Object.values(STATUS).map(s => (
+            <span key={s.label} style={{ fontFamily: F.mono, fontSize: 8, color: s.c, display: "flex", alignItems: "center", gap: 4, letterSpacing: 0.6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: s.c, display: "inline-block" }} />{s.label.toUpperCase()}
+            </span>
+          ))}
         </div>
       )}
     </div>
-    {!(u.cohort || []).length && (
-      <Card style={{ marginTop: 10 }}>
-        <div style={{ fontSize: 13.5, color: C.gray, lineHeight: 1.55 }}>
-          No mentees yet. You’ll be notified when someone matches you. Building out your feed is what makes them pick you.
-        </div>
+    {cohortCount === 0 && (
+      <Card style={{ marginTop: 10, background: C.purpleTint, border: "1px solid #DDD9F6" }}>
+        <div style={S.sb(13.5, C.deep)}>No mentees yet.</div>
+        <div style={{ ...S.b(12.5, C.gray), marginTop: 3 }}>Your feed is what makes a mentee pick you. Post today, get picked this week.</div>
       </Card>
     )}
-    <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr 1fr", gap: 10, marginTop: !(u.cohort || []).length ? 10 : 0 }}>
-      {(u.cohort || []).map(m => {
+    {cohortCount > 0 && cohort.length === 0 && (
+      <div style={{ ...S.b(12.5, C.gray), textAlign: "center", padding: 14 }}>No one matches your search.</div>
+    )}
+    <div style={{ display: "grid", gridTemplateColumns: isDesktop ? "repeat(auto-fill, minmax(200px,1fr))" : "1fr", gap: 10, marginTop: 10 }}>
+      {cohort.map(m => {
         const st = STATUS[m.status] || STATUS.active;
         return (
-          <Card key={m.id || m.name} onClick={() => openOverlay({ mentee: m })} style={{ padding: 13 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <Avatar src={m.avatarUrl} name={m.name} size={38} bg={st.bg} color={st.c} />
-              <span style={{ width: 9, height: 9, background: st.c }} />
+          <Card key={m.id || m.name} onClick={() => openOverlay({ mentee: m })}>
+            <div style={{ display: "flex", gap: 11, alignItems: "center" }}>
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <Avatar src={m.avatarUrl} name={m.name} size={42} />
+                <span style={{ position: "absolute", bottom: -2, right: -2, width: 11, height: 11, borderRadius: 6, background: st.c, border: `2px solid ${C.white}` }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={S.sb(13.5)}>{m.name}</div>
+                <div style={S.b(11.5, C.gray)}>
+                  Wk {m.week} · <Flame size={9} style={{ verticalAlign: -1 }} color={m.streak ? C.coral : "#B9B7B1"} /> {m.streak}
+                </div>
+              </div>
+              {m.status === "at-risk" && <Chip c={C.amber} bg={C.amberTint}>AT RISK</Chip>}
+              <ChevronRight size={15} color={C.mute} />
             </div>
-            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5, marginTop: 9 }}>{m.name}</div>
-            <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 3 }}>WK {m.week} · <Flame size={9} style={{ display: "inline", verticalAlign: -1 }} color={m.streak ? C.coral : "#B9B7B1"} /> {m.streak}</div>
           </Card>
         );
       })}
+    </div>
+    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+      <Btn kind="ghost" style={{ flex: 1 }} onClick={() => openOverlay("mentees")}><Search size={13} /> Find mentees</Btn>
       {addsLeft > 0 && (
-        <Card onClick={() => openOverlay("addmentee")} style={{ padding: 13, border: "1.5px dashed #CFCDC7", background: "#EFEEEA", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 110 }}>
-          <div style={{ width: 32, height: 32, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={16} color={C.purple} /></div>
-          <div style={{ fontSize: 12.5, color: C.ink, marginTop: 8, textAlign: "center", fontWeight: 700 }}>add Mentee</div>
-          <div style={{ fontFamily: F.mono, fontSize: 8.5, color: C.gray, marginTop: 3, letterSpacing: 0.5 }}>{addsLeft} LEFT · +30 IMPACT</div>
-        </Card>
+        <Btn kind="ghost" style={{ flex: 1 }} onClick={() => openOverlay("addmentee")}><Plus size={13} /> Add · {addsLeft} left</Btn>
       )}
     </div>
-    <Card style={{ marginTop: 10, padding: "4px 14px" }}>
-      <div onClick={() => openOverlay("network")}
-        style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 0", cursor: "pointer" }}>
-        <div style={{ width: 30, height: 30, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Repeat2 size={14} color={C.teal} /></div>
-        <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>Mentor network</div>
-        <ChevronRight size={15} color={C.mute} />
-      </div>
-    </Card>
+    </>)}
   </div>
   );
 };
@@ -288,7 +323,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
     <div>
       <HeaderRow title={mentee.name} onBack={back}
         right={<span style={{ fontFamily: F.mono, fontSize: 9.5, background: st.bg, color: st.c, padding: "5px 9px" }}>{st.label.toUpperCase()}</span>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ background: C.deep, border: "none", color: C.white, padding: 20 }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <Avatar src={mentee.avatarUrl} name={mentee.name} size={58} bg={C.purple} color={C.white} radius={0} />
@@ -413,7 +448,7 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
 export const MentorBoard = ({ u, back }) => (
   <div>
     <HeaderRow title="Impact" onBack={back} right={<Label>THIS QUARTER</Label>} />
-    <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20 }}>
         <Label color="#9C93E8">Your Impact Score</Label>
         <div style={{ fontFamily: F.sans, fontSize: 46, fontWeight: 700, letterSpacing: -1.8, color: "#B7AFF2", marginTop: 6 }}>{u.impact}</div>
@@ -454,7 +489,7 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile, toast }) => {
+export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile, toast, onVisibility, highlightPostId }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
@@ -482,7 +517,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
     <div>
       <HeaderRow title="Your profile" right={
         <button data-tour="mentor-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
           {[["studio", "Studio"], ["preview", "Public view"]].map(([id, l]) => (
             <button key={id} onClick={() => setView(id)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray }}>{l}</button>
@@ -646,30 +681,21 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
           </Card>
           <MyShelf toast={toast} onChange={setShelfCount} />
 
-          {posts.map(p => {
-            const m = KIND_META[p.kind] || KIND_META.status, Icon = m.icon;
-            return (
-              <Card key={p.id} style={{ padding: 13 }}>
-                <div style={{ display: "flex", gap: 11, alignItems: "flex-start" }}>
-                  <div style={{ width: 34, height: 34, background: m.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={15} color={m.c} /></div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: p.title ? 700 : 400, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.title || p.text}</div>
-                    <div style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", marginTop: 4, letterSpacing: 0.5 }}>
-                      {relTime(p.createdAt).toUpperCase()} · {p.views} VIEWS · {p.reactions} REACTIONS{p.greeting ? " · GREETING" : ""}
-                    </div>
-                  </div>
+          {/* Your posts, as your mentees actually see them, with Pin and Delete
+              behind the overflow. It used to be a two-line summary with a colour
+              swatch and two buttons stapled underneath — a management list that
+              gave a mentor no way to check what they had actually published. */}
+          {posts.map(p => (
+            <div key={p.id} style={{ position: "relative" }}>
+              {(onPin || onDelete) && (
+                <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5 }}>
+                  <PostOverflow post={p} onPin={onPin} onDelete={onDelete} />
                 </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <Btn small kind={p.pinned ? "primary" : "ghost"} style={{ flex: 1, ...(p.pinned ? null : { borderColor: C.line, color: C.gray }) }}
-                    onClick={() => onPin(p.id, !p.pinned)}><Pin size={13} /> {p.pinned ? "Pinned" : "Pin"}</Btn>
-                  <Btn small kind="ghost" style={{ flex: 1, borderColor: C.coralTint, color: C.coral }}
-                    onClick={() => { if (window.confirm("Delete this post? Your mentees will stop seeing it.")) onDelete(p.id); }}>
-                    <Trash2 size={13} /> Delete
-                  </Btn>
-                </div>
-              </Card>
-            );
-          })}
+              )}
+              <PostCard post={p} author={name} authorId={userId} avatarUrl={u?.avatarUrl} tier mine
+                toast={toast} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
+            </div>
+          ))}
         </>)}
       </div>
     </div>

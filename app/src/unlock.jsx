@@ -47,44 +47,50 @@ export function UnlockTrackCard({ stage, mentor, chatGate, onStart, busy }) {
   const pct = Math.round((stage.done.length / stage.total) * 100);
 
   return (
-    <Card style={{ padding: 0, overflow: "hidden", border: `1.5px solid ${C.purple}` }}>
-      {/* Who this is for. Not "your progress", a person, with a face. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: C.purpleTint }}>
-        <Avatar src={mentor?.avatarUrl} name={mentor?.name} size={34} radius={10} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.9, color: C.deep, fontWeight: 700 }}>
-            {mentor ? `FOR YOUR MENTOR · ${firstNameOf(mentor.name).toUpperCase()}` : "FOR YOUR FIRST MENTOR"}
-          </div>
-          <div style={{ fontFamily: F.mono, fontSize: 8.5, letterSpacing: 0.9, color: C.purple, marginTop: 2 }}>
-            UNLOCK TRACK · STEP {stage.index} OF {stage.total}
+    <Card style={{ padding: 0, overflow: "hidden", border: "1px solid #C9C3F0" }}>
+      {/* Who this is for. Not "your progress", a person, with a face — on the
+          deep ink band the reference gives it, so the card reads as the one
+          thing on Home that is addressed to somebody. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 14px", background: C.deep }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+          <Avatar src={mentor?.avatarUrl} name={mentor?.name || "Ryzn"} size={28} radius={9} bg="#2E2870" color={C.lilac} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: F.mono, fontSize: 6.5, letterSpacing: 0.8, color: C.lilac, fontWeight: 700, textTransform: "uppercase" }}>
+              {mentor ? "For your mentor" : "For your first mentor"}
+            </div>
+            <div style={{ fontFamily: F.sans, fontWeight: 600, fontSize: 12.5, color: C.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {mentor ? mentor.name : "Pick one in Discover"}
+            </div>
           </div>
         </div>
-        <Chip c={C.purple} bg={C.white}>+{stage.remainingXp} XP LEFT</Chip>
+        <Chip c={C.lilac} bg="#2E2870" style={{ flexShrink: 0 }}>UNLOCK TRACK · STEP {stage.index} OF {stage.total}</Chip>
       </div>
 
-      <div style={{ padding: "14px 14px 15px" }}>
+      <div style={{ padding: 14 }}>
         <Bar pct={pct} />
 
         {/* The current step, alone. */}
         <motion.div key={step.id} initial={reduced ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring(reduced)}>
-          <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginTop: 12 }}>{step.title}</div>
-          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>{step.sub}</div>
+          <div style={{ fontFamily: F.sans, fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 12 }}>{step.title}</div>
+          <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.45, marginTop: 4 }}>{step.sub}</div>
         </motion.div>
 
         {/* The prize, before the ask. */}
-        <div style={{ marginTop: 13 }}>
-          <Label color={C.purple}>Finishing this track unlocks</Label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 7 }}>
+        <div style={{ background: "#F4F3EF", borderRadius: 12, padding: "10px 12px", margin: "12px 0" }}>
+          <div style={{ fontFamily: F.mono, fontSize: 7, letterSpacing: 0.8, textTransform: "uppercase", fontWeight: 700, color: C.gray, marginBottom: 7 }}>
+            Finishing this track unlocks
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {chatGate && UNLOCKS.map(({ icon: Icon, label }) => (
-              <Chip key={label(mentor?.name)} c={C.deep} bg={C.surface}>
-                <Icon size={10} /> {label(mentor?.name)}
+              <Chip key={label(mentor?.name)} c={C.deep} bg={C.white}>
+                <Icon size={9} /> {label(mentor?.name)}
               </Chip>
             ))}
-            <Chip c={C.teal} bg={C.tealTint}><Zap size={10} /> +{stage.remainingXp} XP</Chip>
+            <Chip c={C.deep} bg={C.white}><Zap size={9} /> +{stage.remainingXp} XP TOTAL</Chip>
           </div>
         </div>
 
-        <Btn style={{ marginTop: 14 }} disabled={busy} onClick={() => onStart(step)}>
+        <Btn kind="purple" disabled={busy} onClick={() => onStart(step)}>
           Start · +{step.xp} XP
         </Btn>
 

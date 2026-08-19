@@ -2,10 +2,11 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Check, Lock, Crown, Plus, Image as ImageIcon, MessageCircle, Play, FileText,
   Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe, Repeat2,
+  ArrowRight, UserPlus, Video,
 } from "lucide-react";
-import { C, F } from "./theme.js";
+import { C, F, S } from "./theme.js";
 import { StudioStats, ProfileStrength, PostOverflow, StudioSeg, StudioEmpty } from "./studio.jsx";
-import { Card, Label, Btn, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
+import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
 import { MentorShelf } from "./resources.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
@@ -79,21 +80,21 @@ const art = (seed, kind) => {
  */
 const MediaBlock = ({ post, height = 168, onEngage }) => {
   if (post.kind === "status") return null;
+
+  /* A file with no preview: the reference's teal slab, which says "there is
+     something here to open" in one glance where a grey bordered row did not. */
   if (post.kind === "resource") {
     const inner = (
       <>
-        <div style={{ width: 40, height: 46, background: C.amberTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <FileText size={18} color={C.amber} />
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 3 }}>
-            {(post.fileKind || "FILE").toUpperCase()}{post.media ? " · TAP TO OPEN" : ""}
-          </div>
-        </div>
+        <FileText size={15} color={C.teal} style={{ flexShrink: 0 }} />
+        <span style={{ ...S.sb(12.5, "#085041"), flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{post.title}</span>
+        <Chip c={C.teal} bg={C.white}>{(post.fileKind || "FILE").toUpperCase()}</Chip>
       </>
     );
-    const style = { display: "flex", alignItems: "center", gap: 12, marginTop: 10, background: C.surface, border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, textDecoration: "none", color: C.ink };
+    const style = {
+      display: "flex", alignItems: "center", gap: 8, marginBottom: 8, background: C.tealTint,
+      borderRadius: 12, padding: "12px 14px", textDecoration: "none", color: C.ink,
+    };
     // A real file gets a real link. Without media this is still the right tile -
     // posts published before uploads existed have none.
     return post.media?.url
@@ -108,26 +109,69 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
     // link unfurls with, so the card and the preview show the same thing.
     <video src={post.media.url} poster={post.media.posterUrl || undefined} controls preload="metadata" playsInline
       onClick={e => e.stopPropagation()} onPlay={() => onEngage?.()}
-      style={{ marginTop: 10, width: "100%", height, borderRadius: 12, background: C.ink, objectFit: "cover", display: "block" }} />
+      style={{ marginBottom: 8, width: "100%", height, borderRadius: 12, background: C.ink, objectFit: "cover", display: "block" }} />
   );
 
   if (post.kind === "photo" && post.media?.url) return (
     // The generated tile sits behind the image so there's no white flash while
     // it loads.
-    <div style={{ marginTop: 10, height, borderRadius: 12, overflow: "hidden", ...fallback }}>
+    <div style={{ marginBottom: 8, height, borderRadius: 12, overflow: "hidden", ...fallback }}>
       <img src={post.media.url} alt={post.title || ""} loading="lazy"
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
     </div>
   );
 
-  return (
-    <div style={{ marginTop: 10, height, borderRadius: 12, overflow: "hidden", position: "relative", ...fallback }}>
-      {post.kind === "video" && post.mins && (
-        <span style={{ position: "absolute", bottom: 8, right: 10, fontFamily: F.mono, fontSize: 10, color: C.white, background: "rgba(0,0,0,.45)", padding: "3px 7px", borderRadius: 6 }}>{post.mins}</span>
-      )}
+  /* A video with no file yet is a titled ink slab, not a blank gradient box:
+     the title is the only thing that makes it worth tapping. */
+  if (post.kind === "video") return (
+    <div style={{ background: C.ink, borderRadius: 12, padding: "22px 14px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <span style={{ ...S.sb(13, C.white), minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title || "Video"}</span>
+      {post.mins && <Chip c={C.lilac} bg="#2A2A2A">{post.mins}</Chip>}
     </div>
   );
+
+  return <div style={{ marginBottom: 8, height, borderRadius: 12, overflow: "hidden", ...fallback }} />;
 };
+
+/* ----------------- the Brief -----------------
+   The feed is finite, counted, and ends on purpose. These three pieces are what
+   make that legible, and they are shared by the mentee's Brief and the mentor's
+   so the two cannot drift: the count and the pips at the top, and the card that
+   closes the list and points at the next real thing to do. */
+
+/** Header: "n OF m REVIEWED", the title, and one pip per item. */
+export const BriefHeader = ({ title, total, done, sub }) => (
+  <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10, padding: "2px 2px 0" }}>
+    <div style={{ minWidth: 0 }}>
+      <div style={S.mono(7.5, C.mute)}>{done} OF {total} REVIEWED</div>
+      <div style={S.h(19)}>{title}</div>
+      {sub && <div style={{ ...S.b(12, C.gray), marginTop: 2 }}>{sub}</div>}
+    </div>
+    <div style={{ display: "flex", gap: 3, paddingBottom: 4, flexShrink: 0 }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <span key={i} style={{
+          width: i < done ? 6 : 14, height: 6, borderRadius: 3,
+          background: i < done ? "#D8D6D0" : C.purple, transition: "all .25s",
+        }} />
+      ))}
+    </div>
+  </div>
+);
+
+/** The end of the list. Never an infinite scroll, always a next action. */
+export const CaughtUp = ({ line, cta, onCta }) => (
+  <Card style={{ textAlign: "center", padding: 24, border: "1.5px dashed #C9C6C0", background: "transparent" }}>
+    <Sparkles size={17} color={C.purple} />
+    <div style={{ ...S.h(15), marginTop: 8 }}>You’re caught up.</div>
+    <div style={{ ...S.b(12, C.gray), marginTop: 3 }}>{line}</div>
+    {cta && <Btn kind="purple" small style={{ marginTop: 12 }} onClick={onCta}>{cta} <ArrowRight size={14} /></Btn>}
+  </Card>
+);
+
+/** The footer line that says why the list stopped. */
+export const BriefFooter = ({ children }) => (
+  <div style={{ ...S.b(11, C.mute), textAlign: "center", padding: "0 22px 4px" }}>{children}</div>
+);
 
 /**
  * Who this post is for, on the author's own copy of it.
@@ -193,6 +237,7 @@ const RelayRow = ({ by }) => (
 export const PostCard = ({
   post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
   onAuthor, onShare, onVisibility, onAmplify, amplified, toast, highlight,
+  avatarUrl, followers, following, onFollow,
 }) => {
   const meta = KIND_META[post.kind] || KIND_META.status;
   const Icon = meta.icon;
@@ -362,75 +407,90 @@ export const PostCard = ({
       ...(highlight ? { boxShadow: `0 0 0 2px ${C.purple}` } : null),
     }}>
       {post.amplifiedBy && <RelayRow by={post.amplifiedBy} />}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
+      {/* Byline. Who wrote it, how many people follow them, and what kind of
+          thing this is — one line of mono under the name, the way the reference
+          does it, rather than a coloured kind-icon parked in the corner. The
+          Follow button takes that corner instead, because on a feed the only
+          thing worth a tap up here is "more of this person". */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
         <button type="button" onClick={openAuthor} disabled={!onAuthor}
-          style={{ border: "none", background: "none", padding: 0, cursor: onAuthor ? "pointer" : "default", flexShrink: 0 }}>
-          <Monogram name={author} size={38} bg={C.purple} color={C.white} />
+          style={{ border: "none", background: "none", padding: 0, cursor: onAuthor ? "pointer" : "default", flexShrink: 0, lineHeight: 0 }}>
+          <Avatar src={avatarUrl} name={author} size={34} radius={11} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
             {onAuthor ? (
               <button type="button" onClick={openAuthor} style={{
-                border: "none", background: "none", padding: 0, cursor: "pointer",
-                fontWeight: 700, fontSize: 14, color: C.ink, fontFamily: F.sans, textAlign: "left",
+                border: "none", background: "none", padding: 0, cursor: "pointer", textAlign: "left",
+                ...S.sb(12.5), minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>{author}</button>
             ) : (
-              <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{author}</span>
+              <span style={{ ...S.sb(12.5), minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{author}</span>
             )}
-            {mine && <span style={{ fontSize: 13, color: C.gray, fontWeight: 600 }}>· you</span>}
-            {tier && <Crown size={11} color={C.purple} />}
+            {mine && <span style={S.b(12, C.gray)}>· you</span>}
+            {tier && <Crown size={11} color={C.amber} style={{ flexShrink: 0 }} />}
+            {post.pinned && <Chip style={{ flexShrink: 0 }}><Pin size={8} /> PINNED</Chip>}
           </div>
-          <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}>
-            {post.pinned && <><Pin size={9} color={C.purple} /> </>}{relTime(post.createdAt).toUpperCase()} · {meta.label.toUpperCase()}
+          <div style={S.mono(6.5, C.mute)}>
+            {typeof followers === "number" ? `${Number(followers).toLocaleString()} FOLLOWERS · ` : ""}
+            {relTime(post.createdAt).toUpperCase()} · {meta.label.toUpperCase()}
           </div>
         </div>
-        <div style={{ width: 28, height: 28, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Icon size={13} color={meta.c} />
-        </div>
+        {onFollow ? (
+          <Btn small kind={following ? "ghost" : "tint"} onClick={onFollow}>
+            {following ? <><Check size={12} /> Following</> : <><UserPlus size={12} /> Follow</>}
+          </Btn>
+        ) : (
+          <div style={{ width: 28, height: 28, borderRadius: 9, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icon size={13} color={meta.c} />
+          </div>
+        )}
       </div>
 
-      {post.title && post.kind !== "resource" && <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 11 }}>{post.title}</div>}
-      {post.text && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: post.title && post.kind !== "resource" ? C.gray : C.ink, marginTop: post.title && post.kind !== "resource" ? 4 : 11 }}>{post.text}</div>}
-      {/* Not for the author: a mentor playing back their own video shouldn't
-          count as a view of it. */}
+      {/* Media above the words for anything with a picture in it, text-first
+          only for a status — which is the order the reference reads in. */}
       <MediaBlock post={post} onEngage={mine ? undefined : () => !done && onOpen?.(post)} />
+      {post.title && post.kind !== "resource" && post.kind !== "video" && <div style={{ ...S.h(15), marginBottom: 4 }}>{post.title}</div>}
+      {post.text && <div style={{ ...S.b(13.5, C.ink), marginBottom: 8 }}>{post.text}</div>}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 12, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <button type="button" onClick={likePost}
           title={mine ? "You can’t like your own post" : (liked ? "Liked" : "Like")}
           disabled={liking}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
-            cursor: mine || liked ? "default" : "pointer", padding: "6px 10px", borderRadius: 10,
-            fontFamily: F.mono, fontSize: 11, fontWeight: 700,
-            color: liked ? C.coral : C.gray,
+            display: "inline-flex", alignItems: "center", gap: 5, border: "none",
+            background: liked ? C.coralTint : "#F1F0EC", color: liked ? C.coral : C.gray,
+            cursor: mine || liked ? "default" : "pointer", padding: "5px 11px", borderRadius: 999,
+            fontFamily: F.mono, fontSize: 9, fontWeight: 700,
           }}>
-          <Heart size={15} color={liked ? C.coral : "#A5A39D"} fill={liked ? C.coral : "none"} />
+          <Heart size={11} color={liked ? C.coral : C.gray} fill={liked ? C.coral : "none"} />
           {reactionCount}
         </button>
         <button type="button" onClick={toggleComments} style={{
-          display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: commentsOpen ? C.purpleTint : "none",
-          cursor: "pointer", padding: "6px 10px", borderRadius: 10,
-          fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: commentsOpen ? C.purple : C.gray,
+          display: "inline-flex", alignItems: "center", gap: 5, border: "none",
+          background: commentsOpen ? C.purpleTint : "#F1F0EC", color: commentsOpen ? C.deep : C.gray,
+          cursor: "pointer", padding: "5px 11px", borderRadius: 999,
+          fontFamily: F.mono, fontSize: 9, fontWeight: 700,
         }}>
-          <MessageCircle size={15} color={commentsOpen ? C.purple : "#A5A39D"} /> {commentCount}
+          <MessageCircle size={11} /> {commentCount}
         </button>
         <button type="button" onClick={share} disabled={sharing} style={{
-          display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "none",
-          cursor: sharing ? "default" : "pointer", padding: "6px 10px", borderRadius: 10,
-          fontFamily: F.mono, fontSize: 11, fontWeight: 700, color: C.gray,
+          display: "inline-flex", alignItems: "center", gap: 5, border: "none", background: "#F1F0EC",
+          cursor: sharing ? "default" : "pointer", padding: "5px 11px", borderRadius: 999,
+          fontFamily: F.mono, fontSize: 9, fontWeight: 700, color: C.gray,
         }}>
-          <Share2 size={15} color="#A5A39D" /> Share
+          <Share2 size={11} />
         </button>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: "auto", fontFamily: F.mono, fontSize: 11, color: C.gray, padding: "6px 4px" }}
+        <Chip c={C.gray} bg="#F1F0EC" style={{ fontSize: 9 }}
           title={mine && post.publicViews ? `${post.publicViews} of these came from the public link` : undefined}>
-          <Eye size={14} color="#A5A39D" /> {post.views + (mine ? (post.publicViews || 0) : 0)}
-        </span>
-        {!mine && openable && (
-          <button type="button" onClick={() => onOpen(post)} style={{
-            fontFamily: F.mono, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer",
-            padding: "7px 11px", borderRadius: 10, background: done ? C.tealTint : meta.bg, color: done ? C.teal : meta.c, whiteSpace: "nowrap",
-          }}>{done ? "✓ DONE" : `${post.kind === "video" ? "WATCH" : "OPEN"} · +${post.xp} XP`}</button>
+          <Eye size={9} /> {post.views + (mine ? (post.publicViews || 0) : 0)}
+        </Chip>
+        <span style={{ flex: 1 }} />
+        {!mine && (openable || onOpen) && (
+          <Btn small kind={done ? "ghost" : "purple"} onClick={() => !done && onOpen?.(post)} disabled={done}>
+            {done ? <><Check size={12} /> Reviewed</> : <>{post.kind === "video" ? "Watch" : post.kind === "resource" ? "Open" : "Read"} · +{post.xp ?? 10} XP</>}
+          </Btn>
         )}
       </div>
 
@@ -524,7 +584,7 @@ export const PostCard = ({
 };
 
 /** Compose box. One text field, four kinds, visibility, one button. */
-export const Composer = ({ onPublish, name, userId }) => {
+export const Composer = ({ onPublish, name, userId, avatarUrl, seed }) => {
   const [kind, setKind] = useState("status");
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
@@ -536,6 +596,11 @@ export const Composer = ({ onPublish, name, userId }) => {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [visibility, setVisibility] = useState("cohort");
   const fileRef = useRef(null);
+
+  /* The weekly prompt in the Brief writes its opening line straight into the
+     composer. `seed` carries a nonce so tapping the same prompt twice still
+     reloads it; a bare string would compare equal and do nothing. */
+  useEffect(() => { if (seed?.text) setText(seed.text); }, [seed?.nonce]);
 
   const needsFile = kind === "photo" || kind === "video" || kind === "resource";
   const needsTitle = kind === "video" || kind === "resource";
@@ -585,11 +650,19 @@ export const Composer = ({ onPublish, name, userId }) => {
   }[kind];
 
   return (
-    <Card style={{ padding: 14 }}>
-      <div style={{ display: "flex", gap: 10 }}>
-        <Monogram name={name} size={38} bg={C.purple} color={C.white} />
-        <textarea value={text} onChange={e => setText(e.target.value)} rows={2} placeholder={placeholder}
-          style={{ flex: 1, border: "none", outline: "none", background: "transparent", resize: "none", fontFamily: F.sans, fontSize: 14, lineHeight: 1.5, color: C.ink, paddingTop: 8, minWidth: 0 }} />
+    <>
+    <Card style={{ padding: 12 }}>
+      {/* One line, not a text box. The reference's composer is deliberately the
+          size of a thought: avatar, a sentence, send. Everything the kind needs
+          (a title, a file, who can see it) unfolds underneath only once a kind
+          that needs it is picked. */}
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <Avatar src={avatarUrl} name={name} size={34} radius={11} />
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={1} placeholder={placeholder}
+          style={{ flex: 1, border: "none", outline: "none", background: "transparent", resize: "none", fontFamily: F.sans, fontSize: 12.5, lineHeight: 1.5, color: C.ink, paddingTop: 9, minWidth: 0, minHeight: 34 }} />
+        <Btn small kind="purple" disabled={!ready} onClick={go} style={{ marginTop: 1 }}>
+          <Send size={12} />
+        </Btn>
       </div>
 
       {needsTitle && (
@@ -649,38 +722,43 @@ export const Composer = ({ onPublish, name, userId }) => {
 
       {err && <div style={{ marginTop: 8, fontSize: 12.5, color: C.coral, lineHeight: 1.45 }}>{err}</div>}
 
-      <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 10, padding: 3, marginTop: 12, maxWidth: 260 }}>
+      <div style={{ display: "flex", background: "#EFEEE9", borderRadius: 10, padding: 3, marginTop: 12, maxWidth: 220 }}>
         {[["cohort", "Private"], ["public", "Public"]].map(([id, l]) => (
           <button key={id} type="button" disabled={uploading} onClick={() => setVisibility(id)} style={{
-            flex: 1, border: "none", cursor: uploading ? "default" : "pointer", borderRadius: 8, padding: "7px 0",
-            fontFamily: F.sans, fontWeight: 600, fontSize: 12.5,
+            flex: 1, border: "none", cursor: uploading ? "default" : "pointer", borderRadius: 8, padding: "5px 0",
+            fontFamily: F.sans, fontWeight: 600, fontSize: 11,
             background: visibility === id ? C.white : "transparent",
             color: visibility === id ? (id === "public" ? C.teal : C.ink) : C.gray,
+            boxShadow: visibility === id ? "0 1px 3px rgba(0,0,0,.08)" : "none",
           }}>{l}</button>
         ))}
       </div>
-      <div style={{ fontSize: 11.5, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
+      <div style={{ ...S.b(11, C.mute), marginTop: 6 }}>
         {visibility === "public"
           ? "Anyone with the link can open this, including people outside Ryzn."
           : "Only your cohort can see this inside Ryzn. You can flip it to Public later."}
       </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-        {Object.entries(KIND_META).map(([id, m]) => {
-          const on = kind === id, Icon = m.icon;
-          return (
-            <button key={id} disabled={uploading} onClick={() => { setKind(id); setMedia(null); setFileName(""); setErr(null); setCaptureOpen(false); }} style={{
-              display: "inline-flex", alignItems: "center", gap: 5, border: "none", cursor: uploading ? "default" : "pointer", borderRadius: 10,
-              padding: "7px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 12.5,
-              background: on ? m.bg : "transparent", color: on ? m.c : C.gray, opacity: uploading && !on ? 0.5 : 1,
-            }}><Icon size={13} />{m.label}</button>
-          );
-        })}
-        <Btn small style={{ marginLeft: "auto" }} disabled={!ready} onClick={go}>
-          <Send size={13} /> {busy ? "Posting…" : uploading ? "Uploading…" : "Post"}
-        </Btn>
-      </div>
     </Card>
+
+    {/* The four kinds, as flat pills directly under the composer — the
+        reference's row, and the reason a mentor never has to think about
+        formatting before they think about what to say. */}
+    <div style={{ display: "flex", gap: 6, marginTop: -5, flexWrap: "wrap" }}>
+      {Object.entries(KIND_META).map(([id, m]) => {
+        const on = kind === id;
+        return (
+          <button key={id} disabled={uploading} onClick={() => { setKind(id); setMedia(null); setFileName(""); setErr(null); setCaptureOpen(false); }} style={{
+            border: "none", borderRadius: 999, padding: "5px 11px", cursor: uploading ? "default" : "pointer",
+            background: on ? C.tealTint : "#EBEAE6", color: on ? "#085041" : C.gray,
+            fontFamily: F.sans, fontWeight: 600, fontSize: 10.5, opacity: uploading && !on ? 0.5 : 1,
+          }}>{m.label}</button>
+        );
+      })}
+      {(busy || uploading) && (
+        <span style={{ ...S.mono(8, C.mute), alignSelf: "center", marginLeft: 4 }}>{busy ? "POSTING…" : "UPLOADING…"}</span>
+      )}
+    </div>
+    </>
   );
 };
 
@@ -738,141 +816,277 @@ function GreetingCard({ onDone, userId }) {
   );
 }
 
-/* ----------------- MENTOR: your feed ----------------- */
+/* ----------------- MENTOR: your Brief -----------------
+
+   The Feed tab is where a mentor *writes*, and it is a Brief: a short, finite,
+   counted list of the few things worth their attention today, ending on a card
+   that sends them off to mentor rather than on more scroll.
+
+   What used to live here — profile strength, the stats strip, the greeting
+   checklist, the pin/delete list of everything they had ever posted — was the
+   same management surface the Profile tab already carries, rendered twice. Feed
+   is where you write, Studio (Profile) is where you curate. */
+
+const PROMPTS = [
+  { q: "What is one thing you unlearned this year?", seed: "One thing I unlearned this year: " },
+  { q: "What did you get wrong early that cost you time?", seed: "Something I got wrong early: " },
+  { q: "What do you wish someone had told you at their stage?", seed: "What I wish someone had told me: " },
+  { q: "Which habit actually moved the needle for you?", seed: "The habit that actually moved the needle: " },
+];
+/* Stable for the week, so the prompt doesn't change under a mentor mid-thought
+   and doesn't reshuffle on every render. */
+const promptOfWeek = () => PROMPTS[Math.floor(Date.now() / 6048e5) % PROMPTS.length];
 
 export const MentorFeed = ({
   u, name, userId, feed, amplified = [], publish, greetingUp, uploadGreeting,
   toast, onAuthor, onVisibility, onAmplify, openNetwork, highlightPostId,
   followers = 0, onPin, onDelete, go,
 }) => {
-  const FEED_LIMIT = 5;
-  const [shownMentorPosts, setShownMentorPosts] = useState(FEED_LIMIT);
-  const [shownAmplifiedPosts, setShownAmplifiedPosts] = useState(FEED_LIMIT);
+  const [cleared, setCleared] = useState([]);
+  const [seed, setSeed] = useState(null);
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
-  const reach = u.cohort ? u.cohort.length : 0;
-  /* Studio and Public view are two segments of one screen, not two screens: a
-     mentor who cannot see their profile the way a stranger does keeps writing
-     for an audience they are imagining. */
-  const [seg, setSeg] = useState("Studio");
+  const prompt = useMemo(promptOfWeek, []);
 
-  if (seg === "Public view") {
-    return (
-      <div>
-        <HeaderRow title="Your feed" right={<Label color={C.purple}>AS OTHERS SEE IT</Label>} />
-        <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-          <StudioSeg value={seg} onChange={setSeg} />
-          <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Avatar src={u.avatarUrl} name={name} size={46} radius={14} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 16 }}>{name}</div>
-              {u.headline && <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2 }}>{u.headline}</div>}
-              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.purple, marginTop: 4, letterSpacing: 0.6 }}>
-                {Number(followers).toLocaleString()} FOLLOWER{followers === 1 ? "" : "S"}
-              </div>
-            </div>
-          </Card>
-          {u.why && (
-            <Card>
-              <Label color={C.purple}>Why I mentor</Label>
-              <div style={{ fontSize: 13.5, lineHeight: 1.6, marginTop: 7 }}>{u.why}</div>
-            </Card>
-          )}
-          {/* The same post components, read-only. That is what makes this a
-              preview rather than a mock of one. */}
-          {feed.length === 0
-            ? <StudioEmpty />
-            : feed.map(p => (
-                <PostCard key={p.id} post={p} author={name} authorId={userId} tier readOnly toast={toast} />
-              ))}
-        </div>
-      </div>
-    );
-  }
+  /* The Brief, in the reference's order: the receipt for what you already put
+     out, then what your peers published, then one prompt if you have nothing
+     of your own to say. Everything in it is real — the receipt counts your own
+     posts, the peer items are the posts other mentors actually published. */
+  const brief = [
+    {
+      id: "receipt",
+      kind: "receipt",
+      t: views > 0 ? `Your content reached ${views} view${views === 1 ? "" : "s"}` : "Your Orbit is waiting on you",
+      d: views > 0
+        ? `${reactions} reaction${reactions === 1 ? "" : "s"} across ${feed.length} post${feed.length === 1 ? "" : "s"}. Every mentee in your orbit sees what you publish.`
+        : "Publish once and every mentee in your orbit sees it. No message required.",
+    },
+    ...(!greetingUp ? [{ id: "greeting", kind: "greeting" }] : []),
+    ...amplified.slice(0, 3).map((p) => ({ id: `peer-${p.id}`, kind: "peer", post: p })),
+    { id: "prompt", kind: "prompt", t: "This week’s prompt", d: `${prompt.q} Prompt answers rank highest with mentees.` },
+  ];
+  const left = brief.filter((b) => !cleared.includes(b.id));
+  const clear = (id, msg) => { setCleared((c) => [...c, id]); if (msg) toast?.(msg); };
 
   return (
     <div>
-      <HeaderRow title="Your feed" right={<Label color={C.purple}>+10 IMPACT PER POST</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <StudioSeg value={seg} onChange={setSeg} />
-        <StudioStats inOrbit={reach} followers={followers} views={views} reactions={reactions} />
-
-        <ProfileStrength u={u} hasGreeting={greetingUp} postCount={feed.length} onGo={go} />
-
-        {!greetingUp && <GreetingCard onDone={uploadGreeting} userId={userId} />}
+      <div style={{ padding: "14px 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+        <BriefHeader
+          title="Your Brief"
+          total={brief.length}
+          done={brief.length - left.length}
+          sub={left.length > 0
+            ? `${left.length} item${left.length > 1 ? "s" : ""} picked for your mentees. Then go mentor.`
+            : "Done for today."}
+        />
 
         <div data-tour="mentor-feed-compose">
-          <Composer name={name} userId={userId} onPublish={publish} />
+          <Composer name={name} userId={userId} avatarUrl={u?.avatarUrl} onPublish={publish} seed={seed} />
         </div>
 
-        {/* The other half of the feed: what other mentors wrote and you chose
-            to put in front of your cohort. Kept in its own section rather than
-            mixed into your posts, your mentees see one Orbit, but you should
-            always be able to tell what you wrote from what you relayed. */}
-        {openNetwork && (
-          <Card onClick={openNetwork} style={{ padding: 13, cursor: "pointer" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 34, height: 34, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Repeat2 size={15} color={C.purple} />
+        {left.map((b) => {
+          if (b.kind === "receipt") return (
+            <Card key={b.id} style={{ background: C.ink, border: "none" }}>
+              <div style={S.mono(7.5, C.lilac)}>IMPACT RECEIPT</div>
+              <div style={{ ...S.h(15, C.white), margin: "6px 0 3px" }}>{b.t}</div>
+              <div style={S.b(12, "#B5B3AE")}>{b.d}</div>
+              <Btn small kind="tint" style={{ marginTop: 11 }} onClick={() => clear(b.id, "Receipt cleared")}>Got it</Btn>
+            </Card>
+          );
+
+          /* The greeting is a Brief item, not a permanent card: it is a thing to
+             do once, and once it is done it should leave the screen for good. */
+          if (b.kind === "greeting") return (
+            <GreetingCard key={b.id} userId={userId}
+              onDone={async (media) => { await uploadGreeting(media); setCleared((c) => [...c, b.id]); }} />
+          );
+
+          if (b.kind === "peer") return (
+            <div key={b.id}>
+              <div style={{ ...S.mono(7.5, C.teal), marginBottom: 6, paddingLeft: 2 }}>MENTOR NETWORK</div>
+              <PostCard post={{ ...b.post, amplifiedBy: null }} author={b.post.authorName} authorId={b.post.authorId}
+                avatarUrl={b.post.authorAvatarUrl} tier toast={toast} onAuthor={onAuthor}
+                onAmplify={onAmplify} amplified={b.post.amplified} />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <Btn small kind="ghost" style={{ flex: 1 }} onClick={() => clear(b.id, "Cleared from your Brief")}>Not now</Btn>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>Mentor network</div>
-                <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>
-                  {amplified.length
-                    ? `${amplified.length} post${amplified.length === 1 ? "" : "s"} from other mentors in your Orbit`
-                    : "Follow other mentors and add their posts to your Orbit"}
-                </div>
+            </div>
+          );
+
+          return (
+            <Card key={b.id} style={{ border: `1.5px dashed ${C.purple}` }}>
+              <div style={S.mono(7.5, C.purple)}>PROMPT · RYZN</div>
+              <div style={{ ...S.h(15), margin: "6px 0 3px" }}>{b.t}</div>
+              <div style={S.b(12.5, C.gray)}>{b.d}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
+                <Btn small kind="ghost" style={{ flex: 1 }} onClick={() => clear(b.id, "Skipped. Next prompt Friday.")}>Skip</Btn>
+                <Btn small kind="purple" style={{ flex: 1.3 }}
+                  onClick={() => { setSeed({ text: prompt.seed, nonce: Date.now() }); clear(b.id, "Prompt loaded into the composer above"); }}>
+                  Use prompt
+                </Btn>
+              </div>
+            </Card>
+          );
+        })}
+
+        {left.length === 0 && (
+          <CaughtUp
+            line="The Brief ends on purpose. The next one lands tomorrow."
+            cta="Go mentor"
+            onCta={() => go("cohort")}
+          />
+        )}
+
+        {/* Everything you have already published lives in Studio, one tap away,
+            rather than being re-listed under the thing you are writing now. */}
+        <Card onClick={() => go("impact")} style={{ display: "flex", alignItems: "center", gap: 11, padding: 12 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 10, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FileText size={14} color={C.purple} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={S.sb(12.5)}>Your posts · {feed.length}</div>
+            <div style={S.b(11, C.gray)}>Pin, edit visibility and see what each one earned, in Studio.</div>
+          </div>
+          <Chip c={C.deep}>+10 IMPACT EACH</Chip>
+        </Card>
+        {openNetwork && (
+          <Card onClick={openNetwork} style={{ display: "flex", alignItems: "center", gap: 11, padding: 12 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 10, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Repeat2 size={14} color={C.teal} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={S.sb(12.5)}>Mentor network</div>
+              <div style={S.b(11, C.gray)}>
+                {amplified.length
+                  ? `${amplified.length} post${amplified.length === 1 ? "" : "s"} from other mentors in your Orbit`
+                  : "Follow other mentors and add their posts to your Orbit"}
               </div>
             </div>
           </Card>
         )}
 
-        {amplified.length > 0 && (
-          <>
-            <Label color={C.purple}>From mentors you follow · {amplified.length}</Label>
-            {amplified.slice(0, shownAmplifiedPosts).map(p => (
-              <PostCard key={p.id} post={{ ...p, amplifiedBy: null }} author={p.authorName} authorId={p.authorId}
-                tier toast={toast} onAuthor={onAuthor} onAmplify={onAmplify} amplified />
-            ))}
-            {amplified.length > shownAmplifiedPosts && (
-              <button onClick={() => setShownAmplifiedPosts(s => s + FEED_LIMIT)} style={{
-                width: "100%", padding: "12px 0", border: "none", background: "transparent",
-                cursor: "pointer", fontFamily: F.sans, fontWeight: 600, fontSize: 13.5,
-                color: C.purple, textDecoration: "none",
-              }}>
-                Load more · {shownAmplifiedPosts} of {amplified.length}
-              </button>
-            )}
-            <Label>Your own posts · {feed.length}</Label>
-          </>
-        )}
-
-        {feed.length === 0 ? <StudioEmpty /> : (
-          <>
-            {feed.slice(0, shownMentorPosts).map(p => (
-              <div key={p.id} style={{ position: "relative" }}>
-                {/* Pin and Delete behind the overflow, never beside Publish. */}
-                {(onPin || onDelete) && (
-                  <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5 }}>
-                    <PostOverflow post={p} onPin={onPin} onDelete={onDelete} />
-                  </div>
-                )}
-                <PostCard post={p} author={name} authorId={userId} tier mine
-                  toast={toast} onAuthor={onAuthor} onVisibility={onVisibility} highlight={highlightPostId === p.id} />
-              </div>
-            ))}
-            {feed.length > shownMentorPosts && (
-              <button onClick={() => setShownMentorPosts(s => s + FEED_LIMIT)} style={{
-                width: "100%", padding: "12px 0", border: "none", background: "transparent",
-                cursor: "pointer", fontFamily: F.sans, fontWeight: 600, fontSize: 13.5,
-                color: C.purple, textDecoration: "none",
-              }}>
-                Load more · {shownMentorPosts} of {feed.length}
-              </button>
-            )}
-          </>
-        )}
+        <BriefFooter>No infinite scroll. Items are ranked by your mentees’ goals, not engagement.</BriefFooter>
       </div>
+    </div>
+  );
+};
+
+/* ----------------- MENTEE: Discover -----------------
+
+   Three segments over one screen, the way the reference lays it out: the Brief
+   (everything your mentors published, finite and counted), Match (the deck),
+   and My mentor (the seats you hold). Discover used to open straight onto the
+   Explore map, so a mentee who already had mentors had no surface at all for
+   what those mentors were posting — it was buried one tap inside an Orbit that
+   only opened from a tile on Home. */
+
+export const MenteeDiscover = ({
+  view = "feed", setView, mentors = [], feeds = {}, watched = {}, reacted = {},
+  onWatch, onReact, onAuthor, toast, go, openOrbit, openDm, chatLocked,
+  seats = 3, renderMatch,
+}) => {
+  /* One list across every mentor, newest first, each post carrying its author
+     so a three-mentor Brief still reads as three different people. */
+  const posts = useMemo(() => {
+    const out = [];
+    for (const m of mentors) {
+      for (const p of (feeds[m.id] || [])) {
+        out.push({ ...p, __author: m });
+      }
+    }
+    return out.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }, [mentors, feeds]);
+
+  const done = posts.filter((p) => watched[p.id]).length;
+  const left = posts.filter((p) => !watched[p.id]);
+
+  return (
+    <div>
+      <div style={{ padding: "12px 14px 8px", background: C.surface }}>
+        <Seg options={[["feed", "Feed"], ["match", "Match"], ["mine", "My mentor"]]} value={view} onChange={setView} />
+      </div>
+
+      {view === "match" ? (
+        /* The deck lays itself out as a full-height flex column, so it needs a
+           *definite* height to resolve against. A `height: 100%` here would
+           resolve to `auto` inside the page scroller and collapse the whole
+           card stack to nothing — the same bug that once made Discover's map
+           invisible inside a modal. */
+        <div style={{ height: "min(74vh, 640px)", minHeight: 440 }}>{renderMatch?.()}</div>
+      ) : view === "mine" ? (
+        <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+          {mentors.length === 0 && (
+            <Card style={{ textAlign: "center", padding: 24 }}>
+              <div style={S.sb(13)}>No mentor yet.</div>
+              <div style={{ ...S.b(12, C.gray), marginTop: 4 }}>Head to Match. Adding one takes a minute.</div>
+              <Btn small kind="purple" style={{ marginTop: 12 }} onClick={() => setView("match")}>Find a mentor <ArrowRight size={13} /></Btn>
+            </Card>
+          )}
+          {mentors.map((m, i) => (
+            <Card key={m.id}>
+              <div style={{ display: "flex", gap: 11, alignItems: "center" }}>
+                <Avatar src={m.avatarUrl} name={m.name} size={44} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={S.sb(13.5)}>{m.name}</div>
+                  {m.headline && <div style={{ ...S.b(11.5, C.gray), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.headline}</div>}
+                </div>
+                <Chip c={C.purple}>{(feeds[m.id] || []).length} POSTS</Chip>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
+                <Btn small kind="tint" style={{ flex: 1 }} onClick={() => openOrbit?.(m.id)}>Open Orbit</Btn>
+                <Btn small kind={chatLocked ? "ghost" : "purple"} style={{ flex: 1 }}
+                  onClick={() => chatLocked ? toast?.("Finish Stage 1 to unlock chat") : openDm?.(m)}>
+                  {chatLocked ? <><Lock size={12} /> Locked</> : "Message"}
+                </Btn>
+              </div>
+            </Card>
+          ))}
+          {mentors.length > 0 && (
+            <div style={{ ...S.b(11.5, C.mute), textAlign: "center" }}>
+              {mentors.length}/{seats} seats used · each mentor is their own Orbit.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+          <BriefHeader title="Your Brief" total={posts.length} done={done} />
+
+          {posts.length === 0 && (
+            <Card style={{ textAlign: "center", padding: 24 }}>
+              <div style={S.sb(13)}>Nothing here yet.</div>
+              <div style={{ ...S.b(12, C.gray), marginTop: 4 }}>
+                {mentors.length
+                  ? "Everything your mentors publish lands here first."
+                  : "Add a mentor and everything they publish lands here."}
+              </div>
+              {mentors.length === 0 && (
+                <Btn small kind="purple" style={{ marginTop: 12 }} onClick={() => setView("match")}>Find a mentor <ArrowRight size={13} /></Btn>
+              )}
+            </Card>
+          )}
+
+          {left.map((p) => (
+            <PostCard key={p.id} post={p}
+              author={p.authorName || p.__author?.name} authorId={p.authorId || p.__author?.id}
+              avatarUrl={p.__author?.avatarUrl} tier
+              reacted={!!reacted[p.id]} onReact={onReact}
+              onOpen={() => onWatch?.(p.id, p.xp)} done={!!watched[p.id]}
+              toast={toast} onAuthor={onAuthor} />
+          ))}
+
+          {posts.length > 0 && left.length === 0 && (
+            <CaughtUp
+              line="The Brief ends on purpose. Today’s rep is waiting."
+              cta="Do today’s rep"
+              onCta={() => go?.("grow")}
+            />
+          )}
+
+          <BriefFooter>
+            No infinite scroll. Ranked by your goals, not engagement. Everything your mentors post lands here first.
+          </BriefFooter>
+        </div>
+      )}
     </div>
   );
 };
@@ -982,7 +1196,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
   if (!mentor) return (
     <div>
       <HeaderRow title="Orbit" onBack={back} />
-      <div style={{ padding: "0 20px 20px" }}>
+      <div style={{ padding: "0 14px 14px" }}>
         <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
           <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No mentor yet</div>
           <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>Once you’re matched, everything your mentor posts lands here.</div>
@@ -1007,7 +1221,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
   return (
     <div>
       <HeaderRow title={`${first}’s Orbit`} onBack={back} right={<Label color={C.teal}>{reviewed}/{resources.length} REVIEWED</Label>} />
-      <div style={{ padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
         <Card style={{ background: C.ink, border: "none", color: C.white, padding: 20, cursor: onAuthor ? "pointer" : "default" }} onClick={openMentorProfile}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <Avatar src={mentor.avatarUrl} name={mentor.name} size={54} bg={C.purple} color={C.white} radius={0} />

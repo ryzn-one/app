@@ -74,7 +74,7 @@ const PoolChips = ({ policy, orbit }) => {
   if (!policy.crossDiv && orbit?.division) chips.push(`${orbit.division} only`);
   if (!chips.length) return null;
   return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "0 20px 8px" }}>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "0 14px 8px" }}>
       {chips.map((c) => <Chip key={c} c={C.deep} bg={C.purpleTint}>{c}</Chip>)}
       <Chip c={C.gray} bg={C.surface}>Set by {orbit?.name || "this orbit"}</Chip>
     </div>
@@ -152,7 +152,7 @@ export const AddMentorScreen = ({ candidates, used, onAdd, back, toast, onLoad, 
         onBack={back}
         right={<Label color={seatsLeft > 0 ? C.purple : C.teal}>{used}/{cap} SEATS</Label>}
       />
-      <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 20px 8px", letterSpacing: 0.5 }}>
+      <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 14px 8px", letterSpacing: 0.5 }}>
         {apply
           ? `MENTORS APPROVE APPLICATIONS · ${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT · +15 XP`
           : `ADD INSTANTLY · ${seatsLeft} SEAT${seatsLeft === 1 ? "" : "S"} LEFT · +15 XP`}
@@ -230,7 +230,7 @@ export const AddMenteeScreen = ({ candidates, addsUsed, onAdd, back, toast, onLo
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <HeaderRow title="Add mentees" onBack={back} right={<Label color={addsLeft > 0 ? C.purple : C.teal}>{addsUsed}/3 ADDS</Label>} />
-      <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 20px 8px", letterSpacing: 0.5 }}>✓ ACCEPT · ✕ PASS · +30 IMPACT EACH · {addsLeft} ADD{addsLeft === 1 ? "" : "S"} LEFT THIS CYCLE</div>
+      <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", padding: "0 14px 8px", letterSpacing: 0.5 }}>✓ ACCEPT · ✕ PASS · +30 IMPACT EACH · {addsLeft} ADD{addsLeft === 1 ? "" : "S"} LEFT THIS CYCLE</div>
       {isDesktop
         ? <CardGrid deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={addsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />
         : <SwipeDeck deck={deck} renderCard={renderCard} stampRight="ACCEPT" stampLeft="PASS" canRight={addsLeft > 0} onDecide={decide} onUndo={undo} canUndo={history.length > 0 && history[history.length - 1].dir === "left"} emptyView={emptyView} onTap={setDetail} />}
