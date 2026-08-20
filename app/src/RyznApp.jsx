@@ -1562,7 +1562,7 @@ export default function RyznComplete() {
         <TeamsChat {...common} role={role} matches={matches} stage1
           onOpenThread={(p) => setOverlay({ dmPeer: p })} />
       );
-      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
+      case "profile": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} uploadGreeting={uploadGreeting} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast} />;
       default: return null;
     }
   };
@@ -1606,7 +1606,7 @@ export default function RyznComplete() {
       }
     }
     switch (tab) {
-      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} greetingUp={greetingUp} uploadGreeting={uploadGreeting} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} openNetwork={() => setOverlay("network")} highlightPostId={highlightPostId}
+      case "feed": return <MentorFeed u={user} name={session?.user?.name} userId={session?.user?.id} feed={mentorFeed} amplified={relayed} publish={publishPost} toast={toast} onAuthor={openAuthorProfile} onVisibility={setPostVisibility} onAmplify={setRelaying} highlightPostId={highlightPostId}
           followers={session?.followers ?? 0} onPin={pinPost} onDelete={removePost} go={setTab} />;
       case "cohort": return <MentorDash u={user} name={session?.user?.name} openOverlay={setOverlay} addsLeft={3 - menteeAdds} org={session?.org}
         renderMentors={(q) => (
@@ -1623,7 +1623,7 @@ export default function RyznComplete() {
         />
       );
       case "chat": return <MeetsScreen role={role} u={user} name={session?.user?.name} toast={toast} events={events} eventsLoading={eventsLoading} eventsError={eventsError} isAdmin={session?.user?.isAdmin} userId={session?.user?.id} onCreateEvent={createEventHandler} onEventAction={eventActionHandler} />;
-      case "impact": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast}
+      case "impact": return <MentorProfile u={user} name={session?.user?.name} userId={session?.user?.id} openOverlay={setOverlay} feed={mentorFeed} go={setTab} greetingUp={greetingUp} uploadGreeting={uploadGreeting} onPin={pinPost} onDelete={removePost} program={program} onUpdateProfile={updateUserProfile} toast={toast}
         onVisibility={setPostVisibility} highlightPostId={highlightPostId} />;
       default: return null;
     }

@@ -81,7 +81,7 @@ export const TAB_HINTS = {
   },
   mentor: {
     home: { target: "mentor-home-impact", title: "Your Impact Score", body: "This grows as your mentees hit milestones, it drives your tier.", placement: "bottom" },
-    feed: { target: "mentor-feed-compose", title: "Your feed", body: "Publish a greeting or a post here. Mentees on your Orbit see what you share.", placement: "bottom" },
+    feed: { target: "mentor-feed-compose", title: "Your feed", body: "Publish a post here. Mentees on your Orbit see what you share.", placement: "bottom" },
     sessions: { target: "mentor-sessions-list", title: "Book your sessions", body: "Propose a few times to a mentee. When they pick one it's booked, and both of you can add it to your calendar.", placement: "bottom" },
     meets: { target: "meets-ticket-mentor", title: "In-person Meets", body: "Your seat at the quarterly event lands here once a date is set.", placement: "bottom" },
     profile: { target: "mentor-profile-program", title: "Design your course", body: "Tap here to open the course designer, add phases from kickoff to graduation, with optional certificates.", placement: "bottom" },
@@ -102,7 +102,7 @@ export const COMPREHENSIVE_TOUR_STEPS = {
   mentor: [
     { type: "intro", icon: Sparkles, title: "Welcome, mentor", body: "Your cohort is counting on you. This tour shows you around and how to guide your mentees." },
     { type: "intro", icon: Users, title: "Your impact & tier", body: "Track mentee progress, publish content to your feed, and grow your Impact Score. Tier up from Scout to Pathfinder and beyond." },
-    { type: "screen", tab: "feed", title: "Your brief", body: "Publish greetings, posts, or resources here. Your mentees on your Orbit see everything you share. The Brief is finite and purposeful." },
+    { type: "screen", tab: "feed", title: "Your brief", body: "Publish posts and resources here. Your mentees on your Orbit see everything you share. The Brief is finite and purposeful." },
     { type: "screen", tab: "cohort", title: "Your cohort", body: "Search your mentees and mentors, manage requests, and track progress. Your mentees show here once matched." },
     { type: "screen", tab: "sessions", title: "Sessions", body: "Propose times, your mentee picks one, and the booking lands on the calendar for both of you." },
     { type: "screen", tab: "chat", title: "Community events", body: "In-person and online meetups for your cohort. Track availability, vote on dates, and finalize timing here." },

@@ -11,7 +11,7 @@ import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, Field, XPPill, Ring, Bar
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
-import { KIND_META, ContentTabs, ContentTabBar, PostCard, relTime } from "./feed.jsx";
+import { KIND_META, ContentTabs, ContentTabBar, PostCard, GreetingCard, relTime } from "./feed.jsx";
 import { PostOverflow } from "./studio.jsx";
 import { MyShelf, MentorShelf } from "./resources.jsx";
 import { TagRow } from "./chatmatch.jsx";
@@ -592,7 +592,7 @@ export const MentorBoard = ({ u, back }) => (
  * you write, Studio is where you curate. Two composers is the confusion that
  * started this.
  */
-export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, onPin, onDelete, program, onUpdateProfile, toast, onVisibility, highlightPostId }) => {
+export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, greetingUp, uploadGreeting, onPin, onDelete, program, onUpdateProfile, toast, onVisibility, highlightPostId }) => {
   // Always lands on Studio: this is your own profile, so the thing you act on
   // comes first and the preview is one tap away.
   const [view, setView] = useState("studio");
@@ -600,11 +600,16 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
   /* Lifted out of MyShelf so the checklist below can count it. The shelf owns
      the rows; this is only how many there are. */
   const [shelfCount, setShelfCount] = useState(0);
+  /* The recorder itself, opened from the checklist row that was already the
+     thing tracking it. It used to sit as a card in the Feed brief; the row here
+     linked across to it, which meant the one item on this list you couldn't act
+     on from this list was the one worth the most Impact. */
+  const [greetingOpen, setGreetingOpen] = useState(false);
   const posts = Array.isArray(feed) ? feed : [];
   const cohort = u?.cohort || [];
   const phases = program?.phases || [];
   const checklist = [
-    ["Greeting video for new mentees", greetingUp, "+25 Impact", () => go("feed")],
+    ["Greeting video for new mentees", greetingUp, "+25 Impact", uploadGreeting ? () => setGreetingOpen(true) : null],
     ["Why-I-mentor statement", !!u?.why, "done in setup", null],
     ["First feed post", posts.length >= 1, "+10 Impact", () => go("feed")],
     ["3+ pieces of content", posts.length >= 3, "3× more requests", () => go("feed")],
@@ -714,6 +719,15 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             ))}
             <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 12 }}>STRONG PROFILES GET 3× MORE MENTEE REQUESTS</div>
           </Card>
+
+          {greetingOpen && (
+            <ModalShell onClose={() => setGreetingOpen(false)}>
+              <div style={{ padding: "20px 24px 24px" }}>
+                <GreetingCard userId={userId}
+                  onDone={async (media) => { await uploadGreeting(media); setGreetingOpen(false); }} />
+              </div>
+            </ModalShell>
+          )}
 
           {/* Door into the course designer, not an inline editor. Mentors open
               a dedicated workspace to author phases, then come back here. */}

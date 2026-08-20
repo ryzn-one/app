@@ -911,7 +911,7 @@ export const Composer = ({ onPublish, name, userId, avatarUrl, seed }) => {
  * button that set a boolean to true: the checklist ticked, +15 Impact toasted,
  * and no video existed anywhere.
  */
-function GreetingCard({ onDone, userId }) {
+export function GreetingCard({ onDone, userId }) {
   const [progress, setProgress] = useState(null);
   const [err, setErr] = useState(null);
   const [captureOpen, setCaptureOpen] = useState(false);
@@ -966,33 +966,27 @@ function GreetingCard({ onDone, userId }) {
    What used to live here — profile strength, the stats strip, the greeting
    checklist, the pin/delete list of everything they had ever posted — was the
    same management surface the Profile tab already carries, rendered twice. Feed
-   is where you write, Studio (Profile) is where you curate. */
+   is where you write, Studio (Profile) is where you curate.
 
-const PROMPTS = [
-  { q: "What is one thing you unlearned this year?", seed: "One thing I unlearned this year: " },
-  { q: "What did you get wrong early that cost you time?", seed: "Something I got wrong early: " },
-  { q: "What do you wish someone had told you at their stage?", seed: "What I wish someone had told me: " },
-  { q: "Which habit actually moved the needle for you?", seed: "The habit that actually moved the needle: " },
-];
-/* Stable for the week, so the prompt doesn't change under a mentor mid-thought
-   and doesn't reshuffle on every render. */
-const promptOfWeek = () => PROMPTS[Math.floor(Date.now() / 6048e5) % PROMPTS.length];
+   The same rule took out four more cards that had collected at the foot of this
+   screen: the greeting prompt, the weekly writing prompt, "Your posts · N" and
+   "The Roster". Three of the four were doors to somewhere else, and a Brief that
+   ends in a row of doors isn't finite, it's a menu. The greeting recorder moved
+   to the Profile checklist that was already tracking it; the Roster is a segment
+   of the Cohort tab; your posts are in Studio. */
 
 export const MentorFeed = ({
-  u, name, userId, feed, amplified = [], publish, greetingUp, uploadGreeting,
-  toast, onAuthor, onVisibility, onAmplify, openNetwork, highlightPostId,
+  u, name, userId, feed, amplified = [], publish,
+  toast, onAuthor, onVisibility, onAmplify, highlightPostId,
   followers = 0, onPin, onDelete, go,
 }) => {
   const [cleared, setCleared] = useState([]);
-  const [seed, setSeed] = useState(null);
   const views = feed.reduce((a, p) => a + p.views, 0);
   const reactions = feed.reduce((a, p) => a + p.reactions, 0);
-  const prompt = useMemo(promptOfWeek, []);
 
-  /* The Brief, in the reference's order: the receipt for what you already put
-     out, then what your peers published, then one prompt if you have nothing
-     of your own to say. Everything in it is real — the receipt counts your own
-     posts, the peer items are the posts other mentors actually published. */
+  /* The Brief: the receipt for what you already put out, then what your peers
+     published. Everything in it is real — the receipt counts your own posts,
+     the peer items are the posts other mentors actually published. */
   const brief = [
     {
       id: "receipt",
@@ -1002,9 +996,7 @@ export const MentorFeed = ({
         ? `${reactions} reaction${reactions === 1 ? "" : "s"} across ${feed.length} post${feed.length === 1 ? "" : "s"}. Every mentee in your orbit sees what you publish.`
         : "Publish once and every mentee in your orbit sees it. No message required.",
     },
-    ...(!greetingUp ? [{ id: "greeting", kind: "greeting" }] : []),
     ...amplified.slice(0, 3).map((p) => ({ id: `peer-${p.id}`, kind: "peer", post: p })),
-    { id: "prompt", kind: "prompt", t: "This week’s prompt", d: `${prompt.q} Prompt answers rank highest with mentees.` },
   ];
   const left = brief.filter((b) => !cleared.includes(b.id));
   const clear = (id, msg) => { setCleared((c) => [...c, id]); if (msg) toast?.(msg); };
@@ -1022,7 +1014,7 @@ export const MentorFeed = ({
         />
 
         <div data-tour="mentor-feed-compose">
-          <Composer name={name} userId={userId} avatarUrl={u?.avatarUrl} onPublish={publish} seed={seed} />
+          <Composer name={name} userId={userId} avatarUrl={u?.avatarUrl} onPublish={publish} />
         </div>
 
         {left.map((b) => {
@@ -1035,14 +1027,7 @@ export const MentorFeed = ({
             </Card>
           );
 
-          /* The greeting is a Brief item, not a permanent card: it is a thing to
-             do once, and once it is done it should leave the screen for good. */
-          if (b.kind === "greeting") return (
-            <GreetingCard key={b.id} userId={userId}
-              onDone={async (media) => { await uploadGreeting(media); setCleared((c) => [...c, b.id]); }} />
-          );
-
-          if (b.kind === "peer") return (
+          return (
             <div key={b.id}>
               <div style={{ ...S.mono(7.5, C.teal), marginBottom: 6, paddingLeft: 2 }}>MENTOR NETWORK</div>
               <PostCard post={{ ...b.post, amplifiedBy: null }} author={b.post.authorName} authorId={b.post.authorId}
@@ -1053,21 +1038,6 @@ export const MentorFeed = ({
               </div>
             </div>
           );
-
-          return (
-            <Card key={b.id} style={{ border: "1px solid transparent", background: C.purpleTint }}>
-              <div style={S.mono(7.5, C.purple)}>PROMPT · RYZN</div>
-              <div style={{ ...S.h(15), margin: "6px 0 3px" }}>{b.t}</div>
-              <div style={S.b(12.5, C.gray)}>{b.d}</div>
-              <div style={{ display: "flex", gap: 8, marginTop: 11 }}>
-                <Btn small kind="ghost" style={{ flex: 1 }} onClick={() => clear(b.id, "Skipped. Next prompt Friday.")}>Skip</Btn>
-                <Btn small kind="purple" style={{ flex: 1.3 }}
-                  onClick={() => { setSeed({ text: prompt.seed, nonce: Date.now() }); clear(b.id, "Prompt loaded into the composer above"); }}>
-                  Use prompt
-                </Btn>
-              </div>
-            </Card>
-          );
         })}
 
         {left.length === 0 && (
@@ -1076,34 +1046,6 @@ export const MentorFeed = ({
             cta="Go mentor"
             onCta={() => go("cohort")}
           />
-        )}
-
-        {/* Everything you have already published lives in Studio, one tap away,
-            rather than being re-listed under the thing you are writing now. */}
-        <Card onClick={() => go("impact")} style={{ display: "flex", alignItems: "center", gap: 11, padding: 12 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 10, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <FileText size={14} color={C.purple} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={S.sb(12.5)}>Your posts · {feed.length}</div>
-            <div style={S.b(11, C.gray)}>Pin, edit visibility and see what each one earned, in Studio.</div>
-          </div>
-          <Chip c={C.deep}>+10 IMPACT EACH</Chip>
-        </Card>
-        {openNetwork && (
-          <Card onClick={openNetwork} style={{ display: "flex", alignItems: "center", gap: 11, padding: 12 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 10, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Repeat2 size={14} color={C.teal} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={S.sb(12.5)}>The Roster</div>
-              <div style={S.b(11, C.gray)}>
-                {amplified.length
-                  ? `${amplified.length} post${amplified.length === 1 ? "" : "s"} from other mentors in your Orbit`
-                  : "Follow other mentors and add their posts to your Orbit"}
-              </div>
-            </div>
-          </Card>
         )}
 
         <BriefFooter>No infinite scroll. Items are ranked by your mentees’ goals, not engagement.</BriefFooter>
