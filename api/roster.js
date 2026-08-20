@@ -343,11 +343,20 @@ async function handler(request, user) {
   const shortlist = eligible.filter((u) => !full.has(String(u._id))).slice(0, LIMIT);
 
   /* Follow state, for a peer directory that has to render a button per row.
-     Two indexed reads for the whole page rather than one per person. */
+     Three indexed reads for the whole page rather than one per person.
+
+     `peerLoads` is the live cohort each peer is carrying, the one number that
+     says what a mentor on this list actually does. It is a count of accepted
+     matches, not a claim about outcomes, so the row says "3 mentees" and never
+     "3 developed": the platform has no graduation event to count yet. */
   const shortlistIds = shortlist.map((u) => String(u._id));
-  const [edges, followers] = peers
-    ? await Promise.all([followEdges(db, user.id, shortlistIds), followerCounts(db, shortlistIds)])
-    : [null, null];
+  const [edges, followers, peerLoads] = peers
+    ? await Promise.all([
+        followEdges(db, user.id, shortlistIds),
+        followerCounts(db, shortlistIds),
+        mentorLoads(shortlistIds),
+      ])
+    : [null, null, null];
 
   const people = shortlist
     .map((u) => {
@@ -378,6 +387,7 @@ async function handler(request, user) {
               following: edges.following.has(String(u._id)),
               followsYou: edges.followers.has(String(u._id)),
               followers: followers.get(String(u._id)) ?? 0,
+              mentees: peerLoads.get(String(u._id)) ?? 0,
             }
           : {}),
       };

@@ -7,8 +7,8 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Building2, Camera
 } from "lucide-react";
-import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Monogram, Avatar, Banner, FormError, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
+import { C, F, SP, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { Card, GhostCard, IconTile, Label, Btn, Monogram, Avatar, Banner, FormError, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots } from "./ui.jsx";
 import { BADGE_DEFS } from "./data.js";
 import { shareToLinkedIn } from "./lib/share.js";
 import { isMentorRole } from "./lib/roles.js";
@@ -221,9 +221,9 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
 
         {/* Ticket eligibility cards */}
         {role === "mentee" ? (
-          <Card data-tour="meets-ticket-mentee" style={{ border: `1.5px dashed #CFCDC7`, background: "#EFEEEA" }}>
+          <GhostCard data-tour="meets-ticket-mentee">
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center" }}><Lock size={18} color={C.gray} /></div>
+              <IconTile size={44} bg={C.ghostTile}><Lock size={18} color={C.gray} /></IconTile>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Tickets unlock at Week 8</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Eligibility comes with the <b>Mentor Approved</b> badge. You’re in Week {u.week} of 12.</div>
@@ -231,7 +231,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
             </div>
             <div style={{ marginTop: 12 }}><Bar pct={Math.min(1, (u.week || 1) / 8)} color={C.coral} /></div>
             <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>WEEK {u.week} OF 8</div>
-          </Card>
+          </GhostCard>
         ) : (
           <Card data-tour="meets-ticket-mentor">
             <Label color={C.teal}>Your place</Label>
@@ -299,7 +299,7 @@ export const MeetsScreen = ({ role, u, name, toast, events = [], eventsLoading, 
  */
 const NotifRow = ({ n, onClick, mutedBy = null }) => (
   <Card onClick={onClick} style={{ display: "flex", gap: 12, alignItems: "flex-start", opacity: mutedBy ? 0.6 : 1 }}>
-    <div style={{ width: 36, height: 36, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><n.icon size={16} color={n.c} /></div>
+    <IconTile size={36} radius={10} bg={n.bg}><n.icon size={16} color={n.c} /></IconTile>
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
         <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>{n.t}</span>
@@ -384,12 +384,12 @@ export const NotifsScreen = ({ role, u, matches = [], sessions = [], back, navTo
   return (
     <div>
       <HeaderRow title="Notifications" onBack={back} />
-      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: SP.gap }}>
         {inbox.map(m => {
           const first = (m.person?.name || "Someone").split(" ")[0];
           return (
             <Card key={m.id} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={16} color={C.purple} /></div>
+              <IconTile size={36} radius={10}><Users size={16} color={C.purple} /></IconTile>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 13.5 }}>{role === "mentee" ? `${first} invited you` : `${first} asked to join`}</span>
@@ -723,7 +723,7 @@ export const BadgeModal = ({ badge, index, close, toast }) => {
 export const MidwayUnlock = ({ onClose, toast }) => (
   <div style={{ position: "absolute", inset: 0, background: C.purple, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30, textAlign: "center", color: C.white }}>
     <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 2.5, color: "#C9C3F2" }}>MILESTONE 4 OF 8</div>
-    <div className="badge-pop" style={{ width: 118, height: 118, background: C.white, margin: "26px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="badge-pop" style={{ width: 118, height: 118, borderRadius: 28, background: C.white, margin: "26px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <BadgeGlyph i={3} color={C.purple} size={54} />
     </div>
     <div style={{ fontFamily: F.sans, fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>Midway.</div>

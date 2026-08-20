@@ -258,7 +258,7 @@ export function SettingsSheet({
       </Card>
 
       {confirmDelete && (
-        <Card style={{ marginTop: 10, border: `1.5px solid ${C.coral}`, background: C.coralTint }}>
+        <Card style={{ marginTop: 10, border: `1px solid ${C.coral}`, background: C.coralTint }}>
           <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Delete your account?</div>
           <p style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.55, marginTop: 6 }}>
             Your profile, writing, posts, pairings and XP are erased and cannot be restored.

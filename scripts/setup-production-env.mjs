@@ -69,6 +69,7 @@ const KEYS = [
   "TURNSTILE_SECRET_KEY",
   "VITE_TURNSTILE_SITE_KEY",
   "BLOB_READ_WRITE_TOKEN",
+  "ANTHROPIC_API_KEY",
 ];
 
 /** @type {Record<string, string>} */

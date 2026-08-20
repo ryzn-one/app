@@ -4,7 +4,7 @@ import {
   ExternalLink, Bookmark, Share2, Repeat2, Pin, Trash2, Globe, Lock, Plus, Sparkles, X,
 } from "lucide-react";
 import { C, F } from "./theme.js";
-import { Card, Label, Btn, Chip, firstNameOf } from "./ui.jsx";
+import { Card, GhostCard, IconTile, Label, Btn, Chip, firstNameOf } from "./ui.jsx";
 import { shareResourceLink } from "./lib/share.js";
 import {
   fetchResources, promoteResource, repromoteResource,
@@ -153,11 +153,9 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
   };
 
   if (!open) return (
-    <Card onClick={() => setOpen(true)} style={{ border: `1.5px dashed ${C.purple}`, background: C.purpleTint }}>
+    <Card onClick={() => setOpen(true)} style={{ border: "1px solid transparent", background: C.purpleTint }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 36, height: 36, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Plus size={16} color={C.white} />
-        </div>
+        <IconTile size={36} radius={10} bg={C.purple}><Plus size={16} color={C.white} /></IconTile>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.purple }}>Promote to Ryzn</div>
           <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>
@@ -169,7 +167,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
   );
 
   return (
-    <Card style={{ border: `1.5px solid ${C.purple}` }}>
+    <Card style={{ border: `1px solid ${C.purple}`, background: C.purpleTint }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Label color={C.purple}>Promote to Ryzn · +5 Impact</Label>
         <button type="button" onClick={() => { reset(); setOpen(false); }}
@@ -211,7 +209,7 @@ export const PromoteComposer = ({ onPromote, defaultOpen = false }) => {
         LEAVE BLANK AND WE’LL READ IT OFF THE LINK
       </div>
 
-      <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 10, padding: 3, marginTop: 12, maxWidth: 300 }}>
+      <div style={{ display: "flex", background: C.ghost, borderRadius: 10, padding: 3, marginTop: 12, maxWidth: 300 }}>
         {[["public", "Everyone"], ["cohort", "My cohort"]].map(([id, l]) => (
           <button key={id} type="button" onClick={() => setVisibility(id)} style={{
             flex: 1, border: "none", cursor: "pointer", borderRadius: 8, padding: "7px 0",
@@ -377,7 +375,7 @@ export const ResourceCard = ({
       {onRepromote && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "9px 11px",
-          borderRadius: 10, background: resource.onMyShelf ? C.purpleTint : "#EFEEEA",
+          borderRadius: 10, background: resource.onMyShelf ? C.purpleTint : C.ghost,
         }}>
           <Repeat2 size={14} color={resource.onMyShelf ? C.purple : C.gray} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -392,7 +390,7 @@ export const ResourceCard = ({
           </div>
           {!resource.onMyShelf && (
             <button type="button" disabled={relaying} onClick={relay} style={{
-              flexShrink: 0, border: `1px solid #CFCDC7`, background: C.white,
+              flexShrink: 0, border: "1px solid #D5D3CE", background: C.white,
               cursor: relaying ? "default" : "pointer", borderRadius: 999, padding: "6px 11px",
               fontFamily: F.sans, fontWeight: 600, fontSize: 12, color: C.ink,
               opacity: relaying ? 0.6 : 1, whiteSpace: "nowrap",
@@ -407,7 +405,7 @@ export const ResourceCard = ({
       {mine && (onVisibility || onPin || onDelete) && (
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
           {onVisibility && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: resource.visibility === "public" ? C.tealTint : "#EFEEEA" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, background: resource.visibility === "public" ? C.tealTint : C.ghost }}>
               {resource.visibility === "public" ? <Globe size={13} color={C.teal} /> : <Lock size={13} color={C.gray} />}
               <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: resource.visibility === "public" ? C.teal : C.gray, lineHeight: 1.35 }}>
                 {resource.visibility === "public" ? "On your public profile" : "Cohort only"}
@@ -415,7 +413,7 @@ export const ResourceCard = ({
               <button type="button" disabled={busy}
                 onClick={() => flip(resource.visibility === "public" ? "cohort" : "public")}
                 style={{
-                  flexShrink: 0, border: `1px solid ${resource.visibility === "public" ? C.teal : "#CFCDC7"}`,
+                  flexShrink: 0, border: `1px solid ${resource.visibility === "public" ? C.teal : "#D5D3CE"}`,
                   background: C.white, cursor: busy ? "default" : "pointer", borderRadius: 999,
                   padding: "5px 10px", fontFamily: F.sans, fontWeight: 600, fontSize: 11.5,
                   color: resource.visibility === "public" ? C.teal : C.ink, opacity: busy ? 0.6 : 1,
@@ -576,14 +574,14 @@ export const NetworkShelf = ({ toast, onRepromoted }) => {
   );
 
   if (!shelf.items.length) return (
-    <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA", textAlign: "center", padding: 22 }}>
+    <GhostCard style={{ textAlign: "center", padding: 24 }}>
       <Bookmark size={18} color={C.purple} />
       <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, marginTop: 8 }}>No picks yet</div>
       <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>
         Follow a few mentors and whatever they promote to Ryzn lands here. Anything worth passing on
         goes onto your own shelf in a tap, and they keep the credit for finding it.
       </div>
-    </Card>
+    </GhostCard>
   );
 
   return shelf.items.map((r) => (

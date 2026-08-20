@@ -4,13 +4,14 @@ import {
   Upload, Heart, Eye, Send, Pin, Sparkles, Share2, Globe, Repeat2,
   ArrowRight, UserPlus, Video,
 } from "lucide-react";
-import { C, F, S } from "./theme.js";
+import { C, F, S, R, SP } from "./theme.js";
 import { StudioStats, ProfileStrength, PostOverflow, StudioSeg, StudioEmpty } from "./studio.jsx";
-import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
+import { Card, GhostCard, IconTile, Label, Btn, Chip, Seg, Monogram, Avatar, HeaderRow, Bar, ProgramTimeline, VideoCaptureModal, firstNameOf } from "./ui.jsx";
 import { MentorShelf } from "./resources.jsx";
 import { uploadMedia, ACCEPT } from "./lib/upload.js";
 import { fetchComments, addComment, reactToComment } from "./lib/auth-client.js";
 import { sharePostLink, isPublicPost } from "./lib/share.js";
+import { simFeedPosts, SAMPLE_BADGE } from "./lib/sim-feed.js";
 
 /** Turn a VideoCaptureModal result into a real File for uploadMedia. */
 const captureToFile = (captured) => {
@@ -77,8 +78,18 @@ const art = (seed, kind) => {
  * opening a file, before real media existed the only way to register a view
  * was the "WATCH · +5 XP" button, and now that the video plays inline most
  * people will never press it.
+ *
+ * `bleed` is the feed's treatment: the picture runs the full width of the card
+ * with no inset and no corner radius, the way every social feed shows one,
+ * instead of sitting as a 168px letterbox inside a 14px gutter. It takes its
+ * height from an aspect ratio rather than a fixed number, so a portrait photo
+ * on a phone gets the room that makes it worth stopping on. The cap keeps a
+ * tall crop from swallowing a whole desktop viewport.
  */
-const MediaBlock = ({ post, height = 168, onEngage }) => {
+const BLEED_RATIO = { photo: "4 / 5", video: "16 / 9" };
+const BLEED_MAX_H = { photo: 560, video: 420 };
+
+const MediaBlock = ({ post, height = 168, onEngage, bleed }) => {
   if (post.kind === "status") return null;
 
   /* A file with no preview: the reference's teal slab, which says "there is
@@ -104,33 +115,74 @@ const MediaBlock = ({ post, height = 168, onEngage }) => {
 
   const fallback = { backgroundImage: art(post.id, post.kind), backgroundSize: "cover", backgroundPosition: "center" };
 
+  /* Inset keeps the old rounded letterbox for the places that are not a feed -
+     Studio's list, a profile preview. Bleed is the feed treatment. */
+  const frame = bleed
+    ? { width: "100%", aspectRatio: BLEED_RATIO[post.kind] || "4 / 5", maxHeight: BLEED_MAX_H[post.kind] || 560, borderRadius: 0, marginBottom: 0 }
+    : { width: "100%", height, borderRadius: 12, marginBottom: 8 };
+
   if (post.kind === "video" && post.media?.url) return (
     // The poster is the frame grabbed at upload time, the same image a shared
     // link unfurls with, so the card and the preview show the same thing.
     <video src={post.media.url} poster={post.media.posterUrl || undefined} controls preload="metadata" playsInline
       onClick={e => e.stopPropagation()} onPlay={() => onEngage?.()}
-      style={{ marginBottom: 8, width: "100%", height, borderRadius: 12, background: C.ink, objectFit: "cover", display: "block" }} />
+      style={{ ...frame, background: C.ink, objectFit: "cover", display: "block" }} />
+  );
+
+  /* A poster with no file behind it. Real posts never hit this, a video always
+     uploads before it publishes, but the simulated feed carries stills rather
+     than autoplaying stock clips, and a still with a play badge on it is what
+     that should look like. */
+  if (post.kind === "video" && post.media?.posterUrl) return (
+    <div style={{ ...frame, position: "relative", overflow: "hidden", background: C.ink, ...fallback }}>
+      <Img src={post.media.posterUrl} alt={post.title || ""} />
+      <div style={{
+        position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.45) 100%)",
+      }}>
+        <div style={{ width: 54, height: 54, borderRadius: 999, background: "rgba(255,255,255,.94)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 22px rgba(0,0,0,.28)" }}>
+          <Play size={22} color={C.ink} fill={C.ink} />
+        </div>
+      </div>
+      {post.mins && (
+        <span style={{
+          position: "absolute", right: 10, bottom: 10, fontFamily: F.mono, fontSize: 9.5, fontWeight: 700,
+          color: C.white, background: "rgba(0,0,0,.6)", padding: "3px 7px", borderRadius: 6,
+        }}>{post.mins}</span>
+      )}
+    </div>
   );
 
   if (post.kind === "photo" && post.media?.url) return (
     // The generated tile sits behind the image so there's no white flash while
-    // it loads.
-    <div style={{ marginBottom: 8, height, borderRadius: 12, overflow: "hidden", ...fallback }}>
-      <img src={post.media.url} alt={post.title || ""} loading="lazy"
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+    // it loads, and so a URL that never resolves still reads as a picture.
+    <div style={{ ...frame, overflow: "hidden", ...fallback }}>
+      <Img src={post.media.url} alt={post.title || ""} />
     </div>
   );
 
   /* A video with no file yet is a titled ink slab, not a blank gradient box:
      the title is the only thing that makes it worth tapping. */
   if (post.kind === "video") return (
-    <div style={{ background: C.ink, borderRadius: 12, padding: "22px 14px", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+    <div style={{ background: C.ink, borderRadius: bleed ? 0 : 12, padding: "22px 14px", marginBottom: bleed ? 0 : 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
       <span style={{ ...S.sb(13, C.white), minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{post.title || "Video"}</span>
       {post.mins && <Chip c={C.lilac} bg="#2A2A2A">{post.mins}</Chip>}
     </div>
   );
 
-  return <div style={{ marginBottom: 8, height, borderRadius: 12, overflow: "hidden", ...fallback }} />;
+  return <div style={{ ...frame, overflow: "hidden", ...fallback }} />;
+};
+
+/** An <img> that removes itself if the URL never loads, leaving whatever tile
+    sits behind it rather than a browser's broken-image glyph. */
+const Img = ({ src, alt }) => {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [src]);
+  if (broken) return null;
+  return (
+    <img src={src} alt={alt || ""} loading="lazy" onError={() => setBroken(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+  );
 };
 
 /* ----------------- the Brief -----------------
@@ -160,18 +212,59 @@ export const BriefHeader = ({ title, total, done, sub }) => (
 
 /** The end of the list. Never an infinite scroll, always a next action. */
 export const CaughtUp = ({ line, cta, onCta }) => (
-  <Card style={{ textAlign: "center", padding: 24, border: "1.5px dashed #C9C6C0", background: "transparent" }}>
+  <div style={{ textAlign: "center", padding: "28px 24px" }}>
     <Sparkles size={17} color={C.purple} />
     <div style={{ ...S.h(15), marginTop: 8 }}>You’re caught up.</div>
     <div style={{ ...S.b(12, C.gray), marginTop: 3 }}>{line}</div>
     {cta && <Btn kind="purple" small style={{ marginTop: 12 }} onClick={onCta}>{cta} <ArrowRight size={14} /></Btn>}
-  </Card>
+  </div>
 );
 
 /** The footer line that says why the list stopped. */
 export const BriefFooter = ({ children }) => (
   <div style={{ ...S.b(11, C.mute), textAlign: "center", padding: "0 22px 4px" }}>{children}</div>
 );
+
+/**
+ * The network stream: what the wider platform is posting, under the Brief.
+ *
+ * It sits *below* the Brief and under its own heading rather than mixed into
+ * it, because the Brief makes a promise — "everything your mentors published,
+ * finite and counted" — and folding other people's posts into that count would
+ * break it. This is the part that scrolls, and it is the only place in the app
+ * that renders simulated content (lib/sim-feed.js), so an account with one
+ * mentor and no posts yet still opens onto something worth reading.
+ *
+ * Swap `simFeedPosts()` for a real `/api/posts?scope=network` call and nothing
+ * else on this screen has to change: the cards are already the real PostCard
+ * reading the real post shape.
+ */
+const NetworkStream = ({ count = 8, offset = 0, toast, heading = "From the Ryzn network" }) => {
+  const posts = useMemo(() => simFeedPosts(count, offset), [count, offset]);
+  const [shown, setShown] = useState(4);
+  if (!posts.length) return null;
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, paddingLeft: 2, marginTop: 6 }}>
+        <div style={S.h(16)}>{heading}</div>
+        <div style={S.mono(7.5, C.mute)}>{posts.length} POSTS</div>
+      </div>
+      {posts.slice(0, shown).map((p) => (
+        <PostCard key={p.id} post={p} author={p.authorName} authorId={p.authorId}
+          avatarUrl={p.authorAvatarUrl} followers={p.followers} tier toast={toast} />
+      ))}
+      {shown < posts.length && (
+        <button onClick={() => setShown((s) => s + 4)} style={{
+          width: "100%", padding: "12px 0", border: "none", background: "transparent", cursor: "pointer",
+          fontFamily: F.sans, fontWeight: 600, fontSize: 13.5, color: C.purple,
+        }}>
+          Show more · {shown} of {posts.length}
+        </button>
+      )}
+    </>
+  );
+};
 
 /**
  * Who this post is for, on the author's own copy of it.
@@ -188,7 +281,7 @@ export const BriefFooter = ({ children }) => (
 const VisibilityRow = ({ isPublic, onChange, busy }) => (
   <div style={{
     display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "9px 11px",
-    borderRadius: 10, background: isPublic ? C.tealTint : "#EFEEEA",
+    borderRadius: 10, background: isPublic ? C.tealTint : C.ghost,
   }}>
     {isPublic ? <Globe size={14} color={C.teal} /> : <Lock size={14} color={C.gray} />}
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -203,7 +296,7 @@ const VisibilityRow = ({ isPublic, onChange, busy }) => (
     </div>
     <button type="button" disabled={busy} onClick={() => onChange(isPublic ? "cohort" : "public")}
       style={{
-        flexShrink: 0, border: `1px solid ${isPublic ? C.teal : "#CFCDC7"}`, background: C.white,
+        flexShrink: 0, border: `1px solid ${isPublic ? C.teal : "#D5D3CE"}`, background: C.white,
         cursor: busy ? "default" : "pointer", borderRadius: 999, padding: "6px 11px",
         fontFamily: F.sans, fontWeight: 600, fontSize: 12, color: isPublic ? C.teal : C.ink,
         opacity: busy ? 0.6 : 1, whiteSpace: "nowrap",
@@ -237,8 +330,13 @@ const RelayRow = ({ by }) => (
 export const PostCard = ({
   post, author, authorId, tier, mine, reacted, onReact, onOpen, done,
   onAuthor, onShare, onVisibility, onAmplify, amplified, toast, highlight,
-  avatarUrl, followers, following, onFollow,
+  avatarUrl, followers, following, onFollow, inset,
 }) => {
+  /* A simulated post exists only in the browser. Every write below short-
+     circuits to local state for one, because there is no row behind it: a like
+     would 404, and a share link would land a stranger on a post page that
+     cannot be rendered. See lib/sim-feed.js. */
+  const sim = !!post.simulated;
   const meta = KIND_META[post.kind] || KIND_META.status;
   const Icon = meta.icon;
   const openable = post.kind === "video" || post.kind === "resource";
@@ -279,12 +377,23 @@ export const PostCard = ({
   const toggleComments = () => {
     const next = !commentsOpen;
     setCommentsOpen(next);
-    if (next && thread === null) loadThread();
+    if (next && thread === null) {
+      if (sim) setThread(post.thread || []);
+      else loadThread();
+    }
   };
 
   const submitComment = async () => {
     const text = draft.trim();
     if (!text || busy) return;
+    if (sim) {
+      setThread((t) => [...(t || []), {
+        id: `local-${Date.now()}`, authorName: "You", text, createdAt: new Date().toISOString(), reactions: 0,
+      }]);
+      setCommentCount((n) => n + 1);
+      setDraft("");
+      return;
+    }
     setBusy(true);
     try {
       const { comment, comments } = await addComment(post.id, text);
@@ -304,6 +413,7 @@ export const PostCard = ({
       toast?.("You can’t like your own post");
       return;
     }
+    if (sim) { setLiked(true); setReactionCount((n) => n + 1); return; }
     if (!onReact) return;
     setLiking(true);
     setLiked(true);
@@ -332,6 +442,7 @@ export const PostCard = ({
         ? { ...c, reacted: true, reactions: (c.reactions ?? 0) + 1 }
         : c
     )));
+    if (sim) return;
     try {
       const res = await reactToComment(post.id, commentId);
       if (typeof res?.reactions === "number") {
@@ -359,6 +470,7 @@ export const PostCard = ({
 
   const share = async () => {
     if (sharing) return;
+    if (sim) { toast?.("Sample post, there’s nothing to link to yet."); return; }
     setSharing(true);
     try {
       if (onShare) await onShare(post);
@@ -401,11 +513,20 @@ export const PostCard = ({
     }
   };
 
+  /* Edge to edge. A picture is the reason someone stops on a card, so it runs
+     the full width of it with the byline above and the words below, and the
+     14px gutter that used to box it in is pushed out into the two text
+     sections instead. `inset` opts back into the old boxed treatment for the
+     places that are a list rather than a feed. */
+  const bleed = !inset && (post.kind === "photo" || (post.kind === "video" && !!(post.media?.url || post.media?.posterUrl)));
+
   return (
     <Card style={{
-      padding: 14,
+      padding: 0,
+      overflow: "hidden",
       ...(highlight ? { boxShadow: `0 0 0 2px ${C.purple}` } : null),
     }}>
+      <div style={{ padding: bleed ? "13px 14px 11px" : "14px 14px 0" }}>
       {post.amplifiedBy && <RelayRow by={post.amplifiedBy} />}
 
       {/* Byline. Who wrote it, how many people follow them, and what kind of
@@ -413,7 +534,7 @@ export const PostCard = ({
           does it, rather than a coloured kind-icon parked in the corner. The
           Follow button takes that corner instead, because on a feed the only
           thing worth a tap up here is "more of this person". */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: bleed ? 0 : 9 }}>
         <button type="button" onClick={openAuthor} disabled={!onAuthor}
           style={{ border: "none", background: "none", padding: 0, cursor: onAuthor ? "pointer" : "default", flexShrink: 0, lineHeight: 0 }}>
           <Avatar src={avatarUrl} name={author} size={34} radius={11} />
@@ -431,6 +552,8 @@ export const PostCard = ({
             {mine && <span style={S.b(12, C.gray)}>· you</span>}
             {tier && <Crown size={11} color={C.amber} style={{ flexShrink: 0 }} />}
             {post.pinned && <Chip style={{ flexShrink: 0 }}><Pin size={8} /> PINNED</Chip>}
+            {/* Never let an invented person read as a member. */}
+            {sim && SAMPLE_BADGE && <Chip c={C.gray} bg={C.ghost} style={{ flexShrink: 0 }}>SAMPLE</Chip>}
           </div>
           <div style={S.mono(6.5, C.mute)}>
             {typeof followers === "number" ? `${Number(followers).toLocaleString()} FOLLOWERS · ` : ""}
@@ -449,10 +572,19 @@ export const PostCard = ({
       </div>
 
       {/* Media above the words for anything with a picture in it, text-first
-          only for a status — which is the order the reference reads in. */}
-      <MediaBlock post={post} onEngage={mine ? undefined : () => !done && onOpen?.(post)} />
-      {post.title && post.kind !== "resource" && post.kind !== "video" && <div style={{ ...S.h(15), marginBottom: 4 }}>{post.title}</div>}
-      {post.text && <div style={{ ...S.b(13.5, C.ink), marginBottom: 8 }}>{post.text}</div>}
+          only for a status — which is the order the reference reads in. A
+          bleeding picture leaves this padded section and gets its own band
+          between the byline and the caption. */}
+      {!bleed && <MediaBlock post={post} onEngage={mine ? undefined : () => !done && onOpen?.(post)} />}
+      {!bleed && post.title && post.kind !== "resource" && post.kind !== "video" && <div style={{ ...S.h(15), marginBottom: 4 }}>{post.title}</div>}
+      {!bleed && post.text && <div style={{ ...S.b(13.5, C.ink), marginBottom: 8 }}>{post.text}</div>}
+      </div>
+
+      {bleed && <MediaBlock post={post} bleed onEngage={mine ? undefined : () => !done && onOpen?.(post)} />}
+
+      <div style={{ padding: bleed ? "11px 14px 14px" : "0 14px 14px" }}>
+      {bleed && post.title && post.kind !== "resource" && <div style={{ ...S.h(15), marginBottom: 4 }}>{post.title}</div>}
+      {bleed && post.text && <div style={{ ...S.b(13.5, C.ink), marginBottom: 9 }}>{post.text}</div>}
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <button type="button" onClick={likePost}
@@ -487,7 +619,7 @@ export const PostCard = ({
           <Eye size={9} /> {post.views + (mine ? (post.publicViews || 0) : 0)}
         </Chip>
         <span style={{ flex: 1 }} />
-        {!mine && (openable || onOpen) && (
+        {!mine && !sim && (openable || onOpen) && (
           <Btn small kind={done ? "ghost" : "purple"} onClick={() => !done && onOpen?.(post)} disabled={done}>
             {done ? <><Check size={12} /> Reviewed</> : <>{post.kind === "video" ? "Watch" : post.kind === "resource" ? "Open" : "Read"} · +{post.xp ?? 10} XP</>}
           </Btn>
@@ -505,7 +637,7 @@ export const PostCard = ({
       {onAmplify && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10, marginTop: 12, padding: "9px 11px",
-          borderRadius: 10, background: relayed ? C.purpleTint : "#EFEEEA",
+          borderRadius: 10, background: relayed ? C.purpleTint : C.ghost,
         }}>
           <Repeat2 size={14} color={relayed ? C.purple : C.gray} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -520,7 +652,7 @@ export const PostCard = ({
           </div>
           <button type="button" disabled={relaying} onClick={toggleRelay}
             style={{
-              flexShrink: 0, border: `1px solid ${relayed ? C.purple : "#CFCDC7"}`, background: C.white,
+              flexShrink: 0, border: `1px solid ${relayed ? C.purple : "#D5D3CE"}`, background: C.white,
               cursor: relaying ? "default" : "pointer", borderRadius: 999, padding: "6px 11px",
               fontFamily: F.sans, fontWeight: 600, fontSize: 12, color: relayed ? C.purple : C.ink,
               opacity: relaying ? 0.6 : 1, whiteSpace: "nowrap",
@@ -579,6 +711,7 @@ export const PostCard = ({
           </div>
         </div>
       )}
+      </div>
     </Card>
   );
 };
@@ -660,8 +793,12 @@ export const Composer = ({ onPublish, name, userId, avatarUrl, seed }) => {
         <Avatar src={avatarUrl} name={name} size={34} radius={11} />
         <textarea value={text} onChange={e => setText(e.target.value)} rows={1} placeholder={placeholder}
           style={{ flex: 1, border: "none", outline: "none", background: "transparent", resize: "none", fontFamily: F.sans, fontSize: 12.5, lineHeight: 1.5, color: C.ink, paddingTop: 9, minWidth: 0, minHeight: 34 }} />
-        <Btn small kind="purple" disabled={!ready} onClick={go} style={{ marginTop: 1 }}>
-          <Send size={12} />
+        {/* Sized to the avatar rather than to its own label, so the two ends of
+            the row square up on the same top edge instead of the send sitting a
+            few pixels shy of it. */}
+        <Btn small kind="purple" disabled={!ready} onClick={go}
+          style={{ width: 34, height: 34, padding: 0, borderRadius: 11, flexShrink: 0 }}>
+          <Send size={14} />
         </Btn>
       </div>
 
@@ -692,15 +829,15 @@ export const Composer = ({ onPublish, name, userId, avatarUrl, seed }) => {
             kind === "video" ? (
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button onClick={() => setCaptureOpen(true)} style={{
-                  flex: 1, border: `1.5px dashed ${C.purple}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
+                  flex: 1, border: "none", borderRadius: R.tile, padding: "13px 0", cursor: "pointer",
                   background: C.purpleTint, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.purple,
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
                 }}><Play size={14} /> Record or upload</button>
               </div>
             ) : (
               <button onClick={() => fileRef.current?.click()} style={{
-                width: "100%", marginTop: 8, border: `1.5px dashed ${C.line}`, borderRadius: 12, padding: "12px 0", cursor: "pointer",
-                background: C.surface, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.gray,
+                width: "100%", marginTop: 8, border: "none", borderRadius: R.tile, padding: "13px 0", cursor: "pointer",
+                background: C.ghost, fontFamily: F.sans, fontWeight: 600, fontSize: 13, color: C.gray,
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
               }}><Upload size={14} /> {kind === "photo" ? "Add a photo" : "Attach a file"}</button>
             )
@@ -743,14 +880,18 @@ export const Composer = ({ onPublish, name, userId, avatarUrl, seed }) => {
     {/* The four kinds, as flat pills directly under the composer — the
         reference's row, and the reason a mentor never has to think about
         formatting before they think about what to say. */}
-    <div style={{ display: "flex", gap: 6, marginTop: -5, flexWrap: "wrap" }}>
+    {/* `marginTop` is positive on purpose. This row lives outside the Card but
+        inside the same block wrapper, so no parent flex gap separates the two:
+        a negative margin here pulled the pills up over the card's bottom edge
+        instead of letting them sit under it. */}
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
       {Object.entries(KIND_META).map(([id, m]) => {
         const on = kind === id;
         return (
           <button key={id} disabled={uploading} onClick={() => { setKind(id); setMedia(null); setFileName(""); setErr(null); setCaptureOpen(false); }} style={{
-            border: "none", borderRadius: 999, padding: "5px 11px", cursor: uploading ? "default" : "pointer",
-            background: on ? C.tealTint : "#EBEAE6", color: on ? "#085041" : C.gray,
-            fontFamily: F.sans, fontWeight: 600, fontSize: 10.5, opacity: uploading && !on ? 0.5 : 1,
+            border: "none", borderRadius: 999, padding: "6px 13px", cursor: uploading ? "default" : "pointer",
+            background: on ? C.tealTint : "#E8E7E2", color: on ? "#085041" : C.gray,
+            fontFamily: F.sans, fontWeight: 600, fontSize: 11, lineHeight: 1.35, opacity: uploading && !on ? 0.5 : 1,
           }}>{m.label}</button>
         );
       })}
@@ -787,7 +928,7 @@ function GreetingCard({ onDone, userId }) {
   };
 
   return (
-    <Card style={{ border: `1.5px dashed ${C.purple}` }}>
+    <Card style={{ border: "1px solid transparent", background: C.purpleTint }}>
       <Label color={C.purple}>Greeting video · pinned to the top of your Orbit</Label>
       <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>60–90 seconds. Who you are, who you help, one honest reason you’re here. Mentees who watch a greeting are twice as likely to finish Stage 1.</div>
       {progress !== null ? (
@@ -870,7 +1011,7 @@ export const MentorFeed = ({
 
   return (
     <div>
-      <div style={{ padding: "14px 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+      <div style={{ padding: "14px 14px 20px", display: "flex", flexDirection: "column", gap: SP.gap }}>
         <BriefHeader
           title="Your Brief"
           total={brief.length}
@@ -914,7 +1055,7 @@ export const MentorFeed = ({
           );
 
           return (
-            <Card key={b.id} style={{ border: `1.5px dashed ${C.purple}` }}>
+            <Card key={b.id} style={{ border: "1px solid transparent", background: C.purpleTint }}>
               <div style={S.mono(7.5, C.purple)}>PROMPT · RYZN</div>
               <div style={{ ...S.h(15), margin: "6px 0 3px" }}>{b.t}</div>
               <div style={S.b(12.5, C.gray)}>{b.d}</div>
@@ -955,7 +1096,7 @@ export const MentorFeed = ({
               <Repeat2 size={14} color={C.teal} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={S.sb(12.5)}>Mentor network</div>
+              <div style={S.sb(12.5)}>The Roster</div>
               <div style={S.b(11, C.gray)}>
                 {amplified.length
                   ? `${amplified.length} post${amplified.length === 1 ? "" : "s"} from other mentors in your Orbit`
@@ -966,6 +1107,10 @@ export const MentorFeed = ({
         )}
 
         <BriefFooter>No infinite scroll. Items are ranked by your mentees’ goals, not engagement.</BriefFooter>
+
+        {/* Offset so a mentor and their mentee, side by side, aren't looking at
+            the same card in the same order. */}
+        <NetworkStream count={10} offset={4} toast={toast} heading="What other mentors are posting" />
       </div>
     </div>
   );
@@ -1014,7 +1159,7 @@ export const MenteeDiscover = ({
            invisible inside a modal. */
         <div style={{ height: "min(74vh, 640px)", minHeight: 440 }}>{renderMatch?.()}</div>
       ) : view === "mine" ? (
-        <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+        <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: SP.gap }}>
           {mentors.length === 0 && (
             <Card style={{ textAlign: "center", padding: 24 }}>
               <div style={S.sb(13)}>No mentor yet.</div>
@@ -1048,7 +1193,7 @@ export const MenteeDiscover = ({
           )}
         </div>
       ) : (
-        <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+        <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: SP.gap }}>
           <BriefHeader title="Your Brief" total={posts.length} done={done} />
 
           {posts.length === 0 && (
@@ -1085,6 +1230,8 @@ export const MenteeDiscover = ({
           <BriefFooter>
             No infinite scroll. Ranked by your goals, not engagement. Everything your mentors post lands here first.
           </BriefFooter>
+
+          <NetworkStream count={10} toast={toast} />
         </div>
       )}
     </div>
@@ -1145,7 +1292,7 @@ export const ContentTabs = ({
         return (
           <Card key={p.id}>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 40, height: 40, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={meta.c} /></div>
+              <IconTile size={40} bg={meta.bg}><Icon size={16} color={meta.c} /></IconTile>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{p.title}</div>
                 <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 3 }}>{(p.mins || p.fileKind || "FILE").toUpperCase()} · {p.views} VIEWS</div>
@@ -1174,7 +1321,7 @@ export const ContentTabs = ({
 
 /** Segmented Feed | Resources control, so both screens label them identically. */
 export const ContentTabBar = ({ view, setView, count }) => (
-  <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
+  <div style={{ display: "flex", background: C.ghost, borderRadius: 12, padding: 4 }}>
     {[["feed", "Feed"], ["resources", `Resources · ${count}`]].map(([id, l]) => (
       <button key={id} onClick={() => setView(id)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray }}>{l}</button>
     ))}
@@ -1197,10 +1344,10 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
     <div>
       <HeaderRow title="Orbit" onBack={back} />
       <div style={{ padding: "0 14px 14px" }}>
-        <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+        <GhostCard>
           <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No mentor yet</div>
           <div style={{ fontSize: 12.5, color: C.gray, marginTop: 4, lineHeight: 1.5 }}>Once you’re matched, everything your mentor posts lands here.</div>
-        </Card>
+        </GhostCard>
       </div>
     </div>
   );
@@ -1241,7 +1388,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
 
         {stage1 ? (
           <Card style={{ background: C.tealTint, border: "none", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><MessageCircle size={16} color={C.white} /></div>
+            <IconTile size={36} radius={10} bg={C.teal}><MessageCircle size={16} color={C.white} /></IconTile>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: C.teal }}>Direct Connect · earned</div>
               <div style={{ fontSize: 12, color: C.teal, opacity: 0.85 }}>{first} replies within a day.</div>
@@ -1249,9 +1396,9 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
             <Btn small style={{ background: C.teal }} onClick={openDm}><MessageCircle size={13} /> Message</Btn>
           </Card>
         ) : (
-          <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+          <GhostCard>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 40, height: 40, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={16} color={C.gray} /></div>
+              <IconTile size={40} bg={C.ghostTile}><Lock size={16} color={C.gray} /></IconTile>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Direct Connect is earned, not given</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>The Orbit is open to you now, everything {first} posts, plus every resource. Finish Stage 1 and messaging unlocks too.</div>
@@ -1260,7 +1407,7 @@ export const OrbitScreen = ({ mentor, stage1, feed = [], program, watched, onWat
             <div style={{ marginTop: 12 }}><Bar pct={0} /></div>
             <div style={{ fontFamily: F.mono, fontSize: 9.5, color: C.gray, marginTop: 5 }}>STAGE 1 · 0 OF 1 EXERCISES DONE</div>
             <Btn kind="dark" style={{ marginTop: 12 }} onClick={go}>Do today’s exercise · 6 min</Btn>
-          </Card>
+          </GhostCard>
         )}
 
         {/* This mentor's program, not "the" program, each mentor writes their

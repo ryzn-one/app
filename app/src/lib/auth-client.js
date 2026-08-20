@@ -259,6 +259,15 @@ export const saveProgram = (phases) => api("/program", { method: "PUT", body: { 
 export const setPhaseComplete = ({ menteeId, phaseId, completed }) =>
   api("/program", { method: "PATCH", body: { menteeId, phaseId, completed } });
 
+/* "Fill it out with AI". Both of these return a *proposal* and save nothing —
+   the mentor edits it, then saveProgram() is what actually commits. Keeping the
+   draft and the save as two separate calls is what makes the confirm step real
+   rather than a spinner in front of a write. */
+export const draftPhaseWithAI = ({ index, replacing, hint } = {}) =>
+  api("/program?draft=1", { method: "POST", body: { mode: "phase", index, replacing, hint } });
+export const draftCourseWithAI = ({ hint } = {}) =>
+  api("/program?draft=1", { method: "POST", body: { mode: "course", hint } });
+
 /* ----- Daily exercises -----
    Mentee writes today's paragraph; the server stores it, awards XP, bumps
    streak, and flips stage1Complete so Direct Connect opens. Mentors read a

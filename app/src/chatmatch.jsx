@@ -6,7 +6,7 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Clock
 } from "lucide-react";
-import { C, F, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { C, F, R, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, NoCloseGutter, labelOf } from "./ui.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { GENERAL_INFLUENCERS, INFLUENCERS_BY_CATEGORY, menteeScript, mentorScript } from "./data.js";
@@ -208,7 +208,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
               {step.custom && !isInfluence && (
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                   <input value={customText} onChange={e => setCustomText(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustom()} placeholder="Write your own…"
-                    style={{ flex: 1, border: `1px dashed #C9C6C0`, borderRadius: 20, padding: "9px 14px", fontFamily: F.sans, fontSize: 13, outline: "none", background: C.surface, minWidth: 0 }} />
+                    style={{ flex: 1, border: "none", borderRadius: R.pill, padding: "10px 15px", fontFamily: F.sans, fontSize: 13, outline: "none", background: C.ghost, minWidth: 0 }} />
                   <button onClick={addCustom} style={{ width: 38, height: 38, borderRadius: 19, border: "none", background: C.ink, color: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Plus size={16} /></button>
                 </div>
               )}
@@ -253,7 +253,7 @@ export const ChatScreen = ({ role, xp, addXp, onComplete, firstName, orbit }) =>
 export const UnlockScreen = ({ role, onNext, toast }) => (
   <div style={{ position: "absolute", inset: 0, background: C.purple, zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30, textAlign: "center", color: C.white }}>
     <div style={{ fontFamily: F.mono, fontSize: 10, letterSpacing: 2.5, color: "#C9C3F2" }}>{role === "mentee" ? "BADGE 1 OF 8 · DAY 1" : "TIER CONFIRMED"}</div>
-    <div className="badge-pop" style={{ width: 118, height: 118, background: C.white, margin: "26px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div className="badge-pop" style={{ width: 118, height: 118, borderRadius: 28, background: C.white, margin: "26px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
       {role === "mentee" ? <Glyph color={C.purple} size={54} /> : <Crown size={50} color={C.purple} />}
     </div>
     <div style={{ fontFamily: F.sans, fontSize: 32, fontWeight: 700, letterSpacing: -0.8 }}>{role === "mentee" ? "Goal Setter." : "Scout."}</div>

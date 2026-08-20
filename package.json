@@ -21,6 +21,7 @@
     "preview:db": "node --env-file=.env.local scripts/db-setup.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@vercel/blob": "^2.6.1",
     "better-auth": "^1.6.25",
     "mongodb": "^6.12.0"

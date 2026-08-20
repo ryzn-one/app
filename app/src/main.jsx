@@ -16,7 +16,7 @@ class ErrorBoundary extends React.Component {
        themselves. Screens carry their own boundary now (SectionBoundary), so
        reaching this one means the shell itself failed, offer the reload. */
     if (this.state.err) return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', system-ui, sans-serif", background: "#E9E8E4", padding: 24 }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Space Grotesk', system-ui, sans-serif", background: "#EFEEEB", padding: 24 }}>
         <div style={{ textAlign: "center", maxWidth: 340 }}>
           <div style={{ fontFamily: F.sans, fontSize: 34, fontWeight: 700, color: "#5B4FCF" }}>RYZN</div>
           <div style={{ marginTop: 10, color: "#5F5E5A", lineHeight: 1.5 }}>Something broke on our side. Your account and your work are safe.</div>

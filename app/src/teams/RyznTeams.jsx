@@ -87,7 +87,7 @@ const Pitch = () => (
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
         {POINTS.map(({ icon: Icon, title, body }) => (
           <Card key={title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-            <div style={{ width: 38, height: 38, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 11, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Icon size={17} color={C.purple} />
             </div>
             <div style={{ flex: 1 }}>
@@ -210,7 +210,7 @@ function CreateOrg({ onCreated }) {
             { icon: Award, title: "Org admins", body: "Promote someone to run the roster with you. Org admin is scoped to your org, nothing else." },
           ].map(({ icon: Icon, title, body }) => (
             <Card key={title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-              <div style={{ width: 38, height: 38, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 11, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <Icon size={17} color={C.purple} />
               </div>
               <div style={{ flex: 1 }}>
@@ -291,7 +291,7 @@ export default function RyznTeams() {
     <Shell>
       <Pitch />
 
-      <Card style={{ marginTop: 20, border: `1.5px solid ${C.purple}`, background: C.purpleTint }}>
+      <Card style={{ marginTop: 20, border: `1px solid ${C.purple}`, background: C.purpleTint }}>
         <Label color={C.purple}>Who can start one</Label>
         <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55, marginTop: 8 }}>
           {signedIn

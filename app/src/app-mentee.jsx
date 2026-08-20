@@ -6,9 +6,9 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search
 } from "lucide-react";
-import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { C, F, S, R, SP, TIER_COLOR, DECK_COLORS } from "./theme.js";
 /* ProgramTimeline moved to OrbitScreen with the programs themselves. */
-import { Card, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
+import { Card, GhostCard, IconTile, Section, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { EXERCISE_TRACK } from "./data.js";
 import { UnlockTrackCard } from "./unlock.jsx";
@@ -124,7 +124,7 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
           the line that makes someone close the app, and the whole point of
           attributing it to their mentor is that it doesn't. */}
       {atRisk && (
-        <Card style={{ marginTop: 14, border: `1.5px solid ${C.amber}`, background: C.amberTint }}>
+        <Card style={{ marginTop: 14, border: `1px solid ${C.amber}`, background: C.amberTint }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <Avatar src={mentors[0]?.avatarUrl} name={atRisk.mentorName} size={36} radius={11} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -202,140 +202,139 @@ export const MenteeHome = ({ u, name, badges, go, openOverlay, openOrbit, todayD
           One tile per mentor, in the order they came in, none of them ranked
           above the others. No mentor is a real state in an early cohort and
           renders as itself rather than borrowing a name. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 22 }}>
-        <Label>{mentors.length > 1 ? "Your orbits" : "Your orbit"}</Label>
-        {mentors.length > 0 && <Label color={mentors.length >= 3 ? C.teal : C.gray}>{mentors.length}/3</Label>}
-      </div>
-
-      {mentors.length === 0 ? (
-        <Card onClick={() => openOverlay("addmentor")} style={{ marginTop: 10, border: `1.5px dashed #CFCDC7`, background: "#EFEEEA" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 48, height: 48, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={20} color={C.gray} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>No mentor matched yet</div>
-              <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Mentors are still being onboarded. Your exercises are open now, the work counts either way.</div>
-            </div>
-            <ChevronRight size={16} color={C.gray} />
-          </div>
-        </Card>
-      ) : mentors.map((m) => {
-        const posts = feeds[m.id] || [];
-        const latest = posts.find(p => !p.pinned);
-        const unread = posts.filter(p => (p.kind === "video" || p.kind === "resource") && !watched[p.id]).length;
-        const first = m.name.split(" ")[0];
-        return (
-          <Card key={m.id} onClick={() => openOrbit(m.id)} style={{ marginTop: 10 }}>
+      <Section
+        title={mentors.length > 1 ? "Your orbits" : "Your orbit"}
+        right={mentors.length > 0 ? <Label color={mentors.length >= 3 ? C.teal : C.gray}>{mentors.length}/3</Label> : null}
+      >
+        {mentors.length === 0 ? (
+          <GhostCard onClick={() => openOverlay("addmentor")}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Avatar src={m.avatarUrl} name={m.name} size={48} bg={C.purple} color={C.white} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{m.name}</div>
-                  {unread > 0 && <span style={{ fontFamily: F.mono, fontSize: 8.5, background: C.purple, color: C.white, padding: "2px 6px", fontWeight: 700 }}>{unread} NEW</span>}
-                </div>
-                {m.headline && <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.headline}</div>}
-                <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{first.toUpperCase()}’S ORBIT · {posts.length} POST{posts.length === 1 ? "" : "S"}</div>
+              <IconTile size={48} bg={C.ghostTile}><Users size={20} color={C.gray} /></IconTile>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>No mentor matched yet</div>
+                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 2, lineHeight: 1.45 }}>Mentors are still being onboarded. Your exercises are open now, the work counts either way.</div>
               </div>
-              {msgUnlocked
-                ? <Btn small kind="soft" onClick={(e) => { e.stopPropagation(); openOverlay({ dmPeer: m }); }}><MessageCircle size={14} /> Message</Btn>
-                : <span style={{ fontFamily: F.mono, fontSize: 9, background: "#EFEEEA", color: C.gray, padding: "7px 10px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 5 }}><Lock size={10} /> STAGE 1</span>}
+              <ChevronRight size={16} color={C.gray} />
             </div>
-            {latest ? (
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.line}` }}>
-                <div style={{ width: 28, height: 28, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {latest.kind === "video" ? <Play size={13} color={C.purple} /> : latest.kind === "resource" ? <FileText size={13} color={C.purple} /> : <MessageCircle size={13} color={C.purple} />}
-                </div>
+          </GhostCard>
+        ) : mentors.map((m) => {
+          const posts = feeds[m.id] || [];
+          const latest = posts.find(p => !p.pinned);
+          const unread = posts.filter(p => (p.kind === "video" || p.kind === "resource") && !watched[p.id]).length;
+          const first = m.name.split(" ")[0];
+          return (
+            <Card key={m.id} onClick={() => openOrbit(m.id)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Avatar src={m.avatarUrl} name={m.name} size={48} bg={C.purple} color={C.white} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, lineHeight: 1.45, color: C.ink, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{latest.title || latest.text}</div>
-                  <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{String(latest.when || "NOW").toUpperCase()} · TAP TO READ, REACT + EARN XP</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15 }}>{m.name}</div>
+                    {unread > 0 && <span style={{ fontFamily: F.mono, fontSize: 8.5, background: C.purple, color: C.white, padding: "2px 7px", borderRadius: R.pill, fontWeight: 700 }}>{unread} NEW</span>}
+                  </div>
+                  {m.headline && <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.headline}</div>}
+                  <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 3 }}>{first.toUpperCase()}’S ORBIT · {posts.length} POST{posts.length === 1 ? "" : "S"}</div>
                 </div>
+                {msgUnlocked
+                  ? <Btn small kind="soft" onClick={(e) => { e.stopPropagation(); openOverlay({ dmPeer: m }); }}><MessageCircle size={14} /> Message</Btn>
+                  : <span style={{ fontFamily: F.mono, fontSize: 9, background: C.ghost, color: C.gray, padding: "7px 10px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 5 }}><Lock size={10} /> STAGE 1</span>}
               </div>
-            ) : (
-              <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10 }}>{msgUnlocked ? "NOTHING POSTED YET · TAP TO OPEN" : "ORBIT IS OPEN NOW · FINISH STAGE 1 TO EARN DIRECT CONNECT"}</div>
-            )}
-          </Card>
-        );
-      })}
+              {latest ? (
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 13, paddingTop: 13, borderTop: `1px solid ${C.line}` }}>
+                  <IconTile size={28} radius={9}>
+                    {latest.kind === "video" ? <Play size={13} color={C.purple} /> : latest.kind === "resource" ? <FileText size={13} color={C.purple} /> : <MessageCircle size={13} color={C.purple} />}
+                  </IconTile>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, lineHeight: 1.45, color: C.ink, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{latest.title || latest.text}</div>
+                    <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 4 }}>{String(latest.when || "NOW").toUpperCase()} · TAP TO READ, REACT + EARN XP</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 10 }}>{msgUnlocked ? "NOTHING POSTED YET · TAP TO OPEN" : "ORBIT IS OPEN NOW · FINISH STAGE 1 TO EARN DIRECT CONNECT"}</div>
+              )}
+            </Card>
+          );
+        })}
 
-      {mentors.length > 0 && mentorSeats < 3 && (
-        <Card onClick={() => openOverlay("addmentor")} style={{ marginTop: 10, border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Plus size={16} color={C.purple} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Add another mentor</div>
-              <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>A different strength, its own orbit · {mentorSeats}/3 seats used · +15 XP</div>
+        {mentors.length > 0 && mentorSeats < 3 && (
+          <GhostCard onClick={() => openOverlay("addmentor")}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <IconTile size={36} radius={10}><Plus size={16} color={C.purple} /></IconTile>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Add another mentor</div>
+                <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>A different strength, its own orbit · {mentorSeats}/3 seats used · +15 XP</div>
+              </div>
+              <ChevronRight size={16} color={C.gray} />
             </div>
-            <ChevronRight size={16} color={C.gray} />
-          </div>
-        </Card>
-      )}
+          </GhostCard>
+        )}
+      </Section>
 
       {/* Sessions. Three honest states: a proposal waiting on you, a booked time,
           or nothing yet, never an invented slot, which is what this card's
           ancestor printed under the mentor's name. */}
-      {(mentors.length > 0 || sessions.length > 0) && (
-        <Card
-          onClick={() => openOverlay("sessions")}
-          style={{
-            marginTop: 12,
-            ...(needsAnswer.length > 0 ? { border: `1.5px solid ${C.amber}`, background: C.amberTint } : {}),
-          }}
-        >
+      <Section>
+        {(mentors.length > 0 || sessions.length > 0) && (
+          <Card
+            onClick={() => openOverlay("sessions")}
+            style={needsAnswer.length > 0 ? { border: `1px solid ${C.amber}`, background: C.amberTint } : undefined}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <IconTile size={36} radius={10} bg={needsAnswer.length ? "#F2E2C4" : C.purpleTint}>
+                <Calendar size={16} color={needsAnswer.length ? C.amber : C.purple} />
+              </IconTile>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>
+                  {needsAnswer.length > 0
+                    ? `${(needsAnswer[0].person?.name || "Your mentor").split(" ")[0]} proposed a session`
+                    : nextSession ? "Your next session" : "No session booked"}
+                </div>
+                <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
+                  {needsAnswer.length > 0
+                    ? "Pick a time that works, that books it"
+                    : nextSession ? `${fmtRange(nextSession.confirmedSlot)} · ${countdown(nextSession.confirmedSlot.start)}` : "Propose a few times to your mentor"}
+                </div>
+              </div>
+              <ChevronRight size={16} color={needsAnswer.length ? C.amber : C.gray} />
+            </div>
+          </Card>
+        )}
+
+        {/* The "Latest in X's Orbit" card that used to sit here showed one
+            mentor's newest post and had no way to name which mentor it belonged
+            to once there were several. Each Orbit tile above carries its own. */}
+
+        {/* The directory, as distinct from the deck below it: search the whole
+            Roster and see who you've already asked, rather than being handed one
+            card at a time. */}
+        <Card onClick={() => openOverlay("explore")}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: needsAnswer.length ? "#F2E2C4" : C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Calendar size={16} color={needsAnswer.length ? C.amber : C.purple} />
+            <IconTile size={36} radius={10}><Search size={16} color={C.purple} /></IconTile>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Explore mentors</div>
+              <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Search the whole Roster by name, role, or expertise</div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>
-                {needsAnswer.length > 0
-                  ? `${(needsAnswer[0].person?.name || "Your mentor").split(" ")[0]} proposed a session`
-                  : nextSession ? "Your next session" : "No session booked"}
-              </div>
-              <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
-                {needsAnswer.length > 0
-                  ? "Pick a time that works, that books it"
-                  : nextSession ? `${fmtRange(nextSession.confirmedSlot)} · ${countdown(nextSession.confirmedSlot.start)}` : "Propose a few times to your mentor"}
-              </div>
-            </div>
-            <ChevronRight size={16} color={needsAnswer.length ? C.amber : C.gray} />
+            <ChevronRight size={16} color={C.gray} />
           </div>
         </Card>
-      )}
 
-      {/* The "Latest in X's Orbit" card that used to sit here showed one
-          mentor's newest post and had no way to name which mentor it belonged
-          to once there were several. Each Orbit tile above carries its own. */}
-
-      {/* The directory, as distinct from the deck below it: search the whole
-          Roster and see who you've already asked, rather than being handed one
-          card at a time. */}
-      <Card onClick={() => openOverlay("explore")} style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, background: C.purpleTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Search size={16} color={C.purple} /></div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>Explore mentors</div>
-            <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Search the whole Roster by name, role, or expertise</div>
+        {/* The board, in the reference's row shape — rank, name, XP — with the
+            one row that is actually knowable. There is no cross-cohort XP ledger
+            yet, so the rest of the table stays absent rather than invented. */}
+        <Card onClick={() => openOverlay("cohort")}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={S.sb(13)}>Leaderboard</div>
+            <Chip>{policy?.boardScope || "Cohort"}</Chip>
           </div>
-          <ChevronRight size={16} color={C.gray} />
-        </div>
-      </Card>
-
-      {/* The board, in the reference's row shape — rank, name, XP — with the
-          one row that is actually knowable. There is no cross-cohort XP ledger
-          yet, so the rest of the table stays absent rather than invented. */}
-      <Card onClick={() => openOverlay("cohort")} style={{ marginTop: 11 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-          <div style={S.sb(13)}>Leaderboard</div>
-          <Chip>{policy?.boardScope || "Cohort"}</Chip>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", background: C.purpleTint, borderRadius: 8 }}>
-          <span style={{ ...S.mono(9, u.rank === 1 ? C.amber : C.mute), width: 18 }}>{u.rank ? `#${u.rank}` : "—"}</span>
-          <span style={{ ...S.sb(12.5), flex: 1 }}>You</span>
-          <span style={S.mono(9, C.purple)}>{Number(u.xp || 0).toLocaleString()} XP</span>
-        </div>
-        <div style={{ ...S.b(11, C.mute), marginTop: 8 }}>
-          {u.rank ? "Tap for your full standing." : "Rankings open once enough of the cohort is active."}
-        </div>
-      </Card>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: C.purpleTint, borderRadius: 10 }}>
+            <span style={{ ...S.mono(9, u.rank === 1 ? C.amber : C.mute), width: 18 }}>{u.rank ? `#${u.rank}` : "—"}</span>
+            <span style={{ ...S.sb(12.5), flex: 1 }}>You</span>
+            <span style={S.mono(9, C.purple)}>{Number(u.xp || 0).toLocaleString()} XP</span>
+          </div>
+          <div style={{ ...S.b(11, C.mute), marginTop: 8 }}>
+            {u.rank ? "Tap for your full standing." : "Rankings open once enough of the cohort is active."}
+          </div>
+        </Card>
+      </Section>
     </div>
   );
 };
@@ -355,10 +354,10 @@ export const MenteeExercises = ({ u, todayDone, onSubmit, submitting, badges = [
   return (
     <div>
       <HeaderRow title="Grow" right={<Chip c={C.gray} bg="#F1F0EC">WEEK {u.week || 1}</Chip>} />
-      <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+      <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: SP.gap }}>
         {list.map((ex, i) => {
           if (ex.state === "open" && !todayDone) return (
-            <Card key={i} style={{ border: `1px solid ${C.line}` }}>
+            <Card key={i}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <div style={S.mono(8, C.teal)}>TODAY’S EXERCISE</div>
                 {ex.milestone && <div style={S.mono(8, C.amber)}>MILESTONE 3/3</div>}
@@ -512,7 +511,7 @@ export const CohortScreen = ({ u, back }) => {
         </div>
         <Label color="#9C93E8">Your cohort impact</Label>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
-          <div style={{ width: 26, height: 26, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Crown size={13} color={C.white} /></div>
+          <IconTile size={26} radius={9} bg={C.purple}><Crown size={13} color={C.white} /></IconTile>
           <div>
             <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700, color: "#B7AFF2", lineHeight: 1.2 }}>
               {Number(u.xp || 0).toLocaleString()} <span style={{ fontFamily: F.mono, fontSize: 9.5, fontWeight: 600, color: "#8B8985", letterSpacing: 0.5 }}>XP</span>
@@ -523,15 +522,15 @@ export const CohortScreen = ({ u, back }) => {
           </div>
         </div>
       </Card>
-      <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+      <GhostCard>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Users size={18} color={C.gray} /></div>
+          <IconTile size={44} bg={C.ghostTile}><Users size={18} color={C.gray} /></IconTile>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>The board opens with the cohort</div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>Anonymised rankings appear once enough of the founding cohort is active. Until then the only number worth watching is your own.</div>
           </div>
         </div>
-      </Card>
+      </GhostCard>
     </div>
   </div>
   );
@@ -728,7 +727,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
         {mentorsOf(u).length < 3 && (() => {
           const open = 3 - mentorsOf(u).length;
           return (
-            <div onClick={() => openOverlay("addmentor")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, padding: "10px 0", border: "1.5px dashed #CFCDC7", borderRadius: 12, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 13 }}>
+            <div onClick={() => openOverlay("addmentor")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, padding: "11px 0", background: C.ghost, borderRadius: R.tile, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 13 }}>
               <Plus size={14} /> Add a mentor · {open} seat{open === 1 ? "" : "s"} open
             </div>
           );

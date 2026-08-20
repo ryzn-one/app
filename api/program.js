@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 import { getDb, collections } from "../lib/db.js";
 import { json, fail, withUser } from "../lib/http.js";
 import { sideOf, hasAcceptedPair, matchesCollection } from "../lib/matches.js";
+import { rateLimit } from "../lib/ratelimit.js";
+import { aiConfigured, draftPhase, draftCourse } from "../lib/ai.js";
 
 /**
  * /api/program, a mentor's authored program (phases a mentee moves through,
@@ -12,6 +14,14 @@ import { sideOf, hasAcceptedPair, matchesCollection } from "../lib/matches.js";
  *   GET   /api/program?menteeId=…     my own phases + that mentee's progress (mentor, paired only)
  *   PUT   /api/program {phases}       replace the whole phase list (mentor only)
  *   PATCH /api/program {menteeId, phaseId, completed}   mark a phase done/undone for a mentee (mentor only)
+ *   POST  /api/program?draft=1        "fill it out with AI", see below (mentor only)
+ *
+ * The draft branch writes nothing. It returns a proposed phase (or a proposed
+ * course) for the mentor to read, edit and either keep or bin; the phases only
+ * exist once they come back through PUT. Same reason it rides on this file
+ * rather than its own: Vercel counts functions per deployment and this project
+ * sits near the ceiling, so a flag on the endpoint that already owns programs
+ * beats a nineteenth function (see /api/profile?upload=1 for the precedent).
  *
  * Phases live in their own collection, one doc per mentor, the same shape
  * every mentee reads. Progress rides on the `matches` doc instead of a new
@@ -71,10 +81,71 @@ async function progressFor(mentorId, menteeId) {
   return m?.programProgress?.completedPhaseIds || [];
 }
 
+/** What the drafting prompt is allowed to know about the mentor: the fields
+    they wrote about themselves, nothing about any mentee. */
+async function mentorProfile(db, userId) {
+  const p = await db.collection(collections.profiles).findOne(
+    { userId },
+    { projection: { headline: 1, industry: 1, expertise: 1, menteeFit: 1, why: 1, experience: 1 } }
+  );
+  return {
+    headline: p?.headline || null,
+    industry: p?.industry || null,
+    expertise: p?.expertise || [],
+    menteefit: p?.menteeFit || [],
+    why: p?.why || null,
+    experience: p?.experience || null,
+  };
+}
+
+/**
+ * POST /api/program?draft=1
+ *   { mode: "phase", index?, replacing?, hint? }  → { phase }
+ *   { mode: "course", hint? }                     → { phases }
+ *
+ * Draft only. Nothing here touches the programs collection.
+ */
+async function handleDraft(request, user, db) {
+  if (sideOf(user) !== "mentor") return fail(403, "mentors_only", "Only mentors design a course.");
+  if (!aiConfigured()) return fail(503, "ai_unavailable", "AI drafting isn't switched on yet.");
+
+  // A drafting call costs real money per press, so it is capped per mentor
+  // rather than per IP — a shared campus network shouldn't share a budget.
+  const { ok } = await rateLimit(`program-draft:${user.id}`, { limit: 40, windowMs: 60 * 60 * 1000 });
+  if (!ok) return fail(429, "rate_limited", "That's a lot of drafts. Try again in a little while.");
+
+  let body = {};
+  try { body = await request.json(); } catch { /* an empty body is a valid "just draft me something" */ }
+
+  const hint = String(body.hint || "").trim().slice(0, 400);
+  const phases = await ownPhases(db, user.id);
+  const profile = await mentorProfile(db, user.id);
+
+  try {
+    if (body.mode === "course") {
+      const drafted = await draftCourse({ profile, hint });
+      if (!drafted.length) return fail(502, "ai_empty", "Couldn't draft a course just then. Try again.");
+      return json({ phases: drafted });
+    }
+    const index = Number.isInteger(body.index) ? Math.max(0, Math.min(body.index, phases.length)) : phases.length;
+    const phase = await draftPhase({ profile, phases, index, replacing: !!body.replacing, hint });
+    if (!phase.title) return fail(502, "ai_empty", "Couldn't draft that phase. Try again.");
+    return json({ phase });
+  } catch (err) {
+    console.error("[program] draft failed:", err?.message);
+    if (err?.status === 429) return fail(429, "ai_busy", "The drafting model is busy. Try again in a moment.");
+    return fail(502, "ai_failed", "Couldn't reach the drafting model. Your course is untouched.");
+  }
+}
+
 async function handler(request, user) {
   const url = new URL(request.url);
   const db = await getDb();
   const isMentor = sideOf(user) === "mentor";
+
+  if (request.method === "POST" && url.searchParams.get("draft")) {
+    return handleDraft(request, user, db);
+  }
 
   if (request.method === "GET") {
     const mentorId = url.searchParams.get("mentorId");
@@ -164,7 +235,7 @@ async function handler(request, user) {
     return json({ completedPhaseIds: await progressFor(user.id, menteeId) });
   }
 
-  return fail(405, "method_not_allowed", "Use GET, PUT or PATCH.");
+  return fail(405, "method_not_allowed", "Use GET, PUT, PATCH, or POST?draft=1.");
 }
 
 export default { fetch: withUser(handler) };

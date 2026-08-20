@@ -47,7 +47,7 @@ html, body, #root {
   overflow: hidden;
   position: fixed;
   inset: 0;
-  background: #E9E8E4;
+  background: #EFEEEB;
   /* Rubber-banding a fixed root drags the whole shell off its own painted
      background and exposes an unpainted strip at whichever edge you pull. */
   overscroll-behavior: none;
@@ -126,11 +126,14 @@ input::placeholder, textarea::placeholder { color: #A5A39D; }
 .dna-fill { transform-origin: left center; animation: dnaFill .8s cubic-bezier(.2,.9,.3,1) both; }
 @keyframes dnaFill { from { transform: scaleX(0); } to { transform: none; } }
 
+/* Hover feedback, not elevation. The old pair (-5px, a 46px-blur shadow at 17%)
+   threw a bruise under anything the pointer crossed and fought the flat resting
+   card it was attached to. */
 .card-lift { transition: transform .2s ease, box-shadow .2s ease; }
-.card-lift:hover { transform: translateY(-5px); box-shadow: 0 22px 46px rgba(26,26,26,.17); }
+.card-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(26,26,26,.05); }
 
-.rail-row { transition: background .15s ease, transform .15s ease; }
-.rail-row:hover { background: #EEF0FC; transform: translateX(3px); }
+.rail-row { transition: background .15s ease; }
+.rail-row:hover { background: #EEF0FC; }
 
 .kbd { font-family: 'Space Mono', monospace; font-size: 9px; border: 1px solid #D8D6D0; border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; color: #5F5E5A; background: #FFF; }
 

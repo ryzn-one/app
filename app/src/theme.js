@@ -11,7 +11,35 @@ export const C = {
   teal: "#1D9E75", coral: "#D85A30", amber: "#E8A13B",
   gray: "#6E6D68", mute: "#A5A39D",
   purpleTint: "#EEEDFB", tealTint: "#E1F5EE", coralTint: "#FAECE7", amberTint: "#FAEEDA",
+
+  /* ----- the two surface tokens the v3 layout pass added -----
+     `line` stays what it always was: the divider *inside* a card, and the
+     chrome rule under the top bar / over the tab bar. Those separate two things
+     that touch, and they need to be seen.
+
+     `hair` is the card's own outline. A card is separated from the page by the
+     gap around it, not by a rule, so its edge only has to stop the white from
+     bleeding into the surface — at #F0EFEC against #F5F5F3 it does exactly that
+     and nothing more. The old build drew both jobs with `line`, which is why a
+     column of cards read as a stack of boxed-in panels.
+
+     `ghost` is the resting fill for a card with nothing in it yet — an unmatched
+     mentor slot, an empty session list, an "add another". These were 23
+     hand-rolled `1.5px dashed #CFCDC7` borders; a dotted outline is the loudest
+     thing on a screen and it was reserved for the emptiest. A tint that sits
+     one step back from white says the same thing without the stitching. */
+  hair: "#F0EFEC", ghost: "#F2F1EE", ghostTile: "#E7E5E0",
 };
+
+/* Radius scale. Three steps, so nothing gets to invent a fourth: the card, the
+   thing inside the card (icon tile, thumbnail, inline button), and the pill. */
+export const R = { card: 18, tile: 12, pill: 999 };
+
+/* Vertical rhythm. `gap` is between cards inside one section, `sec` is between
+   one section and the next, `pad` is a card's own inset. Call sites used to
+   pick marginTop by eye — 10, 11, 12 and 22 all appear on the mentee home
+   alone — and no two sections landed on the same rhythm. */
+export const SP = { gap: 12, sec: 26, pad: 16 };
 
 /* The reference calls these `T.ptint` / `T.ttint` / `T.ctint` / `T.atint`. Both
    spellings point at the same string so a block lifted from the reference and a

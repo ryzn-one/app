@@ -6,8 +6,8 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2, Repeat2
 } from "lucide-react";
-import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, labelOf } from "./ui.jsx";
+import { C, F, S, SP, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, ModalShell, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
@@ -15,7 +15,7 @@ import { KIND_META, ContentTabs, ContentTabBar, PostCard, relTime } from "./feed
 import { PostOverflow } from "./studio.jsx";
 import { MyShelf, MentorShelf } from "./resources.jsx";
 import { TagRow } from "./chatmatch.jsx";
-import { fetchMenteeExercises, fetchProgram, setPhaseComplete, fetchImpactHistory } from "./lib/auth-client.js";
+import { fetchMenteeExercises, fetchProgram, setPhaseComplete, fetchImpactHistory, draftPhaseWithAI, draftCourseWithAI } from "./lib/auth-client.js";
 
 /* Suggested starter phases, one tap seeds a course so mentors aren't staring
    at a blank timeline wondering what "phase" means. */
@@ -27,12 +27,99 @@ const STARTER_PHASES = [
 ];
 
 /**
+ * The confirm step for a whole AI-drafted course.
+ *
+ * A drafted course is never added on arrival. It lands here first: every phase
+ * shown, each one keepable or droppable, and one explicit press to commit the
+ * ones that survive. Editing happens afterwards through the normal pencil, so
+ * this stays a yes/no screen rather than four forms stacked in a modal.
+ */
+const CourseDraftReview = ({ phases, keep, onToggle, onConfirm, onRetry, onClose, busy }) => {
+  const kept = phases.filter((_, i) => keep[i]).length;
+  return (
+    <ModalShell onClose={onClose}>
+      <div style={{ padding: "20px 24px 24px" }}>
+        <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>Review your draft course</div>
+        <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
+          Nothing is saved yet. Untick anything you don't want, then add the rest — you can edit every phase afterwards.
+        </div>
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          {phases.map((p, i) => (
+            <div key={i} onClick={() => onToggle(i)} style={{
+              display: "flex", gap: 11, padding: 12, borderRadius: 14, cursor: "pointer",
+              background: keep[i] ? C.white : "transparent",
+              border: `1px solid ${keep[i] ? C.line : "transparent"}`,
+              opacity: keep[i] ? 1 : 0.45,
+            }}>
+              <div style={{
+                width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                background: keep[i] ? C.teal : "#E6E5E1",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {keep[i] && <Check size={12} color={C.white} strokeWidth={3} />}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>{p.title}</div>
+                {p.duration && <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", letterSpacing: 0.5, marginTop: 3 }}>{p.duration.toUpperCase()}</div>}
+                {p.description && <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>{p.description}</div>}
+                {p.reward && (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purpleTint, color: C.purple, padding: "5px 9px", borderRadius: 10, marginTop: 8 }}>
+                    <Award size={11} /><span style={{ fontFamily: F.sans, fontSize: 11.5, fontWeight: 700 }}>{p.reward.label}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <Btn kind="ghost" style={{ flex: 1 }} disabled={busy} onClick={onRetry}>
+            <Sparkles size={14} /> {busy ? "Drafting…" : "Draft again"}
+          </Btn>
+          <Btn style={{ flex: 1 }} disabled={!kept || busy} onClick={onConfirm}>
+            Add {kept} phase{kept === 1 ? "" : "s"}
+          </Btn>
+        </div>
+      </div>
+    </ModalShell>
+  );
+};
+
+/**
  * Full-screen course designer. Studio only shows a door into this, the phases
  * live here so "design your course" feels like opening a workspace, not editing
  * a card buried under profile strength.
  */
 export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
   const list = phases || [];
+  /* Course-level drafting. The single-phase equivalent lives in the phase form
+     itself (see ProgramTimeline's onDraft), because that is where a mentor is
+     already standing when they want a phase written for them. */
+  const [draft, setDraft] = useState(null);      // { phases, keep: boolean[] }
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState("");
+
+  const runCourseDraft = async () => {
+    if (drafting) return;
+    setDrafting(true);
+    setDraftError("");
+    try {
+      const { phases: drafted } = await draftCourseWithAI();
+      setDraft({ phases: drafted, keep: drafted.map(() => true) });
+    } catch (err) {
+      setDraftError(err?.message || "Couldn't draft a course just then. Try again.");
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  /* The only place a drafted course becomes real, and it takes a press to get
+     here. Ids are dropped so the server mints them, same as the starter list. */
+  const acceptDraft = () => {
+    const kept = draft.phases.filter((_, i) => draft.keep[i]).map((p) => ({ ...p, id: null }));
+    setDraft(null);
+    onSaveProgram([...list, ...kept]);
+  };
+
   const savePhase = (phase) => {
     const exists = phase.id && list.some((p) => p.id === phase.id);
     const next = exists ? list.map((p) => (p.id === phase.id ? { ...p, ...phase } : p)) : [...list, phase];
@@ -54,7 +141,7 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
   return (
     <div>
       <HeaderRow title="Design your course" onBack={back} />
-      <div style={{ padding: "0 14px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ padding: "0 14px 20px", display: "flex", flexDirection: "column", gap: SP.gap }}>
         <Card className="fade-up" style={{ background: C.ink, border: "none", color: C.white, padding: 22 }}>
           <Label color="#9C93E8">Your mentorship course</Label>
           <div style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, letterSpacing: -0.4, marginTop: 6, lineHeight: 1.25 }}>
@@ -76,15 +163,19 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
         </Card>
 
         {list.length === 0 && (
-          <Card className="fade-up" style={{ border: `1.5px dashed ${C.purple}`, background: C.purpleTint }}>
+          <Card className="fade-up" style={{ border: "1px solid transparent", background: C.purpleTint }}>
             <Label color={C.purple}>Start here</Label>
             <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 15, marginTop: 8 }}>Add your first phase</div>
             <div style={{ fontSize: 12.5, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
-              Or use a 4-phase starter and edit from there.
+              Let AI draft one from your profile, or start from a 4-phase starter and edit from there.
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-              <Btn small style={{ width: "auto" }} onClick={seedStarter}><Sparkles size={14} /> Use starter course</Btn>
+              <Btn small style={{ width: "auto" }} disabled={drafting} onClick={runCourseDraft}>
+                <Sparkles size={14} /> {drafting ? "Drafting…" : "Fill it out with AI"}
+              </Btn>
+              <Btn kind="ghost" small style={{ width: "auto" }} onClick={seedStarter}>Use starter course</Btn>
             </div>
+            {draftError && <div style={{ fontSize: 11.5, color: C.coral, marginTop: 10, lineHeight: 1.4 }}>{draftError}</div>}
           </Card>
         )}
 
@@ -106,9 +197,21 @@ export const CourseDesigner = ({ phases = [], onSaveProgram, back }) => {
             onSave={savePhase}
             onDelete={deletePhase}
             onMove={movePhase}
+            onDraft={(args) => draftPhaseWithAI(args).then((r) => r.phase)}
           />
         </Card>
       </div>
+      {draft && (
+        <CourseDraftReview
+          phases={draft.phases}
+          keep={draft.keep}
+          busy={drafting}
+          onToggle={(i) => setDraft((d) => ({ ...d, keep: d.keep.map((k, j) => (j === i ? !k : k)) }))}
+          onConfirm={acceptDraft}
+          onRetry={runCourseDraft}
+          onClose={() => setDraft(null)}
+        />
+      )}
     </div>
   );
 };
@@ -179,7 +282,7 @@ export const MentorDash = ({ u, name, openOverlay, addsLeft, org, renderMentors 
         {renderMentors ? renderMentors(q) : (
           <Card onClick={() => openOverlay("network")} style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ width: 30, height: 30, borderRadius: 10, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Repeat2 size={14} color={C.teal} /></div>
-            <div style={{ flex: 1, ...S.sb(13) }}>Mentor network</div>
+            <div style={{ flex: 1, ...S.sb(13) }}>The Roster</div>
             <ChevronRight size={15} color={C.mute} />
           </Card>
         )}
@@ -346,11 +449,11 @@ export const MenteeDetailScreen = ({ u, mentee, back, openDm }) => {
             </Card>
           ))}
         </div>
-        <Card style={mentee.stage1 ? { background: C.tealTint, border: "none" } : { border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+        <Card style={mentee.stage1 ? { background: C.tealTint, border: "1px solid transparent" } : { background: C.ghost, border: "1px solid transparent" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, background: mentee.stage1 ? C.teal : "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <IconTile size={36} radius={10} bg={mentee.stage1 ? C.teal : C.ghostTile}>
               {mentee.stage1 ? <MessageCircle size={15} color={C.white} /> : <Lock size={15} color={C.gray} />}
-            </div>
+            </IconTile>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14, color: mentee.stage1 ? C.teal : C.ink }}>{mentee.stage1 ? "Direct line open" : "Chat unlocks at their Stage 1"}</div>
               <div style={{ fontSize: 12, color: mentee.stage1 ? C.teal : C.gray, marginTop: 2, opacity: mentee.stage1 ? 0.85 : 1, lineHeight: 1.4 }}>{mentee.stage1 ? `${mentee.name.split(" ")[0]} earned Direct Connect, message any time.` : "They earn it by finishing their first exercise. You’ll get a nudge the moment it opens."}</div>
@@ -469,11 +572,11 @@ export const MentorBoard = ({ u, back }) => (
           </div>
         ))}
       </Card>
-      <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+      <GhostCard>
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.55 }}>
           The quarterly leaderboard opens once the founding roster is complete. Until then your Impact Score stands on its own, sessions, milestones and graduations all count toward it.
         </div>
-      </Card>
+      </GhostCard>
     </div>
   </div>
 );
@@ -518,7 +621,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
       <HeaderRow title="Your profile" right={
         <button data-tour="mentor-profile-settings" onClick={() => openOverlay("settings")} style={{ background: "none", border: "none", cursor: "pointer" }}><Settings size={20} color={C.ink} /></button>} />
       <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4 }}>
+        <div style={{ display: "flex", background: C.ghost, borderRadius: 12, padding: 4 }}>
           {[["studio", "Studio"], ["preview", "Public view"]].map(([id, l]) => (
             <button key={id} onClick={() => setView(id)} style={{ flex: 1, border: "none", cursor: "pointer", borderRadius: 9, padding: "9px 0", fontFamily: F.sans, fontWeight: 600, fontSize: 13, background: view === id ? C.white : "transparent", color: view === id ? C.ink : C.gray }}>{l}</button>
           ))}
@@ -601,8 +704,8 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             {checklist.map(([l, ok, hint, jump]) => (
               <div key={l} onClick={!ok && jump ? jump : undefined}
                 style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 11, cursor: !ok && jump ? "pointer" : "default" }}>
-                <div style={{ width: 20, height: 20, background: ok ? C.tealTint : "#EFEEEA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {ok ? <Check size={12} color={C.teal} strokeWidth={3} /> : <div style={{ width: 6, height: 6, background: "#C9C6C0" }} />}
+                <div style={{ width: 20, height: 20, borderRadius: 7, background: ok ? C.tealTint : C.ghost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {ok ? <Check size={12} color={C.teal} strokeWidth={3} /> : <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C9C6C0" }} />}
                 </div>
                 <span style={{ flex: 1, fontSize: 13.5, color: ok ? C.ink : C.gray }}>{l}</span>
                 <span style={{ fontFamily: F.mono, fontSize: 8.5, color: ok ? C.teal : "#A5A39D", letterSpacing: 0.5 }}>{ok ? "DONE" : hint.toUpperCase()}</span>
@@ -615,7 +718,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
           {/* Door into the course designer, not an inline editor. Mentors open
               a dedicated workspace to author phases, then come back here. */}
           <Card data-tour="mentor-profile-program" onClick={() => openOverlay("course")}
-            style={{ border: `1.5px solid ${C.teal}`, cursor: "pointer", padding: 18, background: C.tealTint }}>
+            style={{ border: `1px solid ${C.teal}`, cursor: "pointer", padding: 18, background: C.tealTint }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <LayoutGrid size={20} color={C.white} />
@@ -652,7 +755,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
               emptyText="Add your current role" onSave={v => onUpdateProfile("experience", v)} />
           </Card>
 
-          <Card style={{ border: `1.5px solid ${posts.length ? C.teal : C.purple}` }}>
+          <Card style={{ border: `1px solid ${posts.length ? C.teal : C.purple}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Label color={posts.length ? C.teal : C.purple}>Your content · {posts.length}</Label>
               <Label color={C.teal}>+10 IMPACT EACH</Label>
@@ -669,7 +772,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
               for. Sits directly under "Your content" because the two answer the
               same question a mentee is asking, is this person worth my time -
               and only one of them requires the mentor to produce anything. */}
-          <Card style={{ border: `1.5px solid ${shelfCount ? C.teal : C.line}` }}>
+          <Card style={{ border: `1px solid ${shelfCount ? C.teal : C.hair}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Label color={shelfCount ? C.teal : C.purple}>Your shelf · {shelfCount}</Label>
               <Label color={C.teal}>+5 IMPACT EACH</Label>

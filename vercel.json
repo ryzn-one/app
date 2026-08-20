@@ -1,6 +1,9 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "functions": {
+    "api/program.js": { "maxDuration": 60 }
+  },
   "rewrites": [
     { "source": "/api/auth/:path*", "destination": "/api/auth-handler" },
     { "source": "/p/:code", "destination": "/api/posts?share=:code" },

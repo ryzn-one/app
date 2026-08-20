@@ -202,7 +202,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
 
       <Body>
         {step ? (
-          <Card key={step.key} style={{ padding: 0, overflow: "hidden", border: `1.5px solid ${C.purple}` }}>
+          <Card key={step.key} style={{ padding: 0, overflow: "hidden", border: `1px solid ${C.purple}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: step.tone }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Mono color="rgba(255,255,255,.75)" size={8}>{step.whoLabel}</Mono>
@@ -231,7 +231,7 @@ export const TeamsHome = ({ u, org, name, stage1, todayDone, matches = [], sessi
             </div>
           </Card>
         ) : (
-          <Card style={{ padding: 22, border: `1.5px solid ${C.teal}`, background: C.tealTint, textAlign: "center" }}>
+          <Card style={{ padding: 22, border: `1px solid ${C.teal}`, background: C.tealTint, textAlign: "center" }}>
             <div style={{ width: 46, height: 46, borderRadius: 14, background: C.white, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
               <Check size={22} color={C.teal} />
             </div>
@@ -482,7 +482,7 @@ export const TeamsCohort = ({ u, org, name, matches = [], sessions = [], onRespo
         name={name} avatarUrl={u.avatarUrl} onAvatar={() => onOpen("profile")} />
       <Body>
         {inbox.length > 0 && (
-          <Card style={{ border: `1.5px solid ${C.amber}` }}>
+          <Card style={{ border: `1px solid ${C.amber}`, background: C.amberTint }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Label color={C.amber}>Applications</Label>
               <Chip c={C.amber} bg={C.amberTint}>{inbox.length} NEW</Chip>

@@ -3,8 +3,8 @@ import {
   Calendar, CalendarCheck, CalendarClock, CalendarPlus, Check, ChevronLeft, ChevronRight,
   Clock, Download, ExternalLink, Plus, RotateCcw, Trash2, Video, X,
 } from "lucide-react";
-import { C, F } from "./theme.js";
-import { Card, Label, Btn, Monogram, HeaderRow } from "./ui.jsx";
+import { C, F, R, SP } from "./theme.js";
+import { Card, GhostCard, IconTile, Label, Btn, Monogram, HeaderRow } from "./ui.jsx";
 import {
   countdown, dayKeyOf, defaultSlot, downloadIcs, fmtDate, fmtRange, fmtTime, googleCalendarUrl,
 } from "./lib/calendar.js";
@@ -218,8 +218,8 @@ export const SessionComposer = ({ role, people = [], onCreate, onError }) => {
       <button
         onClick={() => setOpen(true)}
         style={{
-          width: "100%", padding: "12px 16px", border: `1.5px dashed ${C.line}`, borderRadius: 14,
-          background: C.surface, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+          width: "100%", padding: "13px 16px", border: "none", borderRadius: R.card,
+          background: C.ghost, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
           fontFamily: F.sans, fontWeight: 600, fontSize: 14, color: C.gray,
         }}
       >
@@ -368,7 +368,7 @@ export const SessionCard = ({ session, busy, onAction, toast }) => {
   const act = (action, extra) => onAction(session.id, action, extra);
 
   return (
-    <Card style={session.awaitingYou ? { border: `1.5px solid ${C.amber}` } : undefined}>
+    <Card style={session.awaitingYou ? { border: `1px solid ${C.amber}`, background: C.amberTint } : undefined}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <Monogram name={session.person?.name || "-"} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -568,11 +568,9 @@ export const SessionsScreen = ({
         <SessionComposer role={role} people={people} onCreate={onCreate} onError={(e) => toast?.(e?.message || "Couldn't send that.")} />
 
         {people.length === 0 && !loading && (
-          <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+          <GhostCard>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Calendar size={18} color={C.gray} />
-              </div>
+              <IconTile size={44} bg={C.ghostTile}><Calendar size={18} color={C.gray} /></IconTile>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No one to book with yet</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
@@ -582,7 +580,7 @@ export const SessionsScreen = ({
                 </div>
               </div>
             </div>
-          </Card>
+          </GhostCard>
         )}
 
         {/* Always show the month grid, Bilal's ask was a calendar mentors can
@@ -624,11 +622,9 @@ export const SessionsScreen = ({
         )}
 
         {!loading && sessions.length === 0 && people.length > 0 && (
-          <Card style={{ border: "1.5px dashed #CFCDC7", background: "#EFEEEA" }}>
+          <GhostCard>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ width: 44, height: 44, background: "#E2E1DC", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <CalendarClock size={18} color={C.gray} />
-              </div>
+              <IconTile size={44} bg={C.ghostTile}><CalendarClock size={18} color={C.gray} /></IconTile>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.sans, fontWeight: 700, fontSize: 14 }}>No sessions yet</div>
                 <div style={{ fontSize: 12.5, color: C.gray, marginTop: 3, lineHeight: 1.45 }}>
@@ -636,7 +632,7 @@ export const SessionsScreen = ({
                 </div>
               </div>
             </div>
-          </Card>
+          </GhostCard>
         )}
       </div>
     </div>

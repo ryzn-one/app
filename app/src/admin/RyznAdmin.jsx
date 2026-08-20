@@ -242,7 +242,7 @@ function Overview({ stats }) {
           </div>
           {[["Claimed", inv.claimed, C.teal], ["Open", inv.open, C.purple], ["Expired", inv.expired, C.gray], ["Revoked", inv.revoked, C.coral]].map(([l, n, c]) => (
             <div key={l} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 11 }}>
-              <span style={{ width: 9, height: 9, background: c }} />
+              <span style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />
               <span style={{ flex: 1, fontSize: 13.5 }}>{l}</span>
               <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: c }}>{n}</span>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Plus, X, Check, Calendar, Users, Lock, Trash2, ChevronDown } from "lucide-react";
-import { C, F } from "./theme.js";
+import { C, F, R } from "./theme.js";
 import { Card, Label, Btn, HeaderRow } from "./ui.jsx";
 import { isMentorRole } from "./lib/roles.js";
 
@@ -69,9 +69,9 @@ export const EventComposer = ({ isAdmin, onCreateEvent, onError }) => {
         style={{
           width: "100%",
           padding: "12px 16px",
-          border: `1.5px dashed ${C.line}`,
-          borderRadius: 14,
-          background: C.surface,
+          border: "none",
+          borderRadius: R.card,
+          background: C.ghost,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",

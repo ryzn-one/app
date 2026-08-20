@@ -8,7 +8,7 @@ import {
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
   X, SlidersHorizontal, RotateCcw, Search, Pencil, Trash2, Building2
 } from "lucide-react";
-import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
+import { C, F, S, R, SP, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { logoSrc, Brand } from "./branding.js";
 import { spring, t, modalPop, backdrop, T_FAST, T_SLOW } from "./motion.js";
 import { useIsDesktop } from "./useIsDesktop.js";
@@ -57,19 +57,90 @@ export const BrandIcon = ({ size = 48, light = false, alt = "Ryzn", style, ...re
 );
 
 /* ----- Primitives ----- */
+
+/**
+ * The card.
+ *
+ * Flat by design: a hairline edge and no resting shadow. Depth is a signal, and
+ * a screen where every card is lifted off the page has spent that signal on
+ * nothing — the only things that should look like they float are the ones that
+ * actually do (sheets, menus, modals). What separates one card from the next
+ * here is the gap between them, which is why `SP.gap` is a token and why the
+ * edge got quieter rather than heavier.
+ *
+ * `18/16`, not the old `16/14`. The tighter pair came from a reference built
+ * before the cards carried this much inside them; at 14px of padding a row of
+ * avatar + two lines of copy + a button touches its own edge on a 384px phone.
+ *
+ * Hover still lifts, because that is feedback about *this* card under *this*
+ * pointer rather than a permanent property of the surface — and it is inert on
+ * touch, where the tap scale does the same job.
+ */
 export const Card = ({ style, children, onClick, className, ...rest }) => {
   const reduced = useReducedMotion();
-  /* 16/14, not 18/16. The whole reference is built on a 14px card gutter; a
-     16px one adds ~4% to every card on a 384px-wide phone and is why the app's
-     screens felt roomier and less dense than the design. */
-  const base = { background: C.white, borderRadius: 16, border: `1px solid ${C.line}`, padding: 14, cursor: onClick ? "pointer" : "default", ...style };
+  const base = { background: C.white, borderRadius: R.card, border: `1px solid ${C.hair}`, padding: SP.pad, cursor: onClick ? "pointer" : "default", ...style };
   if (!onClick) return <div className={className} style={base} {...rest}>{children}</div>;
   return (
     <motion.div className={className} onClick={onClick} whileTap={reduced ? undefined : { scale: 0.985 }}
-      whileHover={reduced ? undefined : { y: -2, boxShadow: "0 12px 28px rgba(26,26,26,.08)" }}
+      whileHover={reduced ? undefined : { y: -2, boxShadow: "0 6px 18px rgba(26,26,26,.05)" }}
       transition={spring(reduced)} style={base} {...rest}>{children}</motion.div>
   );
 };
+
+/**
+ * A card with nothing in it yet.
+ *
+ * Every "no mentor matched", "no sessions booked", "add another" on every
+ * screen. It replaces 23 separate `1.5px dashed #CFCDC7` borders — a dotted
+ * outline reads as *broken* or *drop target*, and it was being used to draw
+ * attention to the parts of the product with the least in them. A flat tint one
+ * step back from white recedes instead, which is the honest treatment: an empty
+ * slot is a real state, not an error and not a construction site.
+ *
+ * Same geometry as `Card` so a ghost and a real card in the same column line up
+ * on the pixel.
+ */
+export const GhostCard = ({ style, children, onClick, className, ...rest }) => {
+  const reduced = useReducedMotion();
+  const base = { background: C.ghost, borderRadius: R.card, border: "1px solid transparent", padding: SP.pad, cursor: onClick ? "pointer" : "default", ...style };
+  if (!onClick) return <div className={className} style={base} {...rest}>{children}</div>;
+  return (
+    <motion.div className={className} onClick={onClick} whileTap={reduced ? undefined : { scale: 0.985 }}
+      whileHover={reduced ? undefined : { background: "#EDECE8" }}
+      transition={spring(reduced)} style={base} {...rest}>{children}</motion.div>
+  );
+};
+
+/** The square behind an icon inside a card. Screens hand-rolled this ~30 times
+    as a bare `width/height/background` div and none of them set a radius, so a
+    rounded card kept ending up with hard-cornered chips inside it. */
+export const IconTile = ({ size = 44, bg = C.purpleTint, radius = R.tile, children, style }) => (
+  <div style={{ width: size, height: size, borderRadius: radius, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...style }}>
+    {children}
+  </div>
+);
+
+/**
+ * One band of a screen: a label, an optional counter or action on the right,
+ * and a column of cards under it at a fixed gap.
+ *
+ * The rhythm used to be per-call-site — the mentee home alone opened sections
+ * at `marginTop: 22` and spaced the cards inside them at 10, 11 and 12 — so no
+ * two bands on the same scroll agreed on where a group started or ended. One
+ * component owns both distances now, and `first` is the only knob, for the
+ * section that sits directly under a header and shouldn't push off it.
+ */
+export const Section = ({ title, right, first, children, style }) => (
+  <div style={{ marginTop: first ? 0 : SP.sec, ...style }}>
+    {(title || right) && (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 11 }}>
+        {title ? <Label>{title}</Label> : <span />}
+        {right}
+      </div>
+    )}
+    <div style={{ display: "flex", flexDirection: "column", gap: SP.gap }}>{children}</div>
+  </div>
+);
 export const FormError = ({ children }) => children ? (
   <div role="alert" style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.coralTint, border: `1px solid ${C.coral}`, borderRadius: 12, padding: "11px 12px", marginTop: 14, fontSize: 13, color: C.ink, lineHeight: 1.45 }}>
     <span style={{ color: C.coral, fontWeight: 700, lineHeight: 1.3 }}>!</span>
@@ -149,7 +220,7 @@ export const Chip = ({ children, c = C.purple, bg = C.purpleTint, style }) => (
  * and used to render "mentorsMentors" into the button.
  */
 export const Seg = ({ options = [], value, onChange, small, style }) => (
-  <div style={{ display: "inline-flex", background: "#EFEEE9", borderRadius: 10, padding: 3, gap: 2, ...style }}>
+  <div style={{ display: "inline-flex", background: C.ghost, borderRadius: 10, padding: 3, gap: 2, ...style }}>
     {options.map((o) => {
       const [val, label] = Array.isArray(o) ? o : [o, o];
       const on = value === val;
@@ -508,9 +579,9 @@ export const BadgeTile = ({ badge, i, size = 72, onClick, justEarned }) => {
   const earned = !!badge.earned, color = TIER_COLOR[badge.tier];
   return (
     <div onClick={onClick} style={{ cursor: onClick ? "pointer" : "default", width: size }}>
-      <div className={justEarned ? "badge-pop" : ""} style={{ width: size, height: size, background: earned ? C.white : "#EDECE8", border: `1.5px solid ${earned ? color : "#DBDAD5"}`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+      <div className={justEarned ? "badge-pop" : ""} style={{ width: size, height: size, borderRadius: R.tile, background: earned ? C.white : C.ghost, border: `1.5px solid ${earned ? color : "#DBDAD5"}`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
         {earned ? <BadgeGlyph i={i} color={color} size={size * 0.42} /> : <Lock size={size * 0.26} color="#B9B7B1" strokeWidth={2.2} />}
-        {earned && <div style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, background: color }} />}
+        {earned && <div style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, borderRadius: "50%", background: color }} />}
       </div>
       <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, color: earned ? C.ink : C.gray, lineHeight: 1.25 }}>{badge.name}</div>
       <div style={{ fontFamily: F.mono, fontSize: 9, color: "#A5A39D", marginTop: 2 }}>{badge.when}</div>
@@ -920,7 +991,53 @@ const Textarea = ({ label, ...rest }) => (
   </div>
 );
 
-const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
+/* "Fill it out with AI", the panel above the phase fields.
+   Deliberately not a one-tap magic button that also saves: it writes into the
+   form the mentor is already looking at, says so, and leaves both the edit and
+   the Save press to them. `onDraft` is injected by the screen (see
+   CourseDesigner) so this file stays free of the data layer. */
+const DraftPanel = ({ hint, setHint, drafting, error, drafted, onDraft, onUndo }) => (
+  <div style={{
+    marginTop: 14, padding: 13, borderRadius: R.tile,
+    background: drafted ? C.tealTint : C.purpleTint,
+  }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+      <Sparkles size={13} color={drafted ? C.teal : C.purple} />
+      <span style={{ fontFamily: F.sans, fontSize: 12.5, fontWeight: 700, color: drafted ? C.teal : C.deep }}>
+        {drafted ? "AI draft — yours to edit" : "Fill it out with AI"}
+      </span>
+    </div>
+    <div style={{ fontSize: 11.5, color: C.gray, lineHeight: 1.45, marginTop: 5 }}>
+      {drafted
+        ? "Nothing is saved yet. Change anything you like, then save the phase."
+        : "Drafts a phase from your profile and the phases you've already written. You review it before anything saves."}
+    </div>
+    {!drafted && (
+      <input
+        value={hint}
+        onChange={(e) => setHint(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && !drafting) { e.preventDefault(); onDraft(); } }}
+        placeholder="Optional: what should this phase cover?"
+        style={{
+          width: "100%", boxSizing: "border-box", marginTop: 10, padding: "10px 12px",
+          border: `1px solid ${C.line}`, borderRadius: 10, background: C.white,
+          fontFamily: F.sans, fontSize: 13, color: C.ink, outline: "none",
+        }}
+      />
+    )}
+    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+      <Btn kind={drafted ? "ghost" : "soft"} small disabled={drafting} onClick={onDraft}>
+        <Sparkles size={13} /> {drafting ? "Drafting…" : drafted ? "Draft another" : "Draft this phase"}
+      </Btn>
+      {drafted && !drafting && (
+        <Btn kind="ghost" small onClick={onUndo}><RotateCcw size={13} /> Undo draft</Btn>
+      )}
+    </div>
+    {error && <div style={{ fontSize: 11.5, color: C.coral, marginTop: 9, lineHeight: 1.4 }}>{error}</div>}
+  </div>
+);
+
+const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange, onDraft }) => {
   const [title, setTitle] = useState(initial.title || "");
   const [description, setDescription] = useState(initial.description || "");
   const [duration, setDuration] = useState(initial.duration || "");
@@ -928,6 +1045,47 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
   const [rewardLabel, setRewardLabel] = useState(initial.reward?.label || "");
   const [rewardDesc, setRewardDesc] = useState(initial.reward?.description || "");
   const [rewardColor, setRewardColor] = useState(initial.reward?.color || "purple");
+
+  /* AI drafting. `before` is whatever the form held the first time a draft
+     landed, so Undo puts the mentor back where they were rather than blanking
+     a phase they were halfway through editing. */
+  const [hint, setHint] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState("");
+  const [drafted, setDrafted] = useState(false);
+  const before = useRef(null);
+
+  const fill = (p) => {
+    setTitle(p.title || "");
+    setDuration(p.duration || "");
+    setDescription(p.description || "");
+    setHasReward(!!p.reward);
+    setRewardLabel(p.reward?.label || "");
+    setRewardDesc(p.reward?.description || "");
+    setRewardColor(p.reward?.color || "purple");
+  };
+
+  const runDraft = async () => {
+    if (drafting) return;
+    setDrafting(true);
+    setDraftError("");
+    try {
+      const phase = await onDraft({ hint: hint.trim() });
+      if (!before.current) before.current = { title, duration, description, reward: hasReward ? { label: rewardLabel, description: rewardDesc, color: rewardColor } : null };
+      fill(phase);
+      setDrafted(true);
+    } catch (err) {
+      setDraftError(err?.message || "Couldn't draft that. Try again.");
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  const undoDraft = () => {
+    fill(before.current || {});
+    before.current = null;
+    setDrafted(false);
+  };
 
   const save = () => {
     if (!title.trim()) return;
@@ -956,12 +1114,18 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
   return (
     <div style={{ padding: "20px 24px 24px" }}>
       <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>{initial.id ? "Edit phase" : "Add phase"}</div>
+      {onDraft && (
+        <DraftPanel
+          hint={hint} setHint={setHint} drafting={drafting} error={draftError}
+          drafted={drafted} onDraft={runDraft} onUndo={undoDraft}
+        />
+      )}
       <Field label="Phase title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Kickoff & goal-setting" />
       <Field label="Duration" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Weeks 1–2" />
       <Textarea label="Description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)}
         placeholder="What a mentee does in this phase." />
       <div onClick={() => setHasReward((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, cursor: "pointer" }}>
-        <div style={{ width: 20, height: 20, background: hasReward ? C.tealTint : "#EFEEEA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 20, height: 20, borderRadius: 7, background: hasReward ? C.tealTint : C.ghost, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {hasReward && <Check size={12} color={C.teal} strokeWidth={3} />}
         </div>
         <span style={{ fontSize: 13.5, fontWeight: 600 }}>Award a certificate or reward on completion</span>
@@ -984,7 +1148,12 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
       </>)}
       <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
         <Btn kind="ghost" style={{ flex: 1 }} onClick={onCancel}>Cancel</Btn>
-        <Btn style={{ flex: 1 }} disabled={!title.trim()} onClick={save}>Save phase</Btn>
+        {/* The label names the gate: a drafted phase is a proposal until this
+            press, and it should read that way rather than looking like the
+            AI already put it in the course. */}
+        <Btn style={{ flex: 1 }} disabled={!title.trim()} onClick={save}>
+          {drafted ? "Looks good — save" : "Save phase"}
+        </Btn>
       </div>
     </div>
   );
@@ -1001,7 +1170,7 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange }) => {
  * caller reconstructs the full array and persists it, this component never
  * calls the save API itself.
  */
-export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, emptyText, autoOpenNew = false }) => {
+export const ProgramTimeline = ({ phases = [], completedIds = null, editable = false, onSave, onDelete, onMove, onToggle, onDraft, emptyText, autoOpenNew = false }) => {
   const isDesktop = useIsDesktop();
   const [editing, setEditing] = useState(null); // null | "new" | phase
   const dirtyRef = useRef(false);
@@ -1088,6 +1257,13 @@ export const ProgramTimeline = ({ phases = [], completedIds = null, editable = f
         <ModalShell onClose={closeEditing}>
           <PhaseForm
             initial={editing === "new" ? {} : editing}
+            /* An index so a draft knows where it lands: appending drafts the
+               next step, editing phase 2 drafts a phase 2. */
+            onDraft={onDraft && (({ hint }) => onDraft({
+              hint,
+              index: editing === "new" ? phases.length : phases.findIndex((p) => p.id === editing.id),
+              replacing: editing !== "new",
+            }))}
             onCancel={closeEditing}
             onDirtyChange={(d) => { dirtyRef.current = d; }}
             onSave={(phase) => { onSave(phase); setEditing(null); }}

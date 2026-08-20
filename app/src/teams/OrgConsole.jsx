@@ -560,7 +560,7 @@ function Orbit({ org, canManage, onOrbit, busy, toast, meId }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 38, height: 38, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 11, background: C.tealTint, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <Radio size={17} color={C.teal} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
