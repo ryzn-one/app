@@ -99,6 +99,25 @@ input::placeholder, textarea::placeholder { color: #A5A39D; }
 }
 .app-scroll::-webkit-scrollbar { display: none; }
 
+/* The modal card's height, in CSS rather than inline, so the `dvh` line can
+   fall back to `vh` on a browser that doesn't know it — two declarations of the
+   same property is something a React style object can't express.
+   `dvh` matters here: on mobile Safari a `vh` is measured against the viewport
+   with the URL bar hidden, so a modal sized in `vh` and centred in a `fixed`
+   overlay hangs its bottom edge — the Cancel/Save row — behind the browser
+   chrome. The `min()` on the floor is the other half: a short viewport (landscape,
+   or a keyboard open over the phase form) must shrink the card rather than push
+   its footer off-screen, and a card that can't shrink can't scroll either. */
+.modal-card {
+  max-height: min(78vh, 760px);
+  max-height: min(78dvh, 760px);
+  min-height: min(420px, 100%);
+}
+.modal-card--fill {
+  height: min(78vh, 760px);
+  height: min(78dvh, 760px);
+}
+
 .sheet-up { animation: sheetUp .28s ease; }
 @keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 

@@ -678,8 +678,32 @@ const MODAL_CLOSE_GUTTER = CLOSE_INSET + CLOSE_SIZE + CLOSE_CLEARANCE;
    header: that is how Discover's map ended up invisible inside this modal.
 
    `fill` opts a screen into a definite card height, which is what those screens
-   are asking for anyway. Content-sized modals leave it off and keep hugging. */
-const MODAL_TALL = "min(78vh, 760px)";
+   are asking for anyway. Content-sized modals leave it off and keep hugging.
+
+   Both heights live in `.modal-card` / `.modal-card--fill` in index.css, where
+   `dvh` can fall back to `vh`. */
+
+/**
+ * The Cancel/Save row of a modal form, pinned to the bottom of the modal's
+ * scroll area.
+ *
+ * A form long enough to scroll used to hide its own commit button below the
+ * fold — the phase form crossed that line the day it grew an AI drafting panel,
+ * on a phone with the keyboard up it was every time. Sticky rather than a
+ * separate flex footer because the row still has to sit inside the scroller
+ * that owns the fields; it rides down with the content and then stops.
+ *
+ * Assumes the modal body's own padding is `20px 24px 0` — the row owns the
+ * bottom gap (and the home-indicator inset) so it can reach the card's edge.
+ */
+export const ModalActions = ({ children }) => (
+  <div style={{
+    position: "sticky", bottom: 0, zIndex: 2,
+    display: "flex", gap: 10, marginTop: 22, marginLeft: -24, marginRight: -24,
+    padding: "13px 24px calc(16px + env(safe-area-inset-bottom, 0px))",
+    background: C.surface, borderTop: `1px solid ${C.line}`,
+  }}>{children}</div>
+);
 
 export const ModalShell = ({ children, onClose, fill = false }) => {
   const reduced = useReducedMotion();
@@ -697,9 +721,9 @@ export const ModalShell = ({ children, onClose, fill = false }) => {
       style={{ position: "fixed", inset: 0, background: "rgba(20,16,40,.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <motion.div onClick={e => e.stopPropagation()} variants={modalPop} initial="initial" animate="animate" exit="exit"
         transition={t(reduced, T_SLOW)}
+        className={fill ? "modal-card modal-card--fill" : "modal-card"}
         style={{
-          width: "min(94vw, 640px)", maxHeight: MODAL_TALL, minHeight: 420,
-          ...(fill ? { height: MODAL_TALL } : null),
+          width: "min(94vw, 640px)",
           background: C.surface, borderRadius: 24, overflow: "hidden", position: "relative",
           display: "flex", flexDirection: "column", boxShadow: "0 40px 90px rgba(15,10,35,.35)",
         }}>
@@ -1009,8 +1033,8 @@ const DraftPanel = ({ hint, setHint, drafting, error, drafted, onDraft, onUndo }
     </div>
     <div style={{ fontSize: 11.5, color: C.gray, lineHeight: 1.45, marginTop: 5 }}>
       {drafted
-        ? "Nothing is saved yet. Change anything you like, then save the phase."
-        : "Drafts a phase from your profile and the phases you've already written. You review it before anything saves."}
+        ? "Nothing is saved yet. Edit anything, then save."
+        : "Drafts from your profile and the phases you've already written. You review it before anything saves."}
     </div>
     {!drafted && (
       <input
@@ -1112,7 +1136,7 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange, onDraft }) => {
   useEffect(() => { onDirtyChange?.(dirty); }, [dirty]);
 
   return (
-    <div style={{ padding: "20px 24px 24px" }}>
+    <div style={{ padding: "20px 24px 0" }}>
       <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>{initial.id ? "Edit phase" : "Add phase"}</div>
       {onDraft && (
         <DraftPanel
@@ -1146,7 +1170,7 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange, onDraft }) => {
           </div>
         </div>
       </>)}
-      <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+      <ModalActions>
         <Btn kind="ghost" style={{ flex: 1 }} onClick={onCancel}>Cancel</Btn>
         {/* The label names the gate: a drafted phase is a proposal until this
             press, and it should read that way rather than looking like the
@@ -1154,7 +1178,7 @@ const PhaseForm = ({ initial, onCancel, onSave, onDirtyChange, onDraft }) => {
         <Btn style={{ flex: 1 }} disabled={!title.trim()} onClick={save}>
           {drafted ? "Looks good — save" : "Save phase"}
         </Btn>
-      </div>
+      </ModalActions>
     </div>
   );
 };

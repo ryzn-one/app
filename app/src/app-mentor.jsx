@@ -7,7 +7,7 @@ import {
   X, SlidersHorizontal, RotateCcw, Search, Pin, Trash2, Building2, Repeat2
 } from "lucide-react";
 import { C, F, S, SP, TIER_COLOR, DECK_COLORS } from "./theme.js";
-import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, ModalShell, labelOf } from "./ui.jsx";
+import { Card, Label, Btn, Chip, Seg, Monogram, Avatar, Field, XPPill, Ring, Bar, Sparkline, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ProgramTimeline, ModalShell, ModalActions, labelOf } from "./ui.jsx";
 import { ProfileHeader, EditableRow } from "./app-shared.jsx";
 import { useIsDesktop } from "./useIsDesktop.js";
 import { BADGE_DEFS, STATUS } from "./data.js";
@@ -38,7 +38,7 @@ const CourseDraftReview = ({ phases, keep, onToggle, onConfirm, onRetry, onClose
   const kept = phases.filter((_, i) => keep[i]).length;
   return (
     <ModalShell onClose={onClose}>
-      <div style={{ padding: "20px 24px 24px" }}>
+      <div style={{ padding: "20px 24px 0" }}>
         <div style={{ fontFamily: F.sans, fontSize: 18, fontWeight: 700 }}>Review your draft course</div>
         <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.5, marginTop: 6 }}>
           Nothing is saved yet. Untick anything you don't want, then add the rest — you can edit every phase afterwards.
@@ -71,14 +71,14 @@ const CourseDraftReview = ({ phases, keep, onToggle, onConfirm, onRetry, onClose
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+        <ModalActions>
           <Btn kind="ghost" style={{ flex: 1 }} disabled={busy} onClick={onRetry}>
             <Sparkles size={14} /> {busy ? "Drafting…" : "Draft again"}
           </Btn>
           <Btn style={{ flex: 1 }} disabled={!kept || busy} onClick={onConfirm}>
             Add {kept} phase{kept === 1 ? "" : "s"}
           </Btn>
-        </div>
+        </ModalActions>
       </div>
     </ModalShell>
   );
