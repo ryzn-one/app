@@ -73,7 +73,7 @@ export const EditableRow = ({ label, value, placeholder, emptyText, maxLength, r
  * mentee sees and must not offer buttons a mentee wouldn't have.
  */
 export const ProfileHeader = ({
-  name, headline, avatarUrl, bannerUrl, userId,
+  name, headline, avatarUrl, bannerUrl, userId, linkedinUrl,
   editable = false, onSaveImage, align = "left", dark = false, children,
 }) => {
   const [busy, setBusy] = useState(null);   // "avatar" | "banner" while uploading
@@ -134,6 +134,24 @@ export const ProfileHeader = ({
         <div style={{ fontSize: centred ? 21 : 19, fontWeight: 700, marginTop: 10, letterSpacing: -0.2 }}>{name || "Your profile"}</div>
         {headline && (
           <div style={{ fontSize: 13.5, lineHeight: 1.45, marginTop: 3, color: dark ? "#B5B3AE" : C.gray }}>{headline}</div>
+        )}
+        {/* A link out, deliberately not a badge. The server canonicalises this
+            URL but nothing verifies that it is *this* person's — Sign In with
+            LinkedIn doesn't return a vanity URL to check it against — so it
+            reads as "here's my LinkedIn", never as a verification mark.
+            `noopener` because target=_blank without it hands the opened tab a
+            handle on this one. */}
+        {linkedinUrl && (
+          <a href={linkedinUrl} target="_blank" rel="noopener noreferrer nofollow"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5, marginTop: 8,
+              fontFamily: F.mono, fontSize: 9.5, letterSpacing: 0.5, fontWeight: 700,
+              color: dark ? "#B5B3AE" : C.gray, textDecoration: "none",
+              border: `1px solid ${dark ? "rgba(255,255,255,.16)" : C.line}`,
+              borderRadius: 999, padding: "5px 10px",
+            }}>
+            <Linkedin size={11} /> LINKEDIN <ExternalLink size={10} />
+          </a>
         )}
         {children}
       </div>

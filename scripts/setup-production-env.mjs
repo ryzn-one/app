@@ -66,6 +66,10 @@ const KEYS = [
   "EMAIL_FROM",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
+  // Optional, like Google: unset both and the LinkedIn button simply isn't
+  // offered. The loop below skips any key with no value.
+  "LINKEDIN_CLIENT_ID",
+  "LINKEDIN_CLIENT_SECRET",
   "TURNSTILE_SECRET_KEY",
   "VITE_TURNSTILE_SITE_KEY",
   "BLOB_READ_WRITE_TOKEN",

@@ -343,6 +343,31 @@ export const orgSetRules = (rules) => orgAction("rules", { rules });
 /** Moves someone between teams. `null` un-seats them, which the cross-division
     rule reads as "shows them everyone". */
 export const orgSetDivision = (userId, division) => orgAction("division", { userId, division });
+
+/* ----- Email domains -----
+   How a company orbit stops depending on somebody remembering to mint a code.
+   Claim the domain your staff's mail runs on, publish one TXT record to prove
+   you run it, and anyone signing in on a *verified* address at that domain is
+   offered the orbit — or seated in it, if you turn the switch up.
+
+   Nothing here is trusted until the DNS read succeeds: `orgAddDomain` only
+   records an intention and hands back the token to publish. The org payload
+   carries `domains[]` for managers, each row with `host`, `token` and
+   `verified`. */
+export const orgAddDomain = (domain) => orgAction("domain", { domain });
+/** Reads the TXT record back. Rejects with a message naming what's wrong -
+    missing record, wrong value, or a nameserver that didn't answer. */
+export const orgVerifyDomain = (domain) => orgAction("domain-verify", { domain });
+/** Drops the claim. Nobody already in the orbit is removed; this decides who
+    may join next, not who is already here. */
+export const orgRemoveDomain = (domain) => orgAction("domain-remove", { domain });
+/** `off` | `suggest` | `auto`. Inert until at least one domain is verified. */
+export const orgSetDomainMode = (mode) => orgAction("domain-mode", { mode });
+
+/** Accept the orbit /api/me offered on `domainOffer`. Takes no argument on
+    purpose: the server re-derives which orbit from the caller's own verified
+    address, so there is no id here for a client to get wrong or to forge. */
+export const joinDomainOrbit = () => orbitAction("join-domain");
 /** The org Orbit feed: profile-visible posts from everyone in the org. */
 export const fetchOrgOrbit = () => api("/posts?scope=org");
 

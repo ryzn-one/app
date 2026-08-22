@@ -5,7 +5,7 @@ import {
   Plus, ChevronRight, ChevronLeft, Linkedin, Award, Zap, User, MessageCircle,
   KeyRound, Shield, Home, MapPin, Bell, Settings, Calendar, Mic, Type,
   TrendingUp, LayoutGrid, ExternalLink, Users, School, LogOut, Play, FileText, Upload,
-  X, SlidersHorizontal, RotateCcw, Search, Newspaper, UserPlus, UserCheck, Compass
+  X, SlidersHorizontal, RotateCcw, Search, Newspaper, UserPlus, UserCheck, Compass, Building2
 } from "lucide-react";
 import { C, F, S, TIER_COLOR, DECK_COLORS } from "./theme.js";
 import { Card, Label, Btn, Chip, Monogram, Avatar, Field, XPPill, Ring, Bar, QR, BadgeGlyph, BadgeTile, Heatmap, HeaderRow, Glyph, TypingDots, ModalShell, Sidebar, AuthCardShell, SectionBoundary, TopBar, BarBtn, firstNameOf } from "./ui.jsx";
@@ -31,7 +31,7 @@ import { MentorFeed, OrbitScreen, MenteeDiscover } from "./feed.jsx";
 import { TEAMS_NAV, TEAMS_TABS, TeamsHome, TeamsMentors, TeamsCohort, TeamsRoster, TeamsChat } from "./teams/TeamsApp.jsx";
 import { useOrbits } from "./lib/orbits.js";
 import { OrbitSwitcher, JoinCircle, orbitIcon } from "./orbits.jsx";
-import { fetchCircle, joinCircle } from "./lib/auth-client.js";
+import { fetchCircle, joinCircle, joinDomainOrbit } from "./lib/auth-client.js";
 import { IntroTourModal, SpotlightHint, ComprehensiveTour, hasSeenIntroTour, markIntroTourSeen, hasSeenTabHint, markTabHintSeen, resetTabHints, hasCompletedTour, markTourCompleted, resetTour } from "./onboarding.jsx";
 import { InstallBanner } from "./install.jsx";
 import { fadeSlide, sheet, t, spring, T_BASE } from "./motion.js";
@@ -456,6 +456,33 @@ export default function RyznComplete() {
     if (me) applyMe(me);
     return me;
   }, [loadSession, applyMe]);
+
+  /* ----- the company orbit your work address belongs to -----
+     /api/me answers `domainOffer` when a verified address matches an orbit the
+     caller isn't in yet. Dismissal is local and deliberately not persisted:
+     the offer is cheap to re-render and joining is the only answer worth
+     remembering, so "not now" means exactly this session. */
+  const [domainOfferHidden, setDomainOfferHidden] = useState(false);
+  const [domainJoinBusy, setDomainJoinBusy] = useState(false);
+
+  const acceptDomainOrbit = useCallback(async () => {
+    setDomainJoinBusy(true);
+    try {
+      /* Takes no id: the server re-derives which orbit from the session's own
+         verified address, so there is nothing here that could name the wrong
+         one. `orbits.applyOrbits` takes the list the write already returned,
+         which is what puts the new orbit in the switcher without a second GET. */
+      const res = await joinDomainOrbit();
+      if (res?.orbits) orbits.applyOrbits(res.orbits);
+      const me = await refreshUser();
+      toast(me?.org ? `You're in ${me.org.name}` : "You're in");
+      setDomainOfferHidden(true);
+    } catch (e) {
+      toast(e?.message || "Couldn't join that orbit.");
+    } finally {
+      setDomainJoinBusy(false);
+    }
+  }, [orbits, refreshUser]);
 
   useEffect(() => { if (stage === "matches" && phase === "journey") loadRoster(); }, [stage, phase, loadRoster]);
   /* Pending invites must reach the in-app Notifications surface, not only the
@@ -1874,6 +1901,61 @@ export default function RyznComplete() {
         }
         liftAbove={isDesktop || fullScreenOverlay ? 0 : 60}
       />
+
+      {/* The colleagues you haven't met yet.
+          Anchored to the bottom rather than dropped into a tab, because it is
+          true on every tab and belongs to none of them. `domainOffer` is
+          recomputed by /api/me on every boot and never remembered server-side,
+          so dismissing costs nothing and joining is the only durable answer. */}
+      <AnimatePresence>
+        {phase === "app" && user && session?.domainOffer && !domainOfferHidden && (
+          <motion.div
+            key="domain-offer"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={t(reduced, T_BASE)}
+            style={{
+              position: "fixed", left: "50%", transform: "translateX(-50%)",
+              bottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
+              width: "min(420px, calc(100vw - 28px))", zIndex: 88,
+              background: C.ink, color: C.white, borderRadius: 16, padding: 14,
+              boxShadow: "0 12px 32px rgba(26,26,26,.28)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 11, background: C.purple, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Building2 size={16} color={C.white} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: F.sans, fontSize: 14.5, fontWeight: 700, letterSpacing: -0.2 }}>
+                  {session.domainOffer.seated
+                    ? `You're in ${session.domainOffer.name}`
+                    : `${session.domainOffer.name} is on Ryzn`}
+                </div>
+                <div style={{ fontSize: 12.5, color: "#B5B3AE", marginTop: 4, lineHeight: 1.45 }}>
+                  {session.domainOffer.seated
+                    ? `Your @${session.domainOffer.domain} address put you in their company orbit.`
+                    : `Your @${session.domainOffer.domain} address belongs to their company orbit. Join your colleagues?`}
+                </div>
+              </div>
+              <button onClick={() => setDomainOfferHidden(true)} aria-label="Dismiss"
+                style={{ border: "none", background: "none", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
+                <X size={15} color="#B5B3AE" />
+              </button>
+            </div>
+            {!session.domainOffer.seated && (
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <Btn small kind="ghost" style={{ flex: 1, borderColor: "rgba(255,255,255,.22)", color: "#B5B3AE", background: "transparent" }}
+                  onClick={() => setDomainOfferHidden(true)}>Not now</Btn>
+                <Btn small style={{ flex: 1 }} disabled={domainJoinBusy} onClick={acceptDomainOrbit}>
+                  {domainJoinBusy ? "Joining…" : "Join"}
+                </Btn>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {toastMsg && (

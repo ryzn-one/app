@@ -41,6 +41,62 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const prefixFor = (userId) => `avatars/${userId}/`;
 
 /**
+ * A LinkedIn profile, stored as a canonical URL.
+ *
+ * This is typed in, not read from LinkedIn. Sign In with LinkedIn is OpenID
+ * Connect and answers with eight fields — sub, name, given/family name,
+ * picture, locale, email, email_verified — and the vanity URL is not one of
+ * them, so even someone who signed up *through* LinkedIn has to tell us this.
+ * That also means it is a claim, never a verified fact, and nothing here should
+ * ever render it as one.
+ *
+ * Accepts what people actually paste: the full URL, the mobile one, a country
+ * subdomain, a bare `linkedin.com/in/…`, or just the handle. All of it
+ * normalises to one form, because two rows that differ only by `www.` are two
+ * rows the moment anything wants to match on this.
+ *
+ * Returns the canonical URL, null to clear the field, or undefined for input we
+ * won't store.
+ */
+/** linkedin.com itself, or one of its single-label subdomains: `www`, `m`, and
+    the country ones (`uk`, `ca`, `de`) people paste without noticing. */
+const LINKEDIN_HOST = /^([a-z0-9-]+\.)?linkedin\.com$/;
+/** LinkedIn's own vanity rules: 3–100 of letters, digits, hyphens and
+    underscores. Percent-escapes pass because non-Latin handles arrive encoded. */
+const LINKEDIN_SLUG = /^[\w%-]{3,100}$/;
+
+function cleanLinkedInUrl(value) {
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") return undefined;
+  const raw = value.trim().replace(/\/+$/, "");
+  if (!raw) return null;
+
+  /* A bare handle has no scheme and no dot before its first slash, which is the
+     one cheap test separating "pranet-patel" from "linkedin.com/in/pranet-patel"
+     without having to guess at a scheme first. */
+  const isUrl = /^[a-z]+:\/\//i.test(raw) || raw.split("/")[0].includes(".");
+  let slug = raw;
+
+  if (isUrl) {
+    let parsed;
+    try { parsed = new URL(/^[a-z]+:\/\//i.test(raw) ? raw : `https://${raw}`); }
+    catch { return undefined; }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return undefined;
+    if (!LINKEDIN_HOST.test(parsed.hostname.toLowerCase())) return undefined;
+    /* Only a member profile. A company page or a post URL would sit under
+       someone's own name as though it were them, a different claim entirely. */
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (parts.length !== 2 || parts[0] !== "in") return undefined;
+    slug = parts[1];
+  }
+
+  if (!LINKEDIN_SLUG.test(slug)) return undefined;
+  // Query and hash are tracking, never identity: `?originalSubdomain=uk` and
+  // the rest of LinkedIn's share params are dropped on the way in.
+  return `https://www.linkedin.com/in/${slug}`;
+}
+
+/**
  * The browser uploads straight to Blob storage and then tells us the URL, so
  * "the client said so" has to be checked before it becomes someone's picture.
  * Right host, and a path inside the caller's own folder, the same two checks
@@ -192,6 +248,14 @@ async function handler(request, user) {
     // Empty clears the field rather than storing "", so every reader's
     // `?? null` and `u?.headline &&` checks stay true to what's on the profile.
     updates[key] = String(body[key] ?? "").trim().slice(0, limit) || null;
+  }
+
+  if ("linkedinUrl" in body) {
+    const url = cleanLinkedInUrl(body.linkedinUrl);
+    if (url === undefined) {
+      return fail(400, "bad_linkedin", "That doesn't look like a LinkedIn profile. Paste the linkedin.com/in/… link, or just your handle.");
+    }
+    updates.linkedinUrl = url;
   }
 
   for (const key of ["avatarUrl", "bannerUrl"]) {

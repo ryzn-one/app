@@ -636,7 +636,7 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
           {/* Read-only on purpose: this tab is the mentee's view of the profile,
               so it must not offer edit affordances a mentee wouldn't have. */}
           <ProfileHeader name={name} headline={[u?.headline, u?.industry].filter(Boolean).join(" · ") || null}
-            avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} align="center" dark>
+            avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} linkedinUrl={u?.linkedinUrl} align="center" dark>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.purple, padding: "6px 12px", marginTop: 12, fontFamily: F.mono, fontSize: 10, letterSpacing: 1 }}><Crown size={12} /> {(u?.tier || "Scout").toUpperCase()} MENTOR</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 28, marginTop: 18 }}>
               {[[u?.impact ?? 0, "IMPACT SCORE"], [cohort.length, "MENTEES"], [u?.capacity ?? "-", "CAPACITY"]].map(([n, l]) => (
@@ -697,8 +697,8 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
           {/* Studio is the editing surface, the pictures are changed here and
               previewed in the other tab, not edited in both places. */}
           <ProfileHeader name={name} headline={[u?.headline, u?.industry].filter(Boolean).join(" · ") || null}
-            avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} userId={userId} editable
-            onSaveImage={onUpdateProfile} />
+            avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl} linkedinUrl={u?.linkedinUrl}
+            userId={userId} editable onSaveImage={onUpdateProfile} />
 
           <Card data-tour="mentor-profile-studio">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -767,6 +767,13 @@ export const MentorProfile = ({ u, name, userId, openOverlay, feed = [], go, gre
             <EditableRow label="Current role" value={u?.experience} maxLength={600} rows={3}
               placeholder="e.g., Senior Product Manager at Meta (2019–present)"
               emptyText="Add your current role" onSave={v => onUpdateProfile("experience", v)} />
+            {/* Typed in, not imported. LinkedIn's sign-in returns a name, a
+                photo and an email and nothing else, so this is the only way the
+                link gets here — for a mentor it's the credential a mentee goes
+                looking for before they spend a seat on you. */}
+            <EditableRow label="LinkedIn" value={u?.linkedinUrl} maxLength={200} rows={1}
+              placeholder="linkedin.com/in/your-handle"
+              emptyText="Add your LinkedIn" onSave={v => onUpdateProfile("linkedinUrl", v)} />
           </Card>
 
           <Card style={{ border: `1px solid ${posts.length ? C.teal : C.purple}` }}>

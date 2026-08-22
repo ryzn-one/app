@@ -7,6 +7,7 @@ import { setFollow } from "../lib/network.js";
 import { sideOf, acceptedFor, orbitOfMatch } from "../lib/matches.js";
 import { recordedByOrbit, resolveStage, chatUnlocked } from "../lib/stage.js";
 import { cleanName, cleanShort, cleanDivision, freeSlug } from "../lib/orgs.js";
+import { resolveDomainJoin, seatByDomain } from "../lib/domains.js";
 import {
   PUBLIC_ORBIT_ID, DEFAULT_COMMUNITY_POLICY, cleanPolicy, cleanLevel, publicOrbit,
   myOrbits, orbitContext, memberCounts, kindOf,
@@ -21,6 +22,7 @@ import {
  *   PATCH { action: "policy", orbitId, … }     write the policy, managers only
  *   PATCH { action: "settings", orbitId, … }   circle/orbit identity, managers only
  *   PATCH { action: "join", orbitId | slug }   join a circle
+ *   PATCH { action: "join-domain" }            take the orbit your work email belongs to
  *   PATCH { action: "leave", orbitId }         leave an orbit, identity survives
  *
  * This is the endpoint the whole client shell is built on: it answers the orbit
@@ -215,6 +217,32 @@ async function handler(request, user) {
       await setFollow(db, user.id, doc.ownerId, true);
     }
     return json({ orbits: await withStage(db, user, await myOrbits(db, user.id)), joined: orbitId });
+  }
+
+  /* ----- take the orbit your address belongs to ----- */
+  if (action === "join-domain") {
+    /**
+     * Accepting the offer /api/me made. Note what is *not* read here: the
+     * client's `orbitId`. The whole question is re-answered from the caller's
+     * own session — their verified address, the org that proved that domain,
+     * and that org's switch — so a hand-rolled PATCH naming somebody else's
+     * company orbit resolves to their own or to nothing at all.
+     *
+     * "suggest" and "auto" both accept. Somebody sitting on a stale client
+     * whose admin turned the switch up mid-session is answering yes to an offer
+     * that has since become automatic, and refusing them for that would be
+     * refusing the more permissive of two settings.
+     */
+    const pending = await resolveDomainJoin(db, user);
+    if (!pending) {
+      return fail(404, "no_domain_orbit", "There's no company orbit waiting on your email address.");
+    }
+    const { seated } = await seatByDomain(db, pending.org, user, pending.domain);
+    return json({
+      orbits: await withStage(db, user, await myOrbits(db, user.id)),
+      joined: String(pending.org._id),
+      seated,
+    });
   }
 
   /* Everything below is scoped to one orbit the caller is actually in. */

@@ -89,6 +89,42 @@ Membership is one document per person — counts are counted, never cached on th
 org. Slug and `ownerId` are unique indexes, so "one org per owner" and a free
 handle are enforced by the database, not by a check the create path could race.
 
+### Joining by email domain
+
+The cold-start fix: a company orbit with one person in it stays that way unless
+somebody remembers to mint every colleague a code. `lib/domains.js` lets an
+employee in on the strength of their work address instead.
+
+**Three gates, all of them required.** Get any one wrong and this seats
+strangers in somebody's company orbit:
+
+| | what | checked in |
+|---|---|---|
+| 1 | `user.emailVerified` — they opened the mail, they didn't just type the address | `resolveDomainJoin` |
+| 2 | the org published a DNS `TXT` at `_ryzn-verify.<domain>` matching a token we minted | `checkDomainTxt`, at claim time |
+| 3 | `policy.domainJoin` is `suggest` or `auto` | `resolveDomainJoin` |
+
+Password signup leaves `emailVerified` false (`requireEmailVerification` is
+off), so gate 1 is what stops anyone typing `ceo@northbound.com` into the signup
+form. Google and LinkedIn sign-ins arrive verified.
+
+Matching is **exact** — `northbound.com` does not carry `eu.northbound.com`. The
+alternative is walking up the label list, which on `dana@user.github.io` walks
+into a public suffix and hands one tenant every other tenant's people. Public
+providers (`gmail.com`, `outlook.com`, the disposable services) are refused
+outright at claim time. Two orgs may *claim* one domain; only one may verify it,
+which is what stops a squatter fencing off a domain they don't run.
+
+`domainJoin` is the seventh field on the orbit policy object and is clamped to
+`off` outside a private orbit. `suggest` writes nothing and hands `/api/me` a
+`domainOffer` the client turns into a one-tap card; `auto` seats them on their
+next boot and still tells them. Either way the seat is `orgRole: "member"`,
+stamped `via: "domain"`, and **the platform role is never touched** — a code
+from `api/invites/redeem.js` is still the only thing that makes anyone a mentor.
+
+Removing a domain un-seats nobody. It decides who may join next; evicting people
+because an admin tidied their DNS would be a different and much worse feature.
+
 ## Collections
 
 Better Auth owns `user`, `session`, `account`, `verification` — do not write to

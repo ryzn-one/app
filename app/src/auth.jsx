@@ -122,6 +122,12 @@ export const GoogleMark = () => (
   <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
 );
 
+/* LinkedIn's brand mark, in its one permitted colour. Same 16px box as the
+   Google mark so the two buttons sit at identical optical weight. */
+export const LinkedInMark = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#0A66C2" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+);
+
 /** `initialInvite` arrives from /app/#/join?code=…, a mentor who clicked
     through from the invitation email, so the code is already confirmed and
     shouldn't have to be retyped. It still gets re-validated below, and the
@@ -211,9 +217,9 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
   /* Google leaves the app and comes back to /app/ with no hash, so a code held
      only in this component dies on the round trip. Stash it first; RyznApp
      claims it on the way back, once there is a session to claim it with. */
-  const google = () => {
+  const social = (provider) => {
     stashPendingInvite(inv.trim());
-    signIn.social({ provider: "google", callbackURL: "/app/" });
+    signIn.social({ provider, callbackURL: "/app/" });
   };
 
   const inviteBadge = {
@@ -255,7 +261,12 @@ export const Register = ({ role, go, onDone, initialInvite = "" }) => {
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
         <div style={{ flex: 1, height: 1, background: C.line }} /><Label>or</Label><div style={{ flex: 1, height: 1, background: C.line }} />
       </div>
-      <Btn kind="ghost" onClick={google}><GoogleMark /> Continue with Google</Btn>
+      <Btn kind="ghost" onClick={() => social("google")}><GoogleMark /> Continue with Google</Btn>
+      {/* LinkedIn sits under Google rather than beside it: a mentor arriving
+          from an invitation email is the person most likely to have a LinkedIn
+          and least likely to want a new password, and a full-width row keeps
+          both options readable at 320px. */}
+      <Btn kind="ghost" style={{ marginTop: 10 }} onClick={() => social("linkedin")}><LinkedInMark /> Continue with LinkedIn</Btn>
       <div style={{ textAlign: "center", fontSize: 12.5, color: C.gray, margin: "16px 0 0" }}>Already in? <span onClick={() => go("login")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Sign in</span></div>
       <TeamsCrossSell />
     </div>
@@ -297,7 +308,7 @@ export const Login = ({ go, onDone, role }) => {
     }
   };
 
-  const google = () => signIn.social({ provider: "google", callbackURL: "/app/" });
+  const social = (provider) => signIn.social({ provider, callbackURL: "/app/" });
 
   return (
     <div style={{ padding: "0 24px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
@@ -319,7 +330,8 @@ export const Login = ({ go, onDone, role }) => {
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "24px 0" }}>
           <div style={{ flex: 1, height: 1, background: C.line }} /><Label>or</Label><div style={{ flex: 1, height: 1, background: C.line }} />
         </div>
-        <Btn kind="ghost" onClick={google} style={{ background: C.white, border: `1.5px solid ${C.line}` }}><GoogleMark /> Continue with Google</Btn>
+        <Btn kind="ghost" onClick={() => social("google")} style={{ background: C.white, border: `1.5px solid ${C.line}` }}><GoogleMark /> Continue with Google</Btn>
+        <Btn kind="ghost" onClick={() => social("linkedin")} style={{ marginTop: 10, background: C.white, border: `1.5px solid ${C.line}` }}><LinkedInMark /> Continue with LinkedIn</Btn>
       </div>
       <div style={{ paddingBottom: "max(32px, env(safe-area-inset-bottom))", paddingTop: 8, textAlign: "center" }}>
         <div style={{ fontSize: 13, color: C.gray }}>New here? <span onClick={() => go("register")} style={{ color: C.purple, fontWeight: 600, cursor: "pointer" }}>Create an account</span></div>

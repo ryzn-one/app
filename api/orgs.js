@@ -11,7 +11,10 @@ import {
   cleanWebsite, cleanDivision, cleanRules, DEFAULT_ORG_RULES,
   freeSlug, orgContext, publicOrg,
 } from "../lib/orgs.js";
-import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel } from "../lib/orbits.js";
+import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel, DOMAIN_JOIN_MODES } from "../lib/orbits.js";
+import {
+  cleanDomain, isPublicDomain, checkDomainTxt, newVerifyToken, verifyHost,
+} from "../lib/domains.js";
 
 /**
  * /api/orgs, a mentor's own organisation.
@@ -28,6 +31,10 @@ import { DEFAULT_PRIVATE_POLICY, resolvePolicy, cleanLevel } from "../lib/orbits
  *   PATCH { action: "level", userId, level }  managers grade a seat (levelGate)
  *   PATCH { action: "remove", userId }        managers remove someone
  *   PATCH { action: "leave" }                 anyone but the owner walks out
+ *   PATCH { action: "domain", domain }        claim an email domain, managers
+ *   PATCH { action: "domain-verify", domain } read the DNS record back
+ *   PATCH { action: "domain-remove", domain } drop a claim
+ *   PATCH { action: "domain-mode", mode }     off | suggest | auto
  *
  * Creating an org requires the mentor role, which still only comes from claiming
  * an invite, so this endpoint hands out org-level admin, never platform admin.
@@ -96,6 +103,27 @@ async function peopleOf(db, orgId, { withEmail }) {
   });
 }
 
+/**
+ * The org's domain claims, as the console renders them. Managers only.
+ *
+ * The token ships even for a verified domain: DNS records get tidied up by
+ * whoever inherits the zone, and an admin re-checking a domain that has gone
+ * quiet needs to see the value that is supposed to be there. It is a proof of
+ * control, not a secret — knowing it does nothing for anyone who can't publish
+ * under the domain, which is the entire point of the mechanism.
+ */
+const domainsOf = (org) =>
+  (org.domains || []).map((d) => ({
+    domain: d.domain,
+    verified: !!d.verifiedAt,
+    verifiedAt: d.verifiedAt ?? null,
+    host: verifyHost(d.domain),
+    token: d.token,
+    addedAt: d.addedAt ?? null,
+    lastCheckedAt: d.lastCheckedAt ?? null,
+    lastError: d.lastError ?? null,
+  }));
+
 /** Codes minted for this org, newest first. Managers only, see callers. */
 async function invitesOf(db, orgId) {
   const rows = await db
@@ -158,6 +186,7 @@ async function contextPayload(db, user, ctx) {
       // Owning an org is a mentor's tool. A mentee sees the pitch instead, and
       // the client says why rather than hiding the form with no explanation.
       canCreate: isMentorRole(user.role),
+      domains: [],
     };
   }
   const { org, membership } = ctx;
@@ -170,6 +199,9 @@ async function contextPayload(db, user, ctx) {
     org: publicOrg(org, { orgRole: membership.orgRole, memberCount: members.length }),
     members,
     invites,
+    // Who walks in off a verified address, and on what proof. A member has no
+    // business reading the org's DNS tokens, so this follows `invites`.
+    domains: manages ? domainsOf(org) : [],
     canCreate: false,
   };
 }
@@ -413,6 +445,136 @@ async function handler(request, user) {
     }
 
     return json({ ...(await contextPayload(db, user, ctx)), created, to: to || null, ...delivery }, 201);
+  }
+
+  /* ----- email domains -----
+     The cold-start fix: an employee signing in on an address at a domain this
+     org has *proved* it runs gets seated without anyone minting them a code.
+     lib/domains.js holds the three gates that make that safe; these four
+     actions are the console half — claim, prove, drop, and how eager to be. */
+
+  if (action === "domain") {
+    const denied = managerOnly();
+    if (denied) return denied;
+
+    const domain = cleanDomain(body.domain);
+    if (!domain) return fail(400, "bad_domain", "That doesn't look like a domain. Try `northbound.com`.");
+    if (isPublicDomain(domain)) {
+      return fail(400, "public_domain", `${domain} is a public email provider, so an address there doesn't say where somebody works. Claim the domain your company's own mail runs on.`);
+    }
+    if ((org.domains || []).some((d) => d.domain === domain)) {
+      return fail(409, "already_claimed", `${domain} is already on your list.`);
+    }
+    if ((org.domains || []).length >= 10) {
+      return fail(409, "too_many_domains", "Ten domains is the limit. Remove one first.");
+    }
+    /* Somebody else having *proved* this domain is the one case we refuse
+       outright: two orgs verified on one domain would make which employer an
+       address belongs to a question with two answers. An unproved claim
+       elsewhere blocks nothing, so a squatter can't fence off a domain they
+       don't run. */
+    const taken = await orgs.findOne(
+      { _id: { $ne: org._id }, domains: { $elemMatch: { domain, verifiedAt: { $ne: null } } } },
+      { projection: { _id: 1 } }
+    );
+    if (taken) return fail(409, "domain_taken", `${domain} has already been verified by another organisation on Ryzn. Get in touch if that's wrong.`);
+
+    const entry = {
+      domain,
+      token: newVerifyToken(),
+      addedAt: new Date(),
+      addedBy: user.id,
+      verifiedAt: null,
+      lastCheckedAt: null,
+      lastError: null,
+    };
+    await orgs.updateOne({ _id: org._id }, { $push: { domains: entry }, $set: { updatedAt: new Date() } });
+    return json(await contextPayload(db, user, await orgContext(db, user.id)), 201);
+  }
+
+  if (action === "domain-verify") {
+    const denied = managerOnly();
+    if (denied) return denied;
+
+    const domain = cleanDomain(body.domain);
+    const entry = (org.domains || []).find((d) => d.domain === domain);
+    if (!entry) return fail(404, "no_domain", "That domain isn't on your list.");
+
+    /* DNS is somebody else's server. Rate limited so a stuck record can't be
+       hammered, and per-org rather than per-user so two admins clicking at each
+       other still share one budget. */
+    const rl = await rateLimit(`domain-verify:${orgId}`, { limit: 30 });
+    if (!rl.ok) return fail(429, "rate_limited", "That's a lot of checks. DNS can take a while to propagate — try again shortly.");
+
+    const result = await checkDomainTxt(domain, entry.token);
+    const now = new Date();
+
+    if (!result.ok) {
+      const message = {
+        no_record: `No TXT record at ${result.host} yet. DNS can take up to an hour to propagate after you add it.`,
+        wrong_value: `There's a TXT record at ${result.host}, but it isn't the token below. Check it was pasted whole.`,
+        dns_timeout: "That domain's nameservers didn't answer in time. Try again in a minute.",
+        dns_error: "Couldn't read that domain's DNS just now.",
+      }[result.reason] || "Couldn't verify that domain.";
+
+      await orgs.updateOne(
+        { _id: org._id, "domains.domain": domain },
+        { $set: { "domains.$.lastCheckedAt": now, "domains.$.lastError": message } }
+      );
+      return fail(400, "not_verified", message);
+    }
+
+    /* Re-checked inside the write: a concurrent verify on another org between
+       the claim and here is the one race that would seat people twice. */
+    const taken = await orgs.findOne(
+      { _id: { $ne: org._id }, domains: { $elemMatch: { domain, verifiedAt: { $ne: null } } } },
+      { projection: { _id: 1 } }
+    );
+    if (taken) return fail(409, "domain_taken", `${domain} has already been verified by another organisation on Ryzn.`);
+
+    await orgs.updateOne(
+      { _id: org._id, "domains.domain": domain },
+      {
+        $set: {
+          "domains.$.verifiedAt": now,
+          "domains.$.verifiedBy": user.id,
+          "domains.$.lastCheckedAt": now,
+          "domains.$.lastError": null,
+          updatedAt: now,
+        },
+      }
+    );
+    return json(await contextPayload(db, user, await orgContext(db, user.id)));
+  }
+
+  if (action === "domain-remove") {
+    const denied = managerOnly();
+    if (denied) return denied;
+    const domain = cleanDomain(body.domain);
+    const res = await orgs.updateOne(
+      { _id: org._id },
+      { $pull: { domains: { domain } }, $set: { updatedAt: new Date() } }
+    );
+    if (!res.modifiedCount) return fail(404, "no_domain", "That domain isn't on your list.");
+    /* Nobody is un-seated. People already in the orbit joined it, however they
+       arrived, and dropping a domain is a statement about who may join next -
+       removing them would make an admin tidying up their DNS into a mass
+       eviction. They can be removed one at a time, deliberately, above. */
+    return json(await contextPayload(db, user, await orgContext(db, user.id)));
+  }
+
+  if (action === "domain-mode") {
+    const denied = managerOnly();
+    if (denied) return denied;
+    const mode = String(body.mode || "");
+    if (!DOMAIN_JOIN_MODES.has(mode)) return fail(400, "bad_request", "Mode is `off`, `suggest` or `auto`.");
+    /* Through the resolver so the other six switches come back with defaults
+       filled in — writing `{ domainJoin }` alone would blank a policy an admin
+       set in the orbit console, which is the exact failure `cleanPolicy` and
+       the merge in api/orbits.js exist to prevent. */
+    const policy = { ...resolvePolicy(org), domainJoin: mode };
+    await orgs.updateOne({ _id: org._id }, { $set: { policy, updatedAt: new Date() } });
+    return json(await contextPayload(db, user, await orgContext(db, user.id)));
   }
 
   if (action === "revoke") {

@@ -6,6 +6,7 @@ import { isAdmin, canAccessAdminConsole } from "../lib/admin.js";
 import { isMentorRole } from "../lib/roles.js";
 import { asLabel } from "../lib/scalars.js";
 import { orgContext, publicOrg } from "../lib/orgs.js";
+import { resolveDomainJoin, seatByDomain } from "../lib/domains.js";
 import { prefsOf } from "../lib/prefs.js";
 import { ensureHandle } from "../lib/handles.js";
 
@@ -117,7 +118,48 @@ async function handler(request, user) {
   const isMinor = age !== null && age < 18;
 
   /* ----- organisation ----- */
-  const orgCtx = await orgContext(db, user.id);
+  let orgCtx = await orgContext(db, user.id);
+
+  /**
+   * The employer they haven't been invited to yet.
+   *
+   * Boot is where this belongs rather than signup: it catches the person who
+   * joined last month and whose company claimed its domain this morning, the
+   * one who signed up with a password and only verified their address today,
+   * and the fresh Google sign-in, all through one path instead of three. Costs
+   * one indexed read, and only for somebody who isn't in a company orbit
+   * already — `already` short-circuits it for everyone who is.
+   *
+   * `auto` seats them here and lets the rest of this response render as though
+   * they had always been in it. `suggest` writes nothing and hands the client
+   * an offer. Either way lib/domains.js has checked that their address is
+   * verified and that the org proved the domain by DNS; this is the consequence
+   * of those checks, not a fourth one.
+   */
+  let domainOffer = null;
+  try {
+    const pending = await resolveDomainJoin(db, user, { already: !!orgCtx });
+    if (pending) {
+      if (pending.mode === "auto") {
+        const { seated } = await seatByDomain(db, pending.org, user, pending.domain);
+        orgCtx = await orgContext(db, user.id);
+        /* Told, not just moved. A person who opens the app and silently finds
+           themselves among colleagues has had something done to them; the
+           client turns this into a dismissible "you're in" card. */
+        if (seated) {
+          domainOffer = { mode: "auto", orgId: String(pending.org._id), name: pending.org.name, domain: pending.domain, seated: true };
+        }
+      } else {
+        domainOffer = { mode: "suggest", orgId: String(pending.org._id), name: pending.org.name, domain: pending.domain, seated: false };
+      }
+    }
+  } catch (err) {
+    /* This is a nicety bolted onto the endpoint the entire app boots from. A
+       bad read here must cost somebody an offer, never their sign-in, so it is
+       logged and the rest of the response goes out unchanged. */
+    console.warn("[me] domain join skipped:", err?.message);
+  }
+
   const org = orgCtx
     ? publicOrg(orgCtx.org, { orgRole: orgCtx.membership.orgRole })
     : null;
@@ -289,6 +331,13 @@ async function handler(request, user) {
        lets the app show a way into the org console instead of the Teams pitch.
        The console itself still reads /api/orgs for the roster and codes. */
     org,
+    /* Non-null only when their address matches an orbit they aren't in yet.
+       `mode: "auto"` means they were just seated and are being told; `"suggest"`
+       means it's an offer and nothing has been written. Both are dismissible on
+       the client, and neither is remembered server-side — the offer simply
+       reappears next boot until they take it, which is what makes "not now"
+       cost nothing and "yes" the only durable answer. */
+    domainOffer,
     compliance: {
       age,
       isMinor,

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Building2, Users, Send, Settings, Radio, Copy, ExternalLink, Plus, ChevronLeft,
-  Check, Shield, Trash2, RotateCcw, Globe, SlidersHorizontal,
+  Check, Shield, Trash2, RotateCcw, Globe, SlidersHorizontal, AtSign,
 } from "lucide-react";
 import { C, F } from "../theme.js";
 import { Card, Label, Btn, Field, FormError, Monogram, firstNameOf } from "../ui.jsx";
@@ -13,6 +13,7 @@ import {
   updateOrg, setOrgOrbit, orgMintInvites, orgRevokeInvite,
   orgSetMemberRole, orgRemoveMember, orgLeave, fetchOrgOrbit, messageFor, postAction,
   orgSetRules, orgSetDivision,
+  orgAddDomain, orgVerifyDomain, orgRemoveDomain, orgSetDomainMode,
 } from "../lib/auth-client.js";
 
 /* ----------------- ORG CONSOLE -----------------
@@ -380,6 +381,146 @@ function Invites({ org, invites, divisions, onMint, onRevoke, busy, toast, invit
    `crossDivision` appears in both. It is one rule with one value: api/orgs.js
    mirrors a write here into `policy.crossDiv`, and `resolvePolicy` treats the
    policy as the authority. */
+/**
+ * Domains, the tab that answers "how does this orbit fill up".
+ *
+ * The honest framing matters here, so the copy says out loud what the three
+ * gates are: the address has to be verified, the domain has to be proved, and
+ * the org has to have asked for it. An admin who doesn't understand that this
+ * seats real strangers if they get the domain wrong is an admin who will get
+ * the domain wrong.
+ *
+ * `mode` is offered *above* the list rather than below it because it is the
+ * switch that does something, and a verified domain with the mode off is the
+ * single most confusing state this screen can be in.
+ */
+function Domains({ org, domains, canManage, busy, toast, onAdd, onVerify, onRemove, onMode }) {
+  const [draft, setDraft] = useState("");
+  const mode = org.policy?.domainJoin || "suggest";
+  const anyVerified = domains.some((d) => d.verified);
+
+  if (!canManage) {
+    return (
+      <Card>
+        <Label>Email domains</Label>
+        <div style={{ fontSize: 13, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
+          Only the owner and org admins manage which email domains join {org.name}.
+        </div>
+      </Card>
+    );
+  }
+
+  const MODES = [
+    ["off", "Off", "Nobody joins by email."],
+    ["suggest", "Suggest", "They’re offered the orbit and tap once to take it."],
+    ["auto", "Automatic", "They’re seated on their next sign-in and told so."],
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card>
+        <Label color={C.purple}>Fill {org.name} from your email domain</Label>
+        <div style={{ fontSize: 13, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
+          Anyone signing in on a <strong>verified</strong> address at a domain you’ve proved
+          you run can join {org.name} without a code. Three things have to be true, and Ryzn
+          checks all three: their address is confirmed, this domain answers a DNS record only
+          you can publish, and the switch below is on.
+        </div>
+        <div style={{ fontSize: 12.5, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>
+          It never grants the mentor role — that still comes from claiming an invitation.
+        </div>
+
+        <div style={{ display: "flex", background: "#EFEEEA", borderRadius: 12, padding: 4, marginTop: 14 }}>
+          {MODES.map(([id, label]) => (
+            <button key={id} disabled={busy} onClick={() => onMode(id)} style={{
+              flex: 1, border: "none", cursor: busy ? "default" : "pointer", borderRadius: 9, padding: "9px 0",
+              fontFamily: F.sans, fontWeight: 600, fontSize: 13,
+              background: mode === id ? C.white : "transparent", color: mode === id ? C.ink : C.gray,
+            }}>{label}</button>
+          ))}
+        </div>
+        <div style={{ fontSize: 12.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
+          {MODES.find(([id]) => id === mode)?.[2]}
+        </div>
+        {mode !== "off" && !anyVerified && (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12, background: C.amberTint, border: `1px solid ${C.amber}`, borderRadius: 12, padding: 11 }}>
+            <Shield size={14} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.5 }}>
+              Nothing happens yet — no domain is verified, so there’s nothing for this to match.
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <Label>Domains · {domains.length}</Label>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="northbound.com"
+            autoComplete="off" spellCheck={false}
+            onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { onAdd(draft.trim()); setDraft(""); } }}
+            style={{ flex: 1, minWidth: 0, border: `1px solid ${C.line}`, borderRadius: 12, padding: "11px 12px", fontFamily: F.sans, fontSize: 14, background: C.surface, outline: "none", boxSizing: "border-box" }} />
+          <Btn small disabled={busy || !draft.trim()} onClick={() => { onAdd(draft.trim()); setDraft(""); }} style={{ flexShrink: 0 }}>
+            <Plus size={14} /> Add
+          </Btn>
+        </div>
+        <div style={{ fontSize: 12, color: "#A5A39D", marginTop: 8, lineHeight: 1.5 }}>
+          Your company’s own mail domain. Gmail, Outlook and the other public providers are
+          refused — an address there says nothing about where somebody works. Subdomains are
+          separate: add <code>eu.northbound.com</code> too if your staff use it.
+        </div>
+
+        {!domains.length && (
+          <div style={{ fontSize: 13, color: C.gray, marginTop: 14, fontStyle: "italic" }}>No domains yet.</div>
+        )}
+
+        {domains.map((d) => (
+          <div key={d.domain} style={{ marginTop: 12, border: `1px solid ${d.verified ? C.teal : C.line}`, borderRadius: 12, padding: 12, background: d.verified ? C.tealTint : C.surface }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0, fontFamily: F.sans, fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis" }}>{d.domain}</div>
+              {d.verified
+                ? <Chip c={C.teal} bg={C.white}><Check size={9} style={{ verticalAlign: -1 }} /> VERIFIED</Chip>
+                : <Chip c={C.amber} bg={C.amberTint}>UNVERIFIED</Chip>}
+              <button disabled={busy} onClick={() => onRemove(d)} title={`Remove ${d.domain}`}
+                style={{ border: "none", background: "none", cursor: busy ? "default" : "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
+                <Trash2 size={14} color={C.gray} />
+              </button>
+            </div>
+
+            {d.verified ? (
+              <div style={{ fontFamily: F.mono, fontSize: 9, color: C.gray, marginTop: 8, letterSpacing: 0.5 }}>
+                PROVED {fmtDate(d.verifiedAt)} · LEAVE THE DNS RECORD IN PLACE
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 12.5, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>
+                  Add this TXT record to {d.domain}’s DNS, then check it. Propagation is usually
+                  minutes but can take an hour.
+                </div>
+                {[["NAME", d.host], ["VALUE", d.token]].map(([label, value]) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, background: C.white, border: `1px solid ${C.line}`, borderRadius: 10, padding: "9px 10px" }}>
+                    <span style={{ fontFamily: F.mono, fontSize: 8.5, color: "#A5A39D", letterSpacing: 0.6, flexShrink: 0, width: 40 }}>{label}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: F.mono, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+                    <button onClick={() => { copyText(value); toast("Copied"); }} title="Copy"
+                      style={{ border: "none", background: "none", cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
+                      <Copy size={13} color={C.gray} />
+                    </button>
+                  </div>
+                ))}
+                {d.lastError && (
+                  <div style={{ fontSize: 12, color: C.coral, marginTop: 8, lineHeight: 1.5 }}>{d.lastError}</div>
+                )}
+                <Btn small kind="ghost" disabled={busy} onClick={() => onVerify(d)} style={{ marginTop: 10 }}>
+                  <RotateCcw size={13} /> {d.lastCheckedAt ? "Check again" : "Check DNS"}
+                </Btn>
+              </>
+            )}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
 function Programme({ org, members, canManage, onRules, busy, orbit, onOrbitSaved, toast }) {
   const rules = org.rules || {};
   const divisions = divisionsOf(members);
@@ -679,7 +820,7 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
-  const { org, members, invites } = ctx;
+  const { org, members, invites, domains = [] } = ctx;
   const canManage = !!org.canManage;
   const isOwner = org.orgRole === "owner";
   const meId = me?.user?.id;
@@ -704,6 +845,9 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
     ["overview", "Overview", Building2],
     ["people", `People · ${members.length}`, Users],
     ...(canManage ? [["invites", "Invites", Send]] : []),
+    // Sits next to Invites because it answers the same question — how somebody
+    // gets in — and a manager comparing the two should not have to hunt.
+    ...(canManage ? [["domains", `Domains${domains.length ? ` · ${domains.length}` : ""}`, AtSign]] : []),
     ["programme", "Programme", SlidersHorizontal],
     ["orbit", "Orbit", Radio],
     ["settings", "Settings", Settings],
@@ -744,6 +888,18 @@ export default function OrgConsole({ ctx, me, onCtx, onExit, toast, orbit, onOrb
       divisions={divisionsOf(members)}
       inviterName={me?.user?.name || org.name}
       onRevoke={(code) => run(() => orgRevokeInvite(code), `${code} revoked`)} />,
+    domains: <Domains org={org} domains={domains} canManage={canManage} busy={busy} toast={toast}
+      onAdd={(domain) => run(() => orgAddDomain(domain), `${domain} added · publish the record, then check it`)}
+      onVerify={(d) => run(() => orgVerifyDomain(d.domain), `${d.domain} verified`)}
+      onMode={(mode) => run(() => orgSetDomainMode(mode), {
+        off: "Email joining is off",
+        suggest: "New colleagues will be offered the orbit",
+        auto: "New colleagues will be seated automatically",
+      }[mode])}
+      onRemove={(d) => {
+        if (!window.confirm(`Stop accepting ${d.domain}? Nobody already in ${org.name} is removed.`)) return;
+        run(() => orgRemoveDomain(d.domain), `${d.domain} removed`);
+      }} />,
     programme: <Programme org={org} members={members} canManage={canManage} busy={busy}
       orbit={orbit} onOrbitSaved={onOrbitsChanged} toast={toast}
       onRules={(patch) => run(() => orgSetRules(patch), "Rule saved")} />,

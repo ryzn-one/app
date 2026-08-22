@@ -44,6 +44,32 @@ https://ryzn-git-dev-bos-studio.vercel.app/api/auth/callback/google
 Then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the **Preview**
 environment in Vercel (or add them to `.env.local` and re-run the setup script).
 
+## LinkedIn OAuth (if used on preview)
+
+Create an app at <https://www.linkedin.com/developers/apps>. It must be
+associated with a LinkedIn **Company Page** you administer — that is a hard
+requirement, not a formality, and it's the step that takes the longest.
+
+Under **Products**, request **Sign In with LinkedIn using OpenID Connect**.
+That's the only product needed here, and it self-approves in minutes. Under
+**Auth → OAuth 2.0 settings**, add the redirect URL:
+
+```
+https://ryzn-git-dev-bos-studio.vercel.app/api/auth/callback/linkedin
+```
+
+Production is the same path on `https://ryzn.one`. Both can live on one app;
+LinkedIn allows several redirect URLs, and they must match exactly — no
+trailing slash, no query string.
+
+Then set `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`. With either unset
+the button isn't rendered and nothing else changes.
+
+What this grants, in full: `sub`, `name`, `given_name`, `family_name`,
+`picture`, `locale`, `email`, `email_verified`. There is no scope that adds a
+headline, an employer, a vanity URL or a member's connections — those sit
+behind LinkedIn's partner programmes. Don't design against getting them.
+
 ## Turnstile (if used on preview)
 
 In Cloudflare Turnstile, add hostname `ryzn-git-dev-bos-studio.vercel.app` to

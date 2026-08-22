@@ -139,6 +139,16 @@ const indexes = [
      per-owner guarantee from quietly becoming one-space-per-owner. The backfill
      above is what lets the filter see orgs written before `kind` existed. */
   ["orgs", { ownerId: 1 }, { unique: true, name: "owner_private_unique", partialFilterExpression: { kind: "private" } }],
+  /* Email-domain joining reads this on every boot by somebody who isn't in a
+     company orbit, so it is the one index standing between that feature and a
+     collection scan per sign-in.
+
+     Deliberately *not* unique. Uniqueness would have to mean "one org per
+     verified domain", and a multikey index can't express the verified part —
+     it would instead let whoever claimed `northbound.com` first, proof or none,
+     lock the real Northbound out. api/orgs.js enforces the rule it actually
+     wants, at claim time and again inside the verify write. */
+  ["orgs", { "domains.domain": 1 }, { name: "domain_lookup" }],
   // Orbit-scoped Stage 1 progress: one doc per person per orbit. Unique, because
   // two progress docs for one (person, orbit) is two answers to "what step am I
   // on" and the screen would show whichever came back first.

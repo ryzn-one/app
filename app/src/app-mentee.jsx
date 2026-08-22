@@ -636,7 +636,7 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
     <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
       <div data-tour="mentee-profile-hero">
         <ProfileHeader name={name} headline={u?.headline} avatarUrl={u?.avatarUrl} bannerUrl={u?.bannerUrl}
-          userId={userId} editable onSaveImage={onUpdateProfile}>
+          linkedinUrl={u?.linkedinUrl} userId={userId} editable onSaveImage={onUpdateProfile}>
           <div style={{ fontFamily: F.mono, fontSize: 10, color: C.purple, marginTop: 6 }}>{labelOf(u?.track) ? `TRACK · ${labelOf(u.track).toUpperCase()} · ` : ""}WEEK {u?.week ?? 1}</div>
         </ProfileHeader>
       </div>
@@ -694,6 +694,12 @@ export const MenteeProfile = ({ u, name, userId, badges = [], openBadge, openOve
         <EditableRow label="Experience & projects" value={u?.experience} maxLength={600} rows={3}
           placeholder="e.g., Interned at Google as a Product Manager (Summer 2024)"
           emptyText="Add your experience" onSave={v => onUpdateProfile("experience", v)} />
+        {/* Optional for a mentee in a way it isn't for a mentor: plenty of them
+            are students who don't have one yet, so the empty state reads as an
+            offer rather than a gap in the profile. */}
+        <EditableRow label="LinkedIn" value={u?.linkedinUrl} maxLength={200} rows={1}
+          placeholder="linkedin.com/in/your-handle"
+          emptyText="Add your LinkedIn (optional)" onSave={v => onUpdateProfile("linkedinUrl", v)} />
       </Card>
       {/* Every mentor, equal. The old version ranked them, one ACTIVE row and
           the rest tagged SUPPORT, each carrying a "Make active" button whose
